@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseWebSocketOptions {
   onMessage?: (data: any) => void;
@@ -6,9 +6,16 @@ interface UseWebSocketOptions {
 
 export function useWebSocket(url: string, options?: UseWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    // 清除之前的重连定时器
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    setStatus('connecting');
     const ws = new WebSocket(url);
 
     ws.onopen = () => {
@@ -20,8 +27,9 @@ export function useWebSocket(url: string, options?: UseWebSocketOptions) {
       console.log('WebSocket 连接关闭');
       setStatus('disconnected');
       // 自动重连
-      setTimeout(() => {
-        setStatus('connecting');
+      reconnectTimeoutRef.current = setTimeout(() => {
+        console.log('尝试重新连接...');
+        connect();
       }, 3000);
     };
 
@@ -39,11 +47,20 @@ export function useWebSocket(url: string, options?: UseWebSocketOptions) {
     };
 
     wsRef.current = ws;
+  }, [url, options]);
+
+  useEffect(() => {
+    connect();
 
     return () => {
-      ws.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
-  }, [url]);
+  }, [connect]);
 
   const subscribe = (codes: string[]) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
