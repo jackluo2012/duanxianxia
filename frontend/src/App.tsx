@@ -1,12 +1,19 @@
-import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { Layout } from 'antd';
+import Dashboard from './pages/Dashboard';
 
-const App: React.FC = () => {
+const { Content } = Layout;
+
+function App() {
   return (
-    <div>
-      <h1>短线侠 - 股票实时行情分析平台</h1>
-      <p>前端项目初始化成功</p>
-    </div>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Content>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+        </Routes>
+      </Content>
+    </Layout>
   );
-};
+}
 
 export default App;
