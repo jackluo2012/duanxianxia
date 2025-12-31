@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct StockQuote {
     pub code: String,
     pub name: String,
-    pub market: u8,  // 0=深市, 1=沪市
+    pub market: u8, // 0=深市, 1=沪市
     pub price: f64,
     pub preclose: f64,
     pub open: f64,
@@ -25,7 +25,7 @@ pub struct User {
     pub id: i32,
     pub username: String,
     pub email: String,
-    pub plan: String,  // "free" or "premium"
+    pub plan: String, // "free" or "premium"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
