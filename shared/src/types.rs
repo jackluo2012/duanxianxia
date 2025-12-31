@@ -28,7 +28,7 @@ pub struct User {
     pub plan: String,  // "free" or "premium"
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebSocketMessage {
     #[serde(rename = "type")]
     pub msg_type: String,
