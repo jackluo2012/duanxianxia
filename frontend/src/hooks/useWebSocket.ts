@@ -15,6 +15,11 @@ export function useWebSocket(url: string, options?: UseWebSocketOptions) {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
+    // 关闭旧的 WebSocket 连接，防止内存泄漏
+    if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
+      wsRef.current.close();
+    }
+
     setStatus('connecting');
     const ws = new WebSocket(url);
 
@@ -47,7 +52,7 @@ export function useWebSocket(url: string, options?: UseWebSocketOptions) {
     };
 
     wsRef.current = ws;
-  }, [url, options]);
+  }, [url, options?.onMessage]);
 
   useEffect(() => {
     connect();
