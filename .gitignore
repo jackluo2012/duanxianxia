@@ -5,3 +5,20 @@
 node_modules/
 dist/
 .env.local
+
+# Rust specific
+**/*.rs.bk
+*.pdb
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDE/Editor
+.idea/
+*.swp
+*.swo
+
+# Test files
+*.tmp
+*.temp
