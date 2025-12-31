@@ -1,0 +1,21 @@
+{
+    "mcpServers": {
+        "search1api": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "search1api-mcp"
+            ],
+            "env": {
+                "SEARCH1API_KEY": "6D4A4F1D-3E2C-40C3-8CFB-A6185CB12A4E"
+            }
+        }
+    },
+    "tavily-mcp": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@0.1.2"],
+      "env": {
+        "TAVILY_API_KEY": "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"
+      }
+    }
+}
