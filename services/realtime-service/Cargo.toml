@@ -12,6 +12,6 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 shared = { path = "../../shared" }
 futures-util = "0.3"

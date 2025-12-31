@@ -11,6 +11,6 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
-clickhouse = { version = "0.11", features = ["time"] }
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+clickhouse = { version = "0.12", features = ["time"] }
 shared = { path = "../../shared" }

@@ -23,5 +23,5 @@ CREATE TABLE IF NOT EXISTS user_watchlist (
 -- 插入测试用户
 -- 密码: password123 (bcrypt hash)
 INSERT INTO users (username, email, password_hash, plan) VALUES
-('testuser', 'test@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLaEmcRi', 'free')
+('testuser', 'test@example.com', '$2b$12$bMlWvJ0z/L/.wUzLZbWm2.4tJYsW5udpfj4iRJyuHUZc4.6oAPKyy', 'free')
 ON CONFLICT (username) DO NOTHING;
