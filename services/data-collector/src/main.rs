@@ -1,7 +1,6 @@
 // services/data-collector/src/main.rs
 use anyhow::Result;
 use tracing::{info, error};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<()> {
