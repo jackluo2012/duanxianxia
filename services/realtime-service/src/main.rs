@@ -1,8 +1,7 @@
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
-use actix_ws::ProtocolError;
+use actix_ws::Message;
 use futures_util::StreamExt;
-use redis::AsyncCommands;
-use shared::{WebSocketMessage, StockQuote};
+use shared::WebSocketMessage;
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
@@ -45,22 +44,21 @@ async fn websocket_handler(
     stream: web::Payload,
     subscriptions: web::Data<Arc<Mutex<HashSet<String>>>>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let mut ws = actix_ws::Protocol::new(req, stream).await?;
+    let (response, mut session, mut msg_stream) = actix_ws::handle(&req, stream)?;
 
     // 发送连接成功消息
     let msg = WebSocketMessage {
         msg_type: "connected".to_string(),
         data: serde_json::json!({"message": "WebSocket connected"}),
     };
-    ws.send(serde_json::to_string(&msg).unwrap().into()).await?;
+    let _ = session.text(serde_json::to_string(&msg).unwrap()).await;
 
-    // 处理客户端消息
-    while let Some(msg_result) = ws.next().await {
-        match msg_result {
-            Ok(msg) => {
-                if msg.is_text() {
-                    let text = msg.to_str().unwrap();
-                    if let Ok(data) = serde_json::from_str::<serde_json::Value>(text) {
+    // 在单独的任务中处理 WebSocket 消息
+    actix_web::rt::spawn(async move {
+        while let Some(Ok(msg)) = msg_stream.next().await {
+            match msg {
+                Message::Text(text) => {
+                    if let Ok(data) = serde_json::from_str::<serde_json::Value>(&text) {
                         if let Some(action) = data.get("action").and_then(|v| v.as_str()) {
                             if action == "subscribe" {
                                 if let Some(codes) = data.get("codes").and_then(|v| v.as_array()) {
@@ -76,17 +74,18 @@ async fn websocket_handler(
                         }
                     }
                 }
-            }
-            Err(ProtocolError::Closed) => {
-                tracing::info!("WebSocket 连接关闭");
-                break;
-            }
-            Err(e) => {
-                tracing::error!("WebSocket 错误: {:?}", e);
-                break;
+                Message::Close(reason) => {
+                    tracing::info!("WebSocket 连接关闭: {:?}", reason);
+                    let _ = session.close(reason).await;
+                    break;
+                }
+                Message::Ping(bytes) => {
+                    let _ = session.pong(&bytes).await;
+                }
+                _ => {}
             }
         }
-    }
+    });
 
-    Ok(HttpResponse::Ok().finish())
+    Ok(response)
 }
