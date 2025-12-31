@@ -5,9 +5,9 @@ members = [
     # TODO: 添加其他微服务
     "services/data-collector",
     "services/storage-service",
-    # "services/realtime-service",
+    "services/realtime-service",
     # "services/query-service",
-    # "services/auth-service",
+    "services/auth-service",
     # "services/gateway",
 ]
 
