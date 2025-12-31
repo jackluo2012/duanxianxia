@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "services/data-collector",
+    "services/storage-service",
+    "services/realtime-service",
+    "services/query-service",
+    "services/auth-service",
+    "services/gateway",
+    "shared",
+]
+
+[workspace.dependencies]
+# 通用依赖版本统一管理
+actix-web = "4.4"
+actix-ws = "0.3"
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json"] }
+rustdx-complete = "0.6.4"
