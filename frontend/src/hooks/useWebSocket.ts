@@ -9,6 +9,10 @@ export function useWebSocket(url: string, options?: UseWebSocketOptions) {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
+  // 使用 ref 存储 onMessage 回调，避免 connect 函数依赖变化
+  const onMessageRef = useRef(options?.onMessage);
+  onMessageRef.current = options?.onMessage;
+
   const connect = useCallback(() => {
     // 清除之前的重连定时器
     if (reconnectTimeoutRef.current) {
@@ -45,14 +49,14 @@ export function useWebSocket(url: string, options?: UseWebSocketOptions) {
     ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        options?.onMessage?.(message);
+        onMessageRef.current?.(message);
       } catch (error) {
         console.error('解析消息失败:', error);
       }
     };
 
     wsRef.current = ws;
-  }, [url, options?.onMessage]);
+  }, [url]);
 
   useEffect(() => {
     connect();

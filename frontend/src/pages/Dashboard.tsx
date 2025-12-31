@@ -32,9 +32,13 @@ function Dashboard() {
   });
 
   useEffect(() => {
-    // 订阅股票
-    subscribe(['000001', '600000']);
+    // 当 WebSocket 连接成功后订阅股票
+    if (status === 'connected') {
+      subscribe(['000001', '600000']);
+    }
+  }, [status, subscribe]);
 
+  useEffect(() => {
     // 初始数据
     setTimeout(() => {
       setData([
