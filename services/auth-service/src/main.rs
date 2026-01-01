@@ -13,7 +13,7 @@ async fn main() -> anyhow::Result<()> {
 
     // 连接数据库
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or("postgresql://devuser:devpass@localhost/duanxianxia_users".to_string());
+        .unwrap_or("postgresql://postgres:password@localhost/duanxianxia_users".to_string());
     let pool = PgPool::connect(&database_url).await?;
 
     HttpServer::new(move || {
