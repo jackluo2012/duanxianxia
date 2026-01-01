@@ -1,4 +1,5 @@
 import ReactECharts from 'echarts-for-react';
+import { useMemo } from 'react';
 import { HistoryPoint } from '../api/quotes';
 
 interface KLineChartProps {
@@ -7,8 +8,41 @@ interface KLineChartProps {
   loading?: boolean;
 }
 
+// 数据采样函数
+function sampleData(data: HistoryPoint[], maxPoints: number): HistoryPoint[] {
+  if (data.length <= maxPoints) {
+    return data;
+  }
+
+  // 计算采样步长
+  const step = Math.ceil(data.length / maxPoints);
+
+  // 均匀采样，保留首尾点
+  const sampled: HistoryPoint[] = [data[0]]; // 保留第一个点
+
+  for (let i = 1; i < data.length - 1; i += step) {
+    sampled.push(data[i]);
+  }
+
+  sampled.push(data[data.length - 1]); // 保留最后一个点
+
+  return sampled;
+}
+
 export default function KLineChart({ data, period, loading = false }: KLineChartProps) {
   const isKLine = period === '5m' || period === '1d';
+
+  // 根据周期类型设置采样阈值
+  const samplingThreshold = isKLine ? 1000 : 500;
+
+  // 应用数据采样
+  const sampledData = useMemo(() => {
+    const result = sampleData(data, samplingThreshold);
+    console.log(
+      `[KLineChart] 数据采样: ${data.length} → ${result.length} 点 (阈值: ${samplingThreshold})`
+    );
+    return result;
+  }, [data, samplingThreshold]);
 
   const option = {
     animation: false,
@@ -24,7 +58,7 @@ export default function KLineChart({ data, period, loading = false }: KLineChart
     },
     xAxis: {
       type: 'category',
-      data: data.map((d) => d.time),
+      data: sampledData.map((d) => d.time),
       axisLine: {
         lineStyle: {
           color: '#888',
@@ -51,7 +85,7 @@ export default function KLineChart({ data, period, loading = false }: KLineChart
           {
             name: 'K线',
             type: 'candlestick',
-            data: data.map((d) => [d.open, d.close, d.low, d.high]),
+            data: sampledData.map((d) => [d.open, d.close, d.low, d.high]),
             itemStyle: {
               color: '#ef5350',
               color0: '#26a69a',
@@ -64,7 +98,7 @@ export default function KLineChart({ data, period, loading = false }: KLineChart
           {
             name: '价格',
             type: 'line',
-            data: data.map((d) => d.price),
+            data: sampledData.map((d) => d.price),
             smooth: true,
             symbol: 'none',
             lineStyle: {
@@ -94,7 +128,7 @@ export default function KLineChart({ data, period, loading = false }: KLineChart
     },
   };
 
-  if (loading || data.length === 0) {
+  if (loading || sampledData.length === 0) {
     return (
       <div
         style={{
