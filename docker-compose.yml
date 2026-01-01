@@ -29,6 +29,42 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
 
+  # 竞价分析模块服务 (Phase 2 Week 1)
+  auction-service:
+    build: ./services/auction-service
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RUST_LOG=info
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  auction-storage:
+    build: ./services/auction-storage
+    ports:
+      - "8084:8084"
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - REDIS_URL=redis://redis:6379
+      - BIND_ADDRESS=0.0.0.0:8084
+      - RUST_LOG=info
+    depends_on:
+      - clickhouse
+      - redis
+    restart: unless-stopped
+
+  auction-realtime:
+    build: ./services/auction-realtime
+    ports:
+      - "8085:8085"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - BIND_ADDRESS=0.0.0.0:8085
+      - RUST_LOG=info
+    depends_on:
+      - redis
+    restart: unless-stopped
+
 volumes:
   clickhouse_data:
   redis_data:

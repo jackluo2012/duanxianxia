@@ -1,11 +1,11 @@
 [package]
-name = "storage-service"
+name = "auction-realtime"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 actix-web = { workspace = true }
-actix-cors = "0.7"
+actix-ws = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -13,6 +13,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
-clickhouse = { version = "0.12", features = ["time"] }
+futures-util = "0.3"
+uuid = { version = "1.6", features = ["v4", "serde"] }
 shared = { path = "../../shared" }
-reqwest = { version = "0.12", features = ["json"] }
+chrono = "0.4"

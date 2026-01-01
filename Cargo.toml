@@ -9,6 +9,9 @@ members = [
     # "services/query-service",
     "services/auth-service",
     # "services/gateway",
+    "services/auction-service",
+    "services/auction-storage",
+    "services/auction-realtime",
 ]
 
 [workspace.dependencies]

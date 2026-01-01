@@ -1,5 +1,5 @@
 [package]
-name = "storage-service"
+name = "auction-storage"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,3 +16,4 @@ redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 clickhouse = { version = "0.12", features = ["time"] }
 shared = { path = "../../shared" }
 reqwest = { version = "0.12", features = ["json"] }
+chrono = "0.4"

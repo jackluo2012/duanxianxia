@@ -22,3 +22,6 @@ Thumbs.db
 # Test files
 *.tmp
 *.temp
+
+# Git worktrees
+.worktrees/
