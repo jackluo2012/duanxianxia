@@ -23,6 +23,8 @@
 
 ## 微服务架构
 
+### 核心服务
+
 1. **data-collector** - 数据采集服务
    - 从 rustdx 获取实时行情
    - 推送到 Redis Stream
@@ -43,6 +45,38 @@
    - 用户注册/登录
    - JWT 认证
    - 端口: 8082
+
+### 竞价分析模块 🆕
+
+5. **auction-service** - 竞价数据采集服务
+   - 时序检查 (9:15-9:25 竞价时段)
+   - 抢筹强度评分算法 (0-100)
+   - 封单金额计算 (买封/卖封)
+   - 推送到 Redis Stream: `auction_quotes`
+   - 端口: 无 (后台任务)
+
+6. **auction-storage** - 竞价数据存储服务
+   - 订阅 Redis Stream `auction_quotes`
+   - 批量写入 ClickHouse (100条或5秒)
+   - HTTP API:
+     - `GET /api/auction/rankings?type={type}&limit={limit}` - 排行榜查询
+     - `GET /api/auction/details/{code}` - 详情查询
+     - `GET /health` - 健康检查
+   - 端口: 8084
+
+7. **auction-realtime** - 竞价实时推送服务
+   - WebSocket 服务器
+   - 订阅 Redis Stream `auction_quotes`
+   - 基于订阅的智能广播
+   - 端口: 8085
+
+### 前端页面
+
+1. **实时行情** (`/`) - 分时图和K线图
+2. **竞价分析** (`/auction`) - 竞价排行榜和详情 ⭐
+   - 4种排行榜 (买封/强度/涨幅/异动)
+   - 竞价曲线图 (价格 + 封单量)
+   - 实时数据更新 (每5秒)
 
 ## 快速开始
 
@@ -73,8 +107,40 @@ docker-compose up -d redis clickhouse postgres
 # ClickHouse
 docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client < db/init.sql
 
+# 竞价分析表
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client < db/auction.sql
+
 # PostgreSQL
-docker exec -i $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users < db/init_postgres.sql
+docker exec -i $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia < db/user.sql
+```
+
+#### 3. 启动竞价分析服务 🆕
+
+```bash
+# Terminal 1: auction-storage
+cd services/auction-storage
+cargo run
+
+# Terminal 2: auction-realtime
+cd services/auction-realtime
+cargo run
+
+# Terminal 3: auction-service (可选，竞价时段自动运行)
+cd services/auction-service
+cargo run
+```
+
+#### 4. 启动前端
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+访问:
+- 实时行情: http://localhost:5173
+- 竞价分析: http://localhost:5173/auction ⭐
 ```
 
 #### 3. 启动后端服务
