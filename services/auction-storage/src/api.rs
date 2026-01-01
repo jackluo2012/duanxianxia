@@ -212,3 +212,119 @@ pub mod alerts {
         limit: Option<usize>,
     }
 }
+
+/// 自选股 API 端点
+pub mod watchlist {
+    use super::*;
+    use crate::watchlist::{WatchlistManager, WatchlistItem};
+    use actix_web::{post, delete};
+    use std::sync::Arc;
+
+    /// WatchlistManager 的 Actix Web 数据包装
+    pub struct WatchlistManagerData(pub Arc<WatchlistManager>);
+
+    /// 添加到自选股请求
+    #[derive(Deserialize)]
+    pub struct AddToWatchlistRequest {
+        pub code: String,
+        pub name: String,
+        #[serde(default = "default_user_id")]
+        pub user_id: String,
+    }
+
+    fn default_user_id() -> String {
+        "default".to_string()
+    }
+
+    /// 自选股列表响应
+    #[derive(Serialize)]
+    pub struct WatchlistResponse {
+        pub items: Vec<WatchlistItem>,
+    }
+
+    /// 检查是否在自选股中响应
+    #[derive(Serialize)]
+    pub struct IsWatchedResponse {
+        pub watched: bool,
+    }
+
+    /// POST /api/auction/watchlist - 添加股票到自选股
+    #[post("/api/auction/watchlist")]
+    pub async fn add_to_watchlist(
+        manager: web::Data<WatchlistManagerData>,
+        req: web::Json<AddToWatchlistRequest>,
+    ) -> impl Responder {
+        match manager
+            .0
+            .add_stock(&req.user_id, &req.code, &req.name)
+            .await
+        {
+            Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+                "message": "股票已添加到自选股",
+                "code": req.code,
+                "name": req.name
+            })),
+            Err(e) => {
+                tracing::error!("添加自选股失败: {:?}", e);
+                HttpResponse::BadRequest().json(serde_json::json!({
+                    "error": "添加自选股失败",
+                    "message": e.to_string()
+                }))
+            }
+        }
+    }
+
+    /// DELETE /api/auction/watchlist/{code} - 从自选股中移除股票
+    #[delete("/api/auction/watchlist/{code}")]
+    pub async fn remove_from_watchlist(
+        manager: web::Data<WatchlistManagerData>,
+        path: web::Path<String>,
+        query: web::Query<WatchlistQuery>,
+    ) -> impl Responder {
+        let code = path.into_inner();
+        let user_id = query.user_id.clone().unwrap_or_else(|| "default".to_string());
+
+        match manager.0.remove_stock(&user_id, &code).await {
+            Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+                "message": "股票已从自选股中移除",
+                "code": code
+            })),
+            Err(e) => {
+                tracing::error!("移除自选股失败: {:?}", e);
+                HttpResponse::BadRequest().json(serde_json::json!({
+                    "error": "移除自选股失败",
+                    "message": e.to_string()
+                }))
+            }
+        }
+    }
+
+    /// GET /api/auction/watchlist?user_id={user_id} - 获取自选股列表
+    #[get("/api/auction/watchlist")]
+    pub async fn get_watchlist(
+        manager: web::Data<WatchlistManagerData>,
+        query: web::Query<WatchlistQuery>,
+    ) -> impl Responder {
+        let user_id = query.user_id.clone().unwrap_or_else(|| "default".to_string());
+        let items = manager.0.get_watchlist(&user_id).await;
+        HttpResponse::Ok().json(WatchlistResponse { items })
+    }
+
+    /// GET /api/auction/watchlist/{code}/check?user_id={user_id} - 检查股票是否在自选股中
+    #[get("/api/auction/watchlist/{code}/check")]
+    pub async fn check_is_watched(
+        manager: web::Data<WatchlistManagerData>,
+        path: web::Path<String>,
+        query: web::Query<WatchlistQuery>,
+    ) -> impl Responder {
+        let code = path.into_inner();
+        let user_id = query.user_id.clone().unwrap_or_else(|| "default".to_string());
+        let watched = manager.0.is_watched(&user_id, &code).await;
+        HttpResponse::Ok().json(IsWatchedResponse { watched })
+    }
+
+    #[derive(Deserialize)]
+    struct WatchlistQuery {
+        user_id: Option<String>,
+    }
+}

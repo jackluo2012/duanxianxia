@@ -4,6 +4,7 @@ import AuctionRankingList from '../components/auction/AuctionRankingList';
 import AuctionDetailPanel from '../components/auction/AuctionDetailPanel';
 import AlertConfig from '../components/auction/AlertConfig';
 import AlertHistory from '../components/auction/AlertHistory';
+import WatchlistManager from '../components/auction/WatchlistManager';
 
 const { Title } = Typography;
 
@@ -49,6 +50,10 @@ function AuctionDashboard() {
     {
       key: 'rankings',
       label: '排行榜',
+    },
+    {
+      key: 'watchlist',
+      label: '自选股',
     },
     {
       key: 'alerts_config',
@@ -115,6 +120,10 @@ function AuctionDashboard() {
 
       {activeSection === 'alerts_history' && (
         <AlertHistory />
+      )}
+
+      {activeSection === 'watchlist' && (
+        <WatchlistManager />
       )}
     </div>
   );

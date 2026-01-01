@@ -11,8 +11,10 @@ use tracing::{error, info};
 mod api;
 mod alerts;
 mod cache;
+mod watchlist;
 
 use alerts::AlertManager;
+use watchlist::WatchlistManager;
 use api::rankings;
 use api::details;
 use api::alerts as alerts_api;
@@ -210,6 +212,11 @@ async fn main() -> Result<()> {
     let alert_manager = Arc::new(AlertManager::new());
     let alert_manager_data = web::Data::new(alerts_api::AlertManagerData(alert_manager.clone()));
 
+    // 创建自选股管理器
+    let watchlist_manager = Arc::new(WatchlistManager::new());
+    let watchlist_manager_data = web::Data::new(api::watchlist::WatchlistManagerData(watchlist_manager.clone()));
+    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await; // 等待默认池初始化
+
     // 启动后台任务：消费 Redis Stream
     let redis_conn_clone = redis_conn.clone();
     let clickhouse_url_clone = clickhouse_url.clone();
@@ -235,6 +242,7 @@ async fn main() -> Result<()> {
         App::new()
             .wrap(cors)
             .app_data(alert_manager_data.clone())
+            .app_data(watchlist_manager_data.clone())
             .route("/health", web::get().to(health_check))
             .service(rankings)
             .service(details::get_auction_details)
@@ -242,6 +250,10 @@ async fn main() -> Result<()> {
             .service(alerts_api::get_alerts)
             .service(alerts_api::delete_alert)
             .service(alerts_api::get_alert_history)
+            .service(api::watchlist::add_to_watchlist)
+            .service(api::watchlist::remove_from_watchlist)
+            .service(api::watchlist::get_watchlist)
+            .service(api::watchlist::check_is_watched)
     })
     .bind(&bind_address)?
     .run()
