@@ -49,7 +49,6 @@ export function useQuoteData(initialCode: string = '000001', initialPeriod: stri
           open: lastPoint.open || 0,
           high: lastPoint.high || 0,
           low: lastPoint.low || 0,
-          close: lastPoint.close || 0,
           amount: 0,
           change_percent: 0,
           datetime: lastPoint.time,

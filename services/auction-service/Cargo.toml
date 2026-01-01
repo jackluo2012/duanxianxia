@@ -1,0 +1,17 @@
+[package]
+name = "auction-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+shared = { path = "../../shared" }
+rustdx-complete = { workspace = true }
+chrono = "0.4"

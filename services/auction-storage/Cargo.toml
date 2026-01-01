@@ -1,0 +1,19 @@
+[package]
+name = "auction-storage"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = { workspace = true }
+actix-cors = "0.7"
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+clickhouse = { version = "0.12", features = ["time"] }
+shared = { path = "../../shared" }
+reqwest = { version = "0.12", features = ["json"] }
+chrono = "0.4"
