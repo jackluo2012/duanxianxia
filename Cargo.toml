@@ -6,7 +6,7 @@ members = [
     "services/data-collector",
     "services/storage-service",
     "services/realtime-service",
-    # "services/query-service",
+    "services/query-service",
     "services/auth-service",
     # "services/gateway",
     "services/auction-service",

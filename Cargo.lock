@@ -1935,6 +1935,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "query-service"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "anyhow",
+ "chrono",
+ "clickhouse",
+ "serde",
+ "serde_json",
+ "shared",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
