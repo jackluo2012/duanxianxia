@@ -204,13 +204,14 @@ async fn get_history(
         "5m" => {
             // 5分钟K线聚合
             format!(
-                "SELECT formatDateTime(toStartOfInterval(datetime, INTERVAL 5 minute), '%H:%M') as time, \
+                "SELECT toHour(toStartOfInterval(datetime, INTERVAL 5 minute)) as hour, \
+                 toMinute(toStartOfInterval(datetime, INTERVAL 5 minute)) as minute, \
                  argMin(price, datetime) as open, max(price) as high, min(price) as low, \
                  argMax(price, datetime) as close, sum(vol) as vol \
                  FROM stock_quotes \
                  WHERE code = '{}' \
                  GROUP BY toStartOfInterval(datetime, INTERVAL 5 minute) \
-                 ORDER BY time ASC \
+                 ORDER BY toStartOfInterval(datetime, INTERVAL 5 minute) ASC \
                  LIMIT 500",
                 code
             )
@@ -298,14 +299,16 @@ async fn get_history(
                 });
             }
         } else {
-            // K线图：time, open, high, low, close, vol
-            if parts.len() >= 6 {
-                let time = parts[0].to_string();
-                let open: f64 = parts[1].parse().unwrap_or(0.0);
-                let high: f64 = parts[2].parse().unwrap_or(0.0);
-                let low: f64 = parts[3].parse().unwrap_or(0.0);
-                let close: f64 = parts[4].parse().unwrap_or(0.0);
-                let vol: u64 = parts[5].parse().unwrap_or(0);
+            // K线图：hour, minute, open, high, low, close, vol
+            if parts.len() >= 7 {
+                let hour: u32 = parts[0].parse().unwrap_or(0);
+                let minute: u32 = parts[1].parse().unwrap_or(0);
+                let time = format!("{:02}:{:02}", hour, minute);
+                let open: f64 = parts[2].parse().unwrap_or(0.0);
+                let high: f64 = parts[3].parse().unwrap_or(0.0);
+                let low: f64 = parts[4].parse().unwrap_or(0.0);
+                let close: f64 = parts[5].parse().unwrap_or(0.0);
+                let vol: u64 = parts[6].parse().unwrap_or(0);
                 data.push(HistoryPoint {
                     time,
                     price: None,
