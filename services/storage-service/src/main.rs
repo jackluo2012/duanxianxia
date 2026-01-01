@@ -7,7 +7,7 @@ use shared::StockQuote;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::info;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct HistoryResponse {
     code: String,
     name: String,
@@ -15,7 +15,7 @@ struct HistoryResponse {
     data: Vec<HistoryPoint>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct HistoryPoint {
     time: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -199,6 +199,33 @@ async fn get_history(
     let code = path.into_inner();
     let period = query.period.clone().unwrap_or("1m".to_string());
 
+    // 构建缓存键
+    let cache_key = format!("quote:{}:{}", code, period);
+
+    // 尝试从 Redis 获取缓存
+    let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
+    let cached_result = async {
+        let client = redis::Client::open(redis_url)?;
+        let mut conn = ConnectionManager::new(client).await?;
+        let result: Result<Option<String>, redis::RedisError> = redis::cmd("GET")
+            .arg(&cache_key)
+            .query_async(&mut conn)
+            .await;
+        drop(conn); // 显式释放连接
+        Ok::<_, redis::RedisError>(result?)
+    }.await;
+
+    if let Ok(Some(cached_data)) = cached_result {
+        // 缓存命中，反序列化并返回
+        if let Ok(response) = serde_json::from_str::<HistoryResponse>(&cached_data) {
+            info!("缓存命中: {}", cache_key);
+            return HttpResponse::Ok().json(response);
+        }
+    }
+
+    // 缓存未命中，查询 ClickHouse
+    info!("缓存未命中: {}", cache_key);
+
     // 根据周期构建不同的SQL
     let query_sql = match period.as_str() {
         "5m" => {
@@ -346,12 +373,42 @@ async fn get_history(
         "".to_string()
     };
 
-    HttpResponse::Ok().json(HistoryResponse {
-        code,
+    let response = HistoryResponse {
+        code: code.clone(),
         name,
-        period,
+        period: period.clone(),
         data,
-    })
+    };
+
+    // 将结果写入 Redis 缓存
+    let cache_ttl = match period.as_str() {
+        "1m" => 10,  // 分时图缓存 10 秒
+        "5m" => 60,  // 5分钟K线缓存 60 秒
+        "1d" => 300, // 日K线缓存 300 秒
+        _ => 10,
+    };
+
+    if let Ok(json_data) = serde_json::to_string(&response) {
+        // 写入缓存
+        let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
+        let _ = async {
+            let client = redis::Client::open(redis_url)?;
+            let mut conn = ConnectionManager::new(client).await?;
+            let result: Result<(), redis::RedisError> = redis::cmd("SET")
+                .arg(&cache_key)
+                .arg(&json_data)
+                .arg("EX")
+                .arg(cache_ttl)
+                .query_async(&mut conn)
+                .await;
+            drop(conn);
+            result
+        }.await;
+
+        info!("缓存已写入: {} (TTL: {}s)", cache_key, cache_ttl);
+    }
+
+    HttpResponse::Ok().json(response)
 }
 
 #[tokio::main]
