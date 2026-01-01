@@ -108,3 +108,107 @@ pub mod details {
         HttpResponse::Ok().json(response)
     }
 }
+
+/// 告警 API 端点
+pub mod alerts {
+    use super::*;
+    use crate::alerts::{AlertManager, AlertRule, AlertRuleType};
+    use actix_web::{post, delete};
+    use std::sync::Arc;
+
+    /// AlertManager 的 Actix Web 数据包装
+    pub struct AlertManagerData(pub Arc<AlertManager>);
+
+    /// 创建告规则请求
+    #[derive(Deserialize)]
+    pub struct CreateAlertRequest {
+        pub name: String,
+        pub rule_type: AlertRuleType,
+        #[serde(default)]
+        pub enabled: bool,
+    }
+
+    /// 告警规则列表响应
+    #[derive(Serialize)]
+    pub struct AlertRulesResponse {
+        pub rules: Vec<AlertRule>,
+    }
+
+    /// 告警历史响应
+    #[derive(Serialize)]
+    pub struct AlertHistoryResponse {
+        pub alerts: Vec<crate::alerts::AlertEvent>,
+    }
+
+    /// POST /api/auction/alerts - 创建告警规则
+    #[post("/api/auction/alerts")]
+    pub async fn create_alert(
+        manager: web::Data<AlertManagerData>,
+        req: web::Json<CreateAlertRequest>,
+    ) -> impl Responder {
+        let rule = AlertRule {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: req.name.clone(),
+            rule_type: req.rule_type.clone(),
+            enabled: req.enabled,
+            created_at: chrono::Utc::now(),
+        };
+
+        match manager.0.add_rule(rule.clone()).await {
+            Ok(_) => HttpResponse::Ok().json(rule),
+            Err(e) => {
+                tracing::error!("创建告警规则失败: {:?}", e);
+                HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "创建告警规则失败",
+                    "message": e.to_string()
+                }))
+            }
+        }
+    }
+
+    /// GET /api/auction/alerts - 获取告警规则列表
+    #[get("/api/auction/alerts")]
+    pub async fn get_alerts(manager: web::Data<AlertManagerData>) -> impl Responder {
+        let rules = manager.0.get_rules().await;
+        HttpResponse::Ok().json(AlertRulesResponse { rules })
+    }
+
+    /// DELETE /api/auction/alerts/{id} - 删除告警规则
+    #[delete("/api/auction/alerts/{id}")]
+    pub async fn delete_alert(
+        manager: web::Data<AlertManagerData>,
+        path: web::Path<String>,
+    ) -> impl Responder {
+        let id = path.into_inner();
+
+        match manager.0.remove_rule(&id).await {
+            Ok(_) => HttpResponse::Ok().json(serde_json::json!({
+                "message": "告警规则已删除",
+                "id": id
+            })),
+            Err(e) => {
+                tracing::error!("删除告警规则失败: {:?}", e);
+                HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "删除告警规则失败",
+                    "message": e.to_string()
+                }))
+            }
+        }
+    }
+
+    /// GET /api/auction/alerts/history?limit=100 - 获取告警历史
+    #[get("/api/auction/alerts/history")]
+    pub async fn get_alert_history(
+        manager: web::Data<AlertManagerData>,
+        query: web::Query<AlertHistoryQuery>,
+    ) -> impl Responder {
+        let limit = query.limit.unwrap_or(100);
+        let alerts = manager.0.get_alert_history(limit).await;
+        HttpResponse::Ok().json(AlertHistoryResponse { alerts })
+    }
+
+    #[derive(Deserialize)]
+    struct AlertHistoryQuery {
+        limit: Option<usize>,
+    }
+}

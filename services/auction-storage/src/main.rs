@@ -4,14 +4,18 @@ use anyhow::Result;
 use chrono::{Datelike, Local};
 use redis::aio::ConnectionManager;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
 mod api;
+mod alerts;
 mod cache;
 
+use alerts::AlertManager;
 use api::rankings;
 use api::details;
+use api::alerts as alerts_api;
 
 /// 竞价数据结构（与 auction-service 一致）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -202,6 +206,10 @@ async fn main() -> Result<()> {
     // HTTP 客户端
     let http_client = reqwest::Client::new();
 
+    // 创建告警管理器
+    let alert_manager = Arc::new(AlertManager::new());
+    let alert_manager_data = web::Data::new(alerts_api::AlertManagerData(alert_manager.clone()));
+
     // 启动后台任务：消费 Redis Stream
     let redis_conn_clone = redis_conn.clone();
     let clickhouse_url_clone = clickhouse_url.clone();
@@ -226,9 +234,14 @@ async fn main() -> Result<()> {
 
         App::new()
             .wrap(cors)
+            .app_data(alert_manager_data.clone())
             .route("/health", web::get().to(health_check))
             .service(rankings)
             .service(details::get_auction_details)
+            .service(alerts_api::create_alert)
+            .service(alerts_api::get_alerts)
+            .service(alerts_api::delete_alert)
+            .service(alerts_api::get_alert_history)
     })
     .bind(&bind_address)?
     .run()
