@@ -758,6 +758,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "anyhow",
+ "chrono",
+ "clickhouse 0.12.2",
  "redis",
  "rustdx-complete",
  "serde",
