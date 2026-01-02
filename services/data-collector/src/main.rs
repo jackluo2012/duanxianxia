@@ -5,6 +5,7 @@ mod quote_collector;
 mod clickhouse_writer;
 mod buffer_manager;
 mod kline_backfill;
+mod kline_aggregator;
 
 use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
