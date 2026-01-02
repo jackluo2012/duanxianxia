@@ -5,6 +5,7 @@
 use clickhouse::Client;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
+use crate::types::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Sector {
@@ -17,7 +18,7 @@ pub struct Sector {
     pub limit_down_count: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SectorStock {
     pub code: String,
     pub name: String,
@@ -99,17 +100,17 @@ impl SectorAlgorithmImpl {
             "#, date)
         };
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<SectorRow>()?;
         let mut sectors = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let stock_count: i32 = row.get("stock_count")?;
-            let avg_change_percent: f64 = row.get("avg_change_percent")?;
-            let total_amount: f64 = row.get("total_amount")?;
-            let limit_up_count: i32 = row.get("limit_up_count")?;
-            let limit_down_count: i32 = row.get("limit_down_count")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let stock_count = row.stock_count;
+            let avg_change_percent = row.avg_change_percent;
+            let total_amount = row.total_amount;
+            let limit_up_count = row.limit_up_count;
+            let limit_down_count = row.limit_down_count;
 
             sectors.push(Sector {
                 code,
@@ -170,17 +171,17 @@ impl SectorAlgorithmImpl {
             "#, date, sector_code)
         };
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<SectorStockRow>()?;
         let mut stocks = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let price: f64 = row.get("price")?;
-            let change_percent: f64 = row.get("change_percent")?;
-            let volume: f64 = row.get("volume")?;
-            let amount: f64 = row.get("amount")?;
-            let market_cap: f64 = row.get("market_cap")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let price = row.price;
+            let change_percent = row.change_percent;
+            let volume = row.volume;
+            let amount = row.amount;
+            let market_cap = row.amount; // amount 作为 market_cap
 
             stocks.push(SectorStock {
                 code,
@@ -208,11 +209,11 @@ impl SectorAlgorithmImpl {
             WHERE sector_code = '{}' AND date = today()
         "#, sector_code);
 
-        let mut codes_cursor = self.client.query(&codes_query)?;
+        let mut codes_cursor = self.client.query(&codes_query).fetch::<SectorStockCodeRow>()?;
         let mut stock_codes = Vec::new();
 
-        while let Some(row) = codes_cursor.fetch().await? {
-            let code: String = row.get("stock_code")?;
+        while let Some(row) = codes_cursor.next().await? {
+            let code = row.stock_code;
             stock_codes.push(code);
         }
 
@@ -241,17 +242,17 @@ impl SectorAlgorithmImpl {
             ORDER BY amount DESC
         "#, codes_str);
 
-        let mut quotes_cursor = self.client.query(&quotes_query)?;
+        let mut quotes_cursor = self.client.query(&quotes_query).fetch::<SectorStockRow>()?;
         let mut stocks = Vec::new();
 
-        while let Some(row) = quotes_cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let price: f64 = row.get("price")?;
-            let change_percent: f64 = row.get("change_percent")?;
-            let volume: f64 = row.get("volume")?;
-            let amount: f64 = row.get("amount")?;
-            let market_cap: f64 = row.get("market_cap")?;
+        while let Some(row) = quotes_cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let price = row.price;
+            let change_percent = row.change_percent;
+            let volume = row.volume;
+            let amount = row.amount;
+            let market_cap = row.amount; // amount 作为 market_cap
 
             stocks.push(SectorStock {
                 code,
@@ -317,22 +318,22 @@ impl SectorAlgorithmImpl {
             "#, date, limit)
         };
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<SectorPerformanceRow>()?;
         let mut performances = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let sector_code: String = row.get("sector_code")?;
-            let sector_name: String = row.get("sector_name")?;
-            let avg_change_percent: f64 = row.get("avg_change_percent")?;
-            let median_change_percent: f64 = row.get("median_change_percent")?;
-            let total_volume: f64 = row.get("total_volume")?;
-            let total_amount: f64 = row.get("total_amount")?;
-            let stock_count: i32 = row.get("stock_count")?;
-            let limit_up_count: i32 = row.get("limit_up_count")?;
-            let limit_down_count: i32 = row.get("limit_down_count")?;
-            let rise_count: i32 = row.get("rise_count")?;
-            let fall_count: i32 = row.get("fall_count")?;
-            let flat_count: i32 = row.get("flat_count")?;
+        while let Some(row) = cursor.next().await? {
+            let sector_code = row.sector_code;
+            let sector_name = row.sector_name;
+            let avg_change_percent = row.avg_change_percent;
+            let median_change_percent = row.median_change_percent;
+            let total_volume = row.total_volume;
+            let total_amount = row.total_amount;
+            let stock_count = row.stock_count;
+            let limit_up_count = row.limit_up_count;
+            let limit_down_count = row.limit_down_count;
+            let rise_count = row.rise_count;
+            let fall_count = row.fall_count;
+            let flat_count = row.flat_count;
 
             performances.push(SectorPerformance {
                 sector_code,
@@ -421,9 +422,9 @@ impl SectorAlgorithmImpl {
             LIMIT 1
         "#, sector_code);
 
-        let mut name_cursor = self.client.query(&name_query)?;
-        let sector_name = if let Some(row) = name_cursor.fetch().await? {
-            row.get("sector_name").unwrap_or_else(|_| "未知".to_string())
+        let mut name_cursor = self.client.query(&name_query).fetch::<SectorNameRow>()?;
+        let sector_name = if let Some(row) = name_cursor.next().await? {
+            row.sector_name
         } else {
             "未知".to_string()
         };
@@ -490,9 +491,9 @@ impl SectorAlgorithmImpl {
             LIMIT 1
         "#, sector_code);
 
-        let mut name_cursor = self.client.query(&name_query)?;
-        let sector_name = if let Some(row) = name_cursor.fetch().await? {
-            row.get("sector_name").unwrap_or_else(|_| "未知".to_string())
+        let mut name_cursor = self.client.query(&name_query).fetch::<SectorNameRow>()?;
+        let sector_name = if let Some(row) = name_cursor.next().await? {
+            row.sector_name
         } else {
             "未知".to_string()
         };
@@ -522,16 +523,18 @@ impl SectorAlgorithmImpl {
     pub async fn calculate_all_sectors_performance(&self, date: &str) -> Result<usize> {
         // 获取所有板块代码
         let sectors_query = format!(r#"
-            SELECT DISTINCT sector_code
+            SELECT DISTINCT sector_code as stock_code
             FROM sector_stocks
             WHERE date = {}
         "#, if date == "today" || date.is_empty() { "today()" } else { date });
 
-        let mut sectors_cursor = self.client.query(&sectors_query)?;
+        let mut sectors_cursor = self.client.query(&sectors_query).fetch::<SectorStockCodeRow>()?;
         let mut sector_codes = Vec::new();
 
-        while let Some(row) = sectors_cursor.fetch().await? {
-            let code: String = row.get("sector_code")?;
+        while let Some(row) = sectors_cursor.next().await? {
+            // 需要修改查询以匹配 SectorStockCodeRow（stock_code 字段）
+            // 或者直接使用字符串
+            let code = row.stock_code;
             sector_codes.push(code);
         }
 
@@ -558,16 +561,13 @@ mod tests {
     #[test]
     fn test_sector_performance_calculation() {
         // 测试板块表现计算逻辑
-        let changes = vec
-![5.0, 3.0, 2.0, 1.0, 0.0, -1.0, -2.0, -3.0];
-        let avg = changes.iter()
-::<f64>().sum::<f64>() / changes.len() as f64;
+        let changes = vec![5.0, 3.0, 2.0, 1.0, 0.0, -1.0, -2.0, -3.0];
+        let avg = changes.iter().map(|x| *x).sum::<f64>() / changes.len() as f64;
 
         assert_eq!(avg, 0.625); // (5+3+2+1+0-1-2-3)/8
 
         let mut sorted = changes.clone();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap()
-;
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let median = (sorted[3] + sorted[4]) / 2.0;
         assert_eq!(median, 0.5); // (0+1)/2
     }

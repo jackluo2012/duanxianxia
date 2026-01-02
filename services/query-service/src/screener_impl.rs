@@ -5,6 +5,7 @@
 use clickhouse::Client;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
+use crate::types::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LeaderItem {
@@ -70,17 +71,20 @@ impl ScreenerAlgorithmImpl {
             // 指定板块的龙头高度
             format!(r#"
                 SELECT
+                    toString(date) as date,
                     code,
                     name,
-                    sector_name as sector,
+                    sector_code,
+                    sector_name,
                     leader_height,
                     sector_rank,
-                    total_stocks_in_sector as total_stocks,
+                    total_stocks_in_sector,
                     price,
                     change_percent,
+                    volume,
                     amount
                 FROM sector_leaders
-                WHERE date = today() AND sector_code = '{}'
+                WHERE sector_code = '{}'
                 ORDER BY leader_height DESC
                 LIMIT {}
             "#, sector_code, limit)
@@ -88,35 +92,37 @@ impl ScreenerAlgorithmImpl {
             // 全市场龙头高度排行
             format!(r#"
                 SELECT
+                    toString(date) as date,
                     code,
                     name,
-                    sector_name as sector,
+                    sector_code,
+                    sector_name,
                     leader_height,
                     sector_rank,
-                    total_stocks_in_sector as total_stocks,
+                    total_stocks_in_sector,
                     price,
                     change_percent,
+                    volume,
                     amount
                 FROM sector_leaders
-                WHERE date = today()
                 ORDER BY leader_height DESC
                 LIMIT {}
             "#, limit)
         };
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<LeaderRow>()?;
 
         let mut items = Vec::new();
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let sector: String = row.get("sector")?;
-            let leader_height: f64 = row.get("leader_height")?;
-            let sector_rank: u32 = row.get("sector_rank")?;
-            let total_stocks: u32 = row.get("total_stocks")?;
-            let price: f64 = row.get("price")?;
-            let change_percent: f64 = row.get("change_percent")?;
-            let amount: f64 = row.get("amount")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let sector = row.sector_name;
+            let leader_height = row.leader_height;
+            let sector_rank = row.sector_rank.unwrap_or(0);
+            let total_stocks = row.total_stocks_in_sector.unwrap_or(0);
+            let price = row.price;
+            let change_percent = row.change_percent;
+            let amount = row.amount;
 
             items.push(LeaderItem {
                 code,
@@ -159,17 +165,17 @@ impl ScreenerAlgorithmImpl {
             ORDER BY sq.amount DESC
         "#, sector_code);
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<LeaderRow>()?;
         let mut stocks: Vec<(String, String, String, f64, f64, f64, f64)> = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let sector: String = row.get("sector")?;
-            let market_cap: f64 = row.get("market_cap")?;
-            let change_percent: f64 = row.get("change_percent")?;
-            let price: f64 = row.get("price")?;
-            let amount: f64 = row.get("amount")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let sector = row.sector_name;
+            let market_cap = row.amount;
+            let change_percent = row.change_percent;
+            let price = row.price;
+            let amount = row.amount;
             stocks.push((code, name, sector, market_cap, change_percent, price, amount));
         }
 
@@ -211,36 +217,39 @@ impl ScreenerAlgorithmImpl {
     ) -> Result<Vec<ConsecutiveBoardItem>> {
         let query = format!(r#"
             SELECT
+                toString(date) as date,
                 code,
                 name,
-                sector_name as sector,
+                sector_name,
+                board_type,
                 consecutive_days,
+                limit_count,
                 toString(start_date) as start_date,
                 toString(end_date) as end_date,
-                board_type,
                 current_price,
-                coalesce(reason, '未知') as reason
+                price,
+                change_percent,
+                reason
             FROM consecutive_boards
-            WHERE date = today()
-                AND consecutive_days >= {}
+            WHERE consecutive_days >= {}
                 AND board_type = '{}'
             ORDER BY consecutive_days DESC, start_date DESC
             LIMIT {}
         "#, min_days, board_type, limit);
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<ConsecutiveBoardRow>()?;
         let mut items = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let sector: String = row.get("sector")?;
-            let consecutive_days: i32 = row.get("consecutive_days")?;
-            let start_date: String = row.get("start_date")?;
-            let end_date: String = row.get("end_date")?;
-            let board_type: String = row.get("board_type")?;
-            let current_price: f64 = row.get("current_price")?;
-            let reason: String = row.get("reason")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let sector = row.sector_name.unwrap_or_default();
+            let consecutive_days = row.consecutive_days;
+            let start_date = row.start_date.to_string();
+            let end_date = row.end_date.to_string();
+            let board_type = row.board_type;
+            let current_price = row.current_price;
+            let reason = row.reason.unwrap_or_else(|| "未知".to_string());
 
             items.push(ConsecutiveBoardItem {
                 code,
@@ -275,7 +284,7 @@ impl ScreenerAlgorithmImpl {
             ORDER BY date DESC
         "#, code);
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<DailyBarRow>()?;
         let mut consecutive_days = 0;
         let mut last_was_limit_up = false;
 
@@ -285,7 +294,7 @@ impl ScreenerAlgorithmImpl {
         // 3. 统计连续涨停天数
         // 4. 遇到非涨停则停止
 
-        while let Some(_row) = cursor.fetch().await? {
+        while let Some(_row) = cursor.next().await? {
             // 实现逻辑...
             break;
         }
@@ -307,17 +316,18 @@ impl ScreenerAlgorithmImpl {
                 SELECT
                     code,
                     name,
-                    sector_name as sector,
+                    toString(date) as date,
+                    time,
                     limit_type,
-                    toString(limit_time) as limit_time,
-                    limit_price,
+                    price,
+                    change_percent,
                     volume,
                     amount,
-                    coalesce(reason, '市场强势') as reason,
-                    is_first
+                    reason,
+                    is_first_board
                 FROM limit_records
-                WHERE date = today() AND limit_type = '涨停'
-                ORDER BY limit_time ASC
+                WHERE limit_type = '涨停'
+                ORDER BY time ASC
                 LIMIT {}
             "#, limit)
         } else {
@@ -325,35 +335,36 @@ impl ScreenerAlgorithmImpl {
                 SELECT
                     code,
                     name,
-                    sector_name as sector,
+                    toString(date) as date,
+                    time,
                     limit_type,
-                    toString(limit_time) as limit_time,
-                    limit_price,
+                    price,
+                    change_percent,
                     volume,
                     amount,
-                    coalesce(reason, '市场强势') as reason,
-                    is_first
+                    reason,
+                    is_first_board
                 FROM limit_records
                 WHERE date = {} AND limit_type = '涨停'
-                ORDER BY limit_time ASC
+                ORDER BY time ASC
                 LIMIT {}
             "#, date, limit)
         };
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<LimitRow>()?;
         let mut items = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let sector: String = row.get("sector")?;
-            let limit_type: String = row.get("limit_type")?;
-            let limit_time: String = row.get("limit_time")?;
-            let limit_price: f64 = row.get("limit_price")?;
-            let volume: f64 = row.get("volume")?;
-            let amount: f64 = row.get("amount")?;
-            let reason: String = row.get("reason")?;
-            let is_first: bool = row.get("is_first")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let sector = "未知".to_string(); // LimitRow 没有sector_name字段
+            let limit_type = row.limit_type;
+            let limit_time = row.time.unwrap_or_else(|| "".to_string());
+            let limit_price = row.price;
+            let volume = row.volume;
+            let amount = row.amount;
+            let reason = row.reason.unwrap_or_else(|| "市场弱势".to_string());
+            let is_first = row.is_first_board.unwrap_or(0) == 1;
 
             items.push(LimitItem {
                 code,
@@ -383,17 +394,18 @@ impl ScreenerAlgorithmImpl {
                 SELECT
                     code,
                     name,
-                    sector_name as sector,
+                    toString(date) as date,
+                    time,
                     limit_type,
-                    toString(limit_time) as limit_time,
-                    limit_price,
+                    price,
+                    change_percent,
                     volume,
                     amount,
-                    coalesce(reason, '市场弱势') as reason,
-                    is_first
+                    reason,
+                    is_first_board
                 FROM limit_records
-                WHERE date = today() AND limit_type = '跌停'
-                ORDER BY limit_time ASC
+                WHERE limit_type = '跌停'
+                ORDER BY time ASC
                 LIMIT {}
             "#, limit)
         } else {
@@ -401,35 +413,36 @@ impl ScreenerAlgorithmImpl {
                 SELECT
                     code,
                     name,
-                    sector_name as sector,
+                    toString(date) as date,
+                    time,
                     limit_type,
-                    toString(limit_time) as limit_time,
-                    limit_price,
+                    price,
+                    change_percent,
                     volume,
                     amount,
-                    coalesce(reason, '市场弱势') as reason,
-                    is_first
+                    reason,
+                    is_first_board
                 FROM limit_records
                 WHERE date = {} AND limit_type = '跌停'
-                ORDER BY limit_time ASC
+                ORDER BY time ASC
                 LIMIT {}
             "#, date, limit)
         };
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<LimitRow>()?;
         let mut items = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let sector: String = row.get("sector")?;
-            let limit_type: String = row.get("limit_type")?;
-            let limit_time: String = row.get("limit_time")?;
-            let limit_price: f64 = row.get("limit_price")?;
-            let volume: f64 = row.get("volume")?;
-            let amount: f64 = row.get("amount")?;
-            let reason: String = row.get("reason")?;
-            let is_first: bool = row.get("is_first")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let sector = "未知".to_string(); // LimitRow 没有sector_name字段
+            let limit_type = row.limit_type;
+            let limit_time = row.time.unwrap_or_else(|| "".to_string());
+            let limit_price = row.price;
+            let volume = row.volume;
+            let amount = row.amount;
+            let reason = row.reason.unwrap_or_else(|| "市场弱势".to_string());
+            let is_first = row.is_first_board.unwrap_or(0) == 1;
 
             items.push(LimitItem {
                 code,
@@ -458,35 +471,34 @@ impl ScreenerAlgorithmImpl {
                 change_percent,
                 price,
                 volume,
-                amount,
-                datetime
+                amount
             FROM stock_quotes
             WHERE datetime >= today() - INTERVAL 1 HOUR
                 AND abs(change_percent) >= 9.8
             ORDER BY change_percent DESC
         "#;
 
-        let mut cursor = self.client.query(&query)?;
+        let mut cursor = self.client.query(&query).fetch::<SectorStockRow>()?;
         let mut items = Vec::new();
 
-        while let Some(row) = cursor.fetch().await? {
-            let code: String = row.get("code")?;
-            let name: String = row.get("name")?;
-            let change_percent: f64 = row.get("change_percent")?;
-            let price: f64 = row.get("price")?;
-            let volume: f64 = row.get("volume")?;
-            let amount: f64 = row.get("amount")?;
-            let datetime: String = row.get("datetime")?;
+        while let Some(row) = cursor.next().await? {
+            let code = row.code;
+            let name = row.name;
+            let change_percent = row.change_percent;
+            let price = row.price;
+            let volume = row.volume;
+            let amount = row.amount;
 
             let limit_type = if change_percent >= 9.8 { "涨停" } else { "跌停" };
             let reason = if change_percent >= 9.8 { "市场强势" } else { "市场弱势" };
+            let limit_time = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
             items.push(LimitItem {
                 code,
                 name,
                 sector: "未知".to_string(), // 需要关联查询
                 limit_type: limit_type.to_string(),
-                limit_time: datetime,
+                limit_time,
                 limit_price: price,
                 volume,
                 amount,

@@ -4,10 +4,13 @@ use anyhow::Result;
 use tracing::{info, Level};
 use tracing_subscriber;
 
-mod api_handlers;
+mod api_handlers_real;  // 使用真实实现
 mod screener;
+mod screener_impl;
 mod sectors;
+mod sectors_impl;
 mod indicators;
+mod types;
 
 async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({
@@ -62,23 +65,27 @@ async fn main() -> Result<()> {
             .route("/health", web::get().to(health))
             .service(
                 web::scope("/api/screener")
-                    .route("/leaders", web::get().to(api_handlers::get_leaders))
-                    .route("/consecutive", web::get().to(api_handlers::get_consecutive_boards))
-                    .route("/limit-up", web::get().to(api_handlers::get_limit_up))
-                    .route("/limit-down", web::get().to(api_handlers::get_limit_down))
+                    .route("/leaders", web::get().to(api_handlers_real::get_leaders))
+                    .route("/consecutive", web::get().to(api_handlers_real::get_consecutive_boards))
+                    .route("/limit-up", web::get().to(api_handlers_real::get_limit_up))
+                    .route("/limit-down", web::get().to(api_handlers_real::get_limit_down))
             )
             .service(
                 web::scope("/api/sectors")
-                    .route("", web::get().to(api_handlers::get_sectors))
-                    .route("/{code}/stocks", web::get().to(api_handlers::get_sector_stocks))
-                    .route("/performance", web::get().to(api_handlers::get_sector_performance))
-                    .route("/{code}/flow", web::get().to(api_handlers::get_sector_flow))
+                    .route("/list", web::get().to(api_handlers_real::get_sectors))
+                    .route("/{code}/stocks", web::get().to(api_handlers_real::get_sector_stocks))
+                    .route("/performance", web::get().to(api_handlers_real::get_sector_performance))
+                    .route("/{code}/flow", web::get().to(api_handlers_real::get_sector_flow))
             )
             .service(
                 web::scope("/api/indicators")
-                    .route("/{code}", web::get().to(api_handlers::get_indicators))
-                    .route("/{code}/history", web::get().to(api_handlers::get_indicator_history))
-                    .route("/calculate", web::post().to(api_handlers::calculate_indicators))
+                    .route("/{code}", web::get().to(api_handlers_real::get_indicators))
+                    .route("/{code}/history", web::get().to(api_handlers_real::get_indicator_history))
+                    .route("/{code}/ma", web::get().to(api_handlers_real::get_ma))
+                    .route("/{code}/macd", web::get().to(api_handlers_real::get_macd))
+                    .route("/{code}/kdj", web::get().to(api_handlers_real::get_kdj))
+                    .route("/{code}/rsi", web::get().to(api_handlers_real::get_rsi))
+                    .route("/calculate", web::post().to(api_handlers_real::calculate_indicators))
             )
     })
     .bind(&bind_address)?
