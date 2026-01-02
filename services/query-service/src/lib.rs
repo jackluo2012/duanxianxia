@@ -8,3 +8,4 @@
 pub mod screener;
 pub mod sectors;
 pub mod indicators;
+pub mod types;

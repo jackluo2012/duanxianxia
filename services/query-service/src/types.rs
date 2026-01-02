@@ -109,10 +109,81 @@ pub struct SectorNameRow {
 // Indicator Row Types
 // ============================================
 
+/// 价格数据条（OHLC）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PriceBar {
+    pub date: String,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+}
+
+/// 技术指标计算结果（内存中使用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IndicatorResult {
+    pub date: String,
+    pub code: String,
+    pub name: String,
+
+    // MA 指标
+    pub ma5: Option<f64>,
+    pub ma10: Option<f64>,
+    pub ma20: Option<f64>,
+    pub ma60: Option<f64>,
+
+    // MACD 指标
+    pub dif: Option<f64>,
+    pub dea: Option<f64>,
+    pub macd: Option<f64>,
+
+    // KDJ 指标
+    pub kdj_k: Option<f64>,
+    pub kdj_d: Option<f64>,
+    pub kdj_j: Option<f64>,
+
+    // RSI 指标
+    pub rsi6: Option<f64>,
+    pub rsi12: Option<f64>,
+    pub rsi24: Option<f64>,
+}
+
+/// 技术指标数据库行（ClickHouse 存储使用）
 #[derive(Debug, Row, Serialize, Deserialize)]
 pub struct IndicatorRow {
-    pub code: String,
     pub date: String,
+    pub code: String,
+    pub name: String,
+
+    // MA 指标
+    pub ma5: Option<f64>,
+    pub ma10: Option<f64>,
+    pub ma20: Option<f64>,
+    pub ma60: Option<f64>,
+
+    // MACD 指标
+    pub dif: Option<f64>,
+    pub dea: Option<f64>,
+    pub macd: Option<f64>,
+
+    // KDJ 指标
+    pub kdj_k: Option<f64>,
+    pub kdj_d: Option<f64>,
+    pub kdj_j: Option<f64>,
+
+    // RSI 指标
+    pub rsi6: Option<f64>,
+    pub rsi12: Option<f64>,
+    pub rsi24: Option<f64>,
+}
+
+/// 技术指标返回数据（API 返回使用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StockIndicators {
+    pub date: String,
+    pub code: String,
+    pub name: String,
     pub ma5: Option<f64>,
     pub ma10: Option<f64>,
     pub ma20: Option<f64>,

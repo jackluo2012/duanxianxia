@@ -5,7 +5,8 @@ use actix_web::{web, HttpResponse, HttpRequest};
 use clickhouse::Client;
 use crate::screener_impl::{ScreenerAlgorithmImpl, LeaderItem, ConsecutiveBoardItem, LimitItem};
 use crate::sectors_impl::{SectorAlgorithmImpl, Sector, SectorStock, SectorPerformance, SectorFlow};
-use crate::indicators::{IndicatorManager, StockIndicators, PriceBar};
+use crate::indicators::IndicatorManager;
+use crate::types::StockIndicators;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
@@ -326,9 +327,9 @@ pub async fn get_macd(
             // 提取MACD数据
             let macd_data: Vec<_> = history.into_iter().map(|item| serde_json::json!({
                 "date": item.date,
-                "dif": item.dif,
-                "dea": item.dea,
-                "bar": item.macd,
+                "dif": item.macd_dif,
+                "dea": item.macd_dea,
+                "bar": item.macd_bar,
             })).collect();
             HttpResponse::Ok().json(macd_data)
         },
