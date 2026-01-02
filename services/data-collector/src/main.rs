@@ -4,6 +4,7 @@ mod stock_list_manager;
 mod quote_collector;
 mod clickhouse_writer;
 mod buffer_manager;
+mod kline_backfill;
 
 use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
