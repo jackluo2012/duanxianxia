@@ -63,12 +63,12 @@ impl KlinePeriod {
 }
 
 /// K线数据
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct KlineData {
     pub timestamp: DateTime<Utc>,
     pub code: String,
     pub name: String,
-    pub period: KlinePeriod,
+    pub period: String,  // ClickHouse 需要基础类型，存储 "1m" 或 "5m"
     pub open: f64,
     pub high: f64,
     pub low: f64,
@@ -152,7 +152,7 @@ impl KlineWindow {
             timestamp: self.start_time,
             code: self.code.clone(),
             name: self.name.clone(),
-            period: self.period,
+            period: self.period.as_str().to_string(),  // 转换为 String
             open,
             high: if self.high > f64::MIN { self.high } else { open },
             low: if self.low < f64::MAX { self.low } else { open },

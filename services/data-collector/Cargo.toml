@@ -3,6 +3,9 @@ name = "data-collector"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+kline = []  # K线采集功能（默认禁用）
+
 [dependencies]
 actix-web = { workspace = true }
 tokio = { workspace = true }

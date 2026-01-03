@@ -1,3 +1,5 @@
+#![cfg(feature = "kline")]
+
 use crate::types::{KlineData, KlinePeriod, StockInfo};
 use anyhow::Result;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
@@ -148,7 +150,7 @@ impl KlineBackfill {
                             timestamp: timestamp_utc,
                             code: stock.code.clone(),
                             name: stock.name.clone(),
-                            period,
+                            period: period.as_str().to_string(),  // 转换为 String
                             open: k.open,
                             high: k.high,
                             low: k.low,
@@ -202,7 +204,8 @@ impl KlineBackfill {
                     let end_date = end_date;
 
                     tasks.push(tokio::spawn(async move {
-                        let _permit = semaphore.acquire().await.unwrap();
+                        let _permit = semaphore.acquire().await
+                            .expect("Failed to acquire semaphore permit in backfill");
 
                         // 调用backfill_stock方法而不是内联逻辑
                         match Self::backfill_stock_static(&stock, period, start_date, end_date).await {

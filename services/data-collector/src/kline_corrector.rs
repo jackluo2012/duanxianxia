@@ -1,6 +1,8 @@
+#![cfg(feature = "kline")]
+
 use crate::types::{KlineData, KlinePeriod, StockInfo};
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveTime, Utc};
+use chrono::{NaiveDate, NaiveTime};
 use clickhouse::Client;
 use rustdx_complete::tcp::stock::Kline;
 use rustdx_complete::tcp::{Tcp, Tdx};
@@ -102,7 +104,7 @@ impl KlineCorrector {
                             timestamp: timestamp_utc,
                             code: stock.code.clone(),
                             name: stock.name.clone(),
-                            period,
+                            period: period.as_str().to_string(),  // 转换为 String
                             open: k.open,
                             high: k.high,
                             low: k.low,

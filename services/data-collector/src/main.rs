@@ -4,17 +4,31 @@ mod stock_list_manager;
 mod quote_collector;
 mod clickhouse_writer;
 mod buffer_manager;
+
+// K线相关模块使用条件编译（默认禁用）
+#[cfg(feature = "kline")]
 mod kline_backfill;
+
+#[cfg(feature = "kline")]
 mod kline_aggregator;
+
+#[cfg(feature = "kline")]
 mod kline_corrector;
 
 use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
 use quote_collector::QuoteCollector;
 use stock_list_manager::StockListManager;
+
+#[cfg(feature = "kline")]
 use kline_aggregator::KlineAggregator;
+
+#[cfg(feature = "kline")]
 use kline_backfill::KlineBackfill;
+
+#[cfg(feature = "kline")]
 use kline_corrector::KlineCorrector;
+
 use anyhow::Result;
 use clickhouse::Client;
 use redis::aio::ConnectionManager;
