@@ -758,6 +758,8 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "anyhow",
+ "chrono",
+ "clickhouse 0.12.2",
  "redis",
  "rustdx-complete",
  "serde",
@@ -1562,6 +1564,23 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_asn1",
+]
+
+[[package]]
+name = "kline-collector"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clickhouse 0.14.1",
+ "redis",
+ "rustdx-complete",
+ "serde",
+ "serde_json",
+ "shared",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
