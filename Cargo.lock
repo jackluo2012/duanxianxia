@@ -776,6 +776,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "trading-calendar",
 ]
 
 [[package]]
@@ -3296,6 +3297,7 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

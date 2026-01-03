@@ -19,3 +19,4 @@ redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 clickhouse = { version = "0.12", features = ["time"] }
 chrono = { version = "0.4", features = ["serde"] }
 shared = { path = "../../shared" }
+trading-calendar = { path = "../../shared/trading-calendar" }

@@ -8,6 +8,7 @@ mod review_collector; // 涨停复盘模块
 mod kline_backfill;
 mod kline_aggregator;
 mod kline_corrector;
+mod scheduler; // 交易调度器模块
 use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
 use quote_collector::QuoteCollector;
@@ -16,6 +17,7 @@ use review_collector::ReviewCollector; // 导入涨停复盘采集器
 use kline_aggregator::KlineAggregator;
 use kline_backfill::KlineBackfill;
 use kline_corrector::KlineCorrector;
+use scheduler::{TradingScheduler, SchedulerState}; // 导入调度器
 use anyhow::Result;
 use clickhouse::Client;
 use redis::aio::ConnectionManager;
