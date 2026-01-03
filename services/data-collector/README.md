@@ -14,6 +14,13 @@
 - **可靠写入**：ClickHouse 批量写入支持失败重试（最多 3 次）
 - **超时保护**：每批采集超时 10 秒，避免阻塞
 
+### K线数据采集
+
+- **实时聚合**：1分钟和5分钟K线实时生成
+- **历史回填**：最近3个月历史K线数据
+- **数据修正**：每个交易日15:30自动修正当天数据
+- **混合策略**：兼顾实时性和数据准确性
+
 ### 数据流架构
 
 ```
@@ -181,6 +188,40 @@ cargo run --release
 - 双写：Redis Stream（实时）+ ClickHouse（批量）
 - 写入失败自动回放数据
 
+### 5. KlineAggregator（K线实时聚合器）
+
+**职责**：从Redis Stream订阅实时行情，内存滑动窗口聚合生成分钟K线。
+
+**文件**：`src/kline_aggregator.rs:240`
+
+**关键参数**：
+- K线周期：1分钟、5分钟
+- 窗口管理：自动创建、更新、关闭
+- 对齐策略：时间戳对齐到周期边界
+
+### 6. KlineBackfill（K线历史回填器）
+
+**职责**：启动时回填最近3个月的历史K线数据。
+
+**文件**：`src/kline_backfill.rs:267`
+
+**关键参数**：
+- 回填周期：1分钟、5分钟
+- 并发控制：3个TCP连接
+- 批量大小：80只股票/批
+- 支持断点续传
+
+### 7. KlineCorrector（K线数据修正器）
+
+**职责**：每个交易日收盘后修正当天数据，确保准确性。
+
+**文件**：`src/kline_corrector.rs:203`
+
+**关键参数**：
+- 修正时间：15:30（可配置）
+- 异常判定：价格偏差 > 0.01%，成交量偏差 > 1%
+- 生成修正报告
+
 ## 数据结构
 
 ### StockInfo（股票信息）
@@ -199,7 +240,7 @@ pub struct StockInfo {
 
 ```rust
 pub struct StockQuote {
-    pub timestamp: i64,      // Unix 时间戳
+    pub timestamp: i64,      // Unix 时间戳（秒）- 使用 Int64 避免 ClickHouse 序列化问题
     pub code: String,        // 股票代码
     pub name: String,        // 股票名称
     pub price: f64,          // 当前价
@@ -212,6 +253,8 @@ pub struct StockQuote {
     pub change_percent: f64, // 涨跌幅（%）
 }
 ```
+
+**注意**：`timestamp` 使用 `i64` 类型存储 Unix 时间戳（秒），而非 `DateTime<Utc>`，以确保与 ClickHouse 的 `Int64` 类型完美匹配，避免二进制序列化错误。
 
 ## 性能指标
 
@@ -338,6 +381,14 @@ MIT
 欢迎提交 Issue 和 Pull Request！
 
 ## 更新日志
+
+### v0.3.0 (2026-01-03)
+
+- 🐛 **修复 ClickHouse 写入失败问题**：将 `StockQuote.timestamp` 从 `DateTime<Utc>` 改为 `i64`（Unix timestamp）
+- 🐛 修复 BinaryRowInputFormat 序列化错误（`CANNOT_READ_ALL_DATA`）
+- ✅ 验证数据流：Redis → Buffer → ClickHouse 全链路打通
+- 📊 数据质量验证：167,372+ 条实时行情，覆盖 47,806 只股票
+- 📝 更新 ClickHouse 表结构（使用 `Int64` 存储时间戳）
 
 ### v0.2.0 (2026-01-02)
 

@@ -81,6 +81,18 @@ curl -s "http://localhost:8123/" --data "SELECT * FROM duanxianxia.stock_realtim
 
 # 统计每秒写入量
 curl -s "http://localhost:8123/" --data "SELECT toStartOfSecond(timestamp) as sec, count() as cnt FROM duanxianxia.stock_realtime_quotes GROUP BY sec ORDER BY sec DESC LIMIT 10 FORMAT Pretty"
+
+### 查看 K 线数据
+
+```bash
+# 查看K线数据
+curl -s "http://localhost:8123/" --data "SELECT * FROM duanxianxia.stock_kline ORDER BY timestamp DESC LIMIT 10 FORMAT Pretty"
+
+# 统计K线数量
+curl -s "http://localhost:8123/" --data "SELECT code, period, count() as cnt FROM duanxianxia.stock_kline GROUP BY code, period ORDER BY cnt DESC LIMIT 20 FORMAT Pretty"
+
+# 查看实时K线（1分钟）
+curl -s "http://localhost:8123/" --data "SELECT * FROM duanxianxia.stock_kline WHERE period='1m' AND source='realtime' ORDER BY timestamp DESC LIMIT 10 FORMAT Pretty"
 ```
 
 ## 监控指标

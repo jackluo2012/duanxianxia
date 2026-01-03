@@ -98,14 +98,16 @@ impl QuoteCollector {
                     .collect();
 
                 let mut quotes = SecurityQuotes::new(stock_codes);
-                match quotes.recv_parsed(&mut *tcp.lock().unwrap()) {
+                let mut tcp_guard = tcp.lock()
+                    .expect("Failed to acquire TCP lock in quote collection");
+                match quotes.recv_parsed(&mut *tcp_guard) {
                     Ok(_) => {
                         // 在闭包内直接转换数据为拥有所有权的结构
                         let quote_data = quotes.result();
                         let converted: Vec<StockQuote> = quote_data
                             .iter()
                             .map(|q| StockQuote {
-                                timestamp: chrono::Utc::now().timestamp(),
+                                timestamp: chrono::Utc::now().timestamp(),  // Unix timestamp (秒)
                                 code: q.code.clone(),
                                 name: q.name.clone(),
                                 price: q.price,
