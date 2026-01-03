@@ -12,6 +12,7 @@ mod sectors_impl;
 mod indicators;
 mod types;
 mod review;  // 涨停复盘模块
+mod history_api;  // 历史数据API模块
 
 async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({
@@ -98,6 +99,11 @@ async fn main() -> Result<()> {
                     .route("/consecutive", web::get().to(review::get_consecutive_review))
                     .route("/sectors", web::get().to(review::get_sector_review))
                     .route("/trend", web::get().to(review::get_trend_review))
+            )
+            .service(
+                web::scope("/api/history")
+                    .route("/kline/{code}", web::get().to(history_api::get_kline_data))
+                    .route("/quotes/{code}", web::get().to(history_api::get_quotes_data))
             )
     })
     .bind(&bind_address)?
