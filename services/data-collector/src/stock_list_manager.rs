@@ -84,7 +84,10 @@ impl StockListManager {
                     start += BATCH_SIZE;
                 }
                 Err(e) => {
-                    warn!("获取市场 {} 的股票列表失败 (start={}): {}", market, start, e);
+                    warn!(
+                        "获取市场 {} 的股票列表失败 (start={}): {}",
+                        market, start, e
+                    );
                     break;
                 }
             }

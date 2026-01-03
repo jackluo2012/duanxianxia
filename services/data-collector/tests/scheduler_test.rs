@@ -6,9 +6,12 @@ async fn test_scheduler_init() {
     let status = calendar.get_current_status().await;
 
     // 验证返回的状态包含有效字段
-    assert!(matches!(status.current_session,
-        TradingSession::Closed | TradingSession::Morning |
-        TradingSession::Afternoon | TradingSession::Auction
+    assert!(matches!(
+        status.current_session,
+        TradingSession::Closed
+            | TradingSession::Morning
+            | TradingSession::Afternoon
+            | TradingSession::Auction
     ));
 }
 

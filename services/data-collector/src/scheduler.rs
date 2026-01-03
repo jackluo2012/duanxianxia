@@ -1,8 +1,8 @@
 use anyhow::Result;
 use chrono::{DateTime, Timelike, Utc};
 use std::time::Duration;
-use trading_calendar::{TradingCalendar, TradingSession};
 use tracing::{debug, info};
+use trading_calendar::{TradingCalendar, TradingSession};
 
 /// 调度器状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,7 +62,10 @@ impl TradingScheduler {
     pub async fn with_config(config: SchedulerConfig) -> Result<Self> {
         let calendar = TradingCalendar::new().await?;
 
-        info!("TradingScheduler initialized with custom config: {:?}", config);
+        info!(
+            "TradingScheduler initialized with custom config: {:?}",
+            config
+        );
 
         Ok(Self { calendar, config })
     }
@@ -73,11 +76,7 @@ impl TradingScheduler {
         if self.config.force_mode {
             info!("FORCE_MODE enabled - scheduler always active");
             let next_check = Utc::now() + chrono::Duration::seconds(60);
-            return Ok((
-                SchedulerState::Active,
-                next_check,
-                Duration::from_secs(60),
-            ));
+            return Ok((SchedulerState::Active, next_check, Duration::from_secs(60)));
         }
 
         let status = self.calendar.get_current_status().await;
@@ -91,7 +90,8 @@ impl TradingScheduler {
         // 如果不是交易日，返回Inactive状态
         if !status.is_trading_day {
             info!("Not a trading day - scheduler inactive");
-            let next_check = now + chrono::Duration::seconds(self.config.inactive_check_interval as i64);
+            let next_check =
+                now + chrono::Duration::seconds(self.config.inactive_check_interval as i64);
             return Ok((
                 SchedulerState::Inactive,
                 next_check,

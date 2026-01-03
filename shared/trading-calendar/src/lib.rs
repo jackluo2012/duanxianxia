@@ -1,5 +1,5 @@
-pub mod types;
 pub mod calendar;
+pub mod types;
 
-pub use types::{TradingSession, TradingStatus, HolidayData};
 pub use calendar::TradingCalendar;
+pub use types::{HolidayData, TradingSession, TradingStatus};

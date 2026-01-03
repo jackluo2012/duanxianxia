@@ -1,27 +1,30 @@
 // services/data-collector/src/main.rs
-mod types;
-mod stock_list_manager;
-mod quote_collector;
-mod clickhouse_writer;
 mod buffer_manager;
-mod review_collector; // 涨停复盘模块
-mod kline_backfill;
+mod clickhouse_writer;
 mod kline_aggregator;
+mod kline_backfill;
 mod kline_corrector;
-mod scheduler; // 交易调度器模块
-use buffer_manager::BufferManager;
-use clickhouse_writer::ClickHouseWriter;
-use quote_collector::QuoteCollector;
-use stock_list_manager::StockListManager;
-use scheduler::{TradingScheduler, SchedulerState}; // 导入调度器
+mod quality_monitor; // 数据质量监控模块
+mod quote_collector;
+mod review_collector; // 涨停复盘模块
+mod scheduler;
+mod stock_list_manager;
+mod types; // 交易调度器模块
 use anyhow::Result;
+use buffer_manager::BufferManager;
 use clickhouse::Client;
+use clickhouse_writer::ClickHouseWriter;
+use quality_monitor::QualityMonitor; // 导入质量监控器
+use quote_collector::QuoteCollector;
 use redis::aio::ConnectionManager;
 use redis::Client as RedisClient;
+use scheduler::{SchedulerState, TradingScheduler}; // 导入调度器
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
+use stock_list_manager::StockListManager;
 use tokio::time::sleep;
-use tracing::{error, info, debug, warn};
+use tracing::{debug, error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -81,20 +84,33 @@ async fn main() -> Result<()> {
     // let kline_corrector = Arc::new(KlineCorrector::new(ch_client.clone(), "15:30", 3)?);
     info!("K线采集器初始化完成（模块已加载，未启用）");
 
-    // 9. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
+    // 9. 初始化质量监控器
+    info!("正在初始化质量监控器...");
+    let all_stock_codes: HashSet<String> = stock_batches
+        .iter()
+        .flat_map(|batch| batch.iter().map(|s| s.code.clone()))
+        .collect();
+    let quality_monitor = Arc::new(QualityMonitor::new(ch_client.clone(), all_stock_codes));
+    info!(
+        "质量监控器初始化完成，监控 {} 只股票",
+        quality_monitor.expected_stock_count()
+    );
+
+    // 10. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
     let buffer_manager = Arc::new(BufferManager::new(ch_writer, redis_conn, 1000, 5));
     info!("缓冲区管理器初始化完成");
 
-    // 10. 启动定时刷新任务（后台运行）
+    // 11. 启动定时刷新任务（后台运行）
     let buffer_manager_clone = Arc::clone(&buffer_manager);
     tokio::spawn(async move {
         info!("启动定时刷新任务");
         buffer_manager_clone.start_periodic_flush().await
     });
 
-    // 11. 持续采集行情数据
+    // 12. 持续采集行情数据
     info!("开始全市场行情数据采集...");
     let mut round = 0u32;
+    let mut last_quality_check = std::time::Instant::now();
 
     loop {
         round += 1;
@@ -110,6 +126,7 @@ async fn main() -> Result<()> {
                 // 原有的采集逻辑（保持不变）
                 let mut round_success = 0usize;
                 let mut round_failed = 0usize;
+                let mut collected_codes: Vec<String> = Vec::new();
                 let start_time = std::time::Instant::now();
 
                 for (i, batch) in stock_batches.iter().enumerate() {
@@ -123,6 +140,11 @@ async fn main() -> Result<()> {
                             );
 
                             round_success += quotes.len();
+
+                            // 收集股票代码用于质量检查
+                            for quote in &quotes {
+                                collected_codes.push(quote.code.clone());
+                            }
 
                             // 立即将本批次数据添加到缓冲区（实时写入 Redis + 异步写入 ClickHouse）
                             if !quotes.is_empty() {
@@ -163,6 +185,40 @@ async fn main() -> Result<()> {
                 // 显示缓冲区状态
                 let buffer_size = buffer_manager.buffer_size().await;
                 info!("当前缓冲区大小：{} 条", buffer_size);
+
+                // 每5分钟执行一次质量检查
+                if last_quality_check.elapsed() >= Duration::from_secs(300) {
+                    info!("执行数据质量检查...");
+
+                    // 检查完整性
+                    match quality_monitor
+                        .check_completeness(&collected_codes)
+                        .await
+                    {
+                        Ok(report) => {
+                            info!(
+                                "完整性检查: 预期={}, 实际={}, 完整性={:.2}%",
+                                report.expected_count,
+                                report.actual_count,
+                                report.completeness_rate
+                            );
+
+                            // 记录缺失的股票
+                            if !report.missing_stocks.is_empty() {
+                                if let Err(e) =
+                                    quality_monitor.record_missing_stocks(&report.missing_stocks).await
+                                {
+                                    error!("记录缺失股票失败: {}", e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            error!("完整性检查失败: {}", e);
+                        }
+                    }
+
+                    last_quality_check = std::time::Instant::now();
+                }
 
                 // 交易时段：3秒后继续下一轮
                 sleep(Duration::from_secs(3)).await;

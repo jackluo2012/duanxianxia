@@ -18,7 +18,12 @@ pub struct KlineBackfill {
 
 impl KlineBackfill {
     /// 创建新的回填管理器
-    pub fn new(ch_client: Client, max_concurrent: usize, batch_size: usize, timeout_seconds: u64) -> Self {
+    pub fn new(
+        ch_client: Client,
+        max_concurrent: usize,
+        batch_size: usize,
+        timeout_seconds: u64,
+    ) -> Self {
         Self {
             ch_client,
             max_concurrent,
@@ -110,7 +115,12 @@ impl KlineBackfill {
         period: KlinePeriod,
         date: NaiveDate,
     ) -> Result<Vec<KlineData>> {
-        debug!("获取 {} {} K线，日期: {}", stock.code, period.as_str(), date);
+        debug!(
+            "获取 {} {} K线，日期: {}",
+            stock.code,
+            period.as_str(),
+            date
+        );
 
         let market = stock.market as u16;
         let code = &stock.code;
@@ -131,7 +141,7 @@ impl KlineBackfill {
                         let kline_date = chrono::NaiveDate::from_ymd_opt(
                             k.dt.year as i32,
                             k.dt.month as u32,
-                            k.dt.day as u32
+                            k.dt.day as u32,
                         )?;
 
                         if kline_date != date {
@@ -140,7 +150,11 @@ impl KlineBackfill {
 
                         let timestamp = chrono::NaiveDateTime::new(
                             kline_date,
-                            chrono::NaiveTime::from_hms_opt(k.dt.hour as u32, k.dt.minute as u32, 0)?
+                            chrono::NaiveTime::from_hms_opt(
+                                k.dt.hour as u32,
+                                k.dt.minute as u32,
+                                0,
+                            )?,
                         );
                         let timestamp_utc = timestamp.and_utc();
 
@@ -164,9 +178,7 @@ impl KlineBackfill {
                 debug!("获取到 {} 条K线数据", klines.len());
                 Ok(klines)
             }
-            Err(e) => {
-                Err(anyhow::anyhow!("获取K线失败: {}", e))
-            }
+            Err(e) => Err(anyhow::anyhow!("获取K线失败: {}", e)),
         }
     }
 
@@ -205,10 +217,17 @@ impl KlineBackfill {
                         let _permit = semaphore.acquire().await.unwrap();
 
                         // 调用backfill_stock方法而不是内联逻辑
-                        match Self::backfill_stock_static(&stock, period, start_date, end_date).await {
+                        match Self::backfill_stock_static(&stock, period, start_date, end_date)
+                            .await
+                        {
                             Ok(klines) => {
                                 if !klines.is_empty() {
-                                    info!("{} {} 回填 {} 条", stock.code, period.as_str(), klines.len());
+                                    info!(
+                                        "{} {} 回填 {} 条",
+                                        stock.code,
+                                        period.as_str(),
+                                        klines.len()
+                                    );
                                 }
                                 Ok((stock.code, period, klines.len()))
                             }

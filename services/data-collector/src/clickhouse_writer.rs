@@ -24,7 +24,12 @@ impl ClickHouseWriter {
     /// - `batch_size`: 批量写入大小（建议 1000）
     /// - `write_timeout`: 写入超时时间（秒，建议 30）
     /// - `max_retries`: 失败重试次数（建议 3）
-    pub fn new(ch_client: Client, batch_size: usize, write_timeout: u64, max_retries: usize) -> Self {
+    pub fn new(
+        ch_client: Client,
+        batch_size: usize,
+        write_timeout: u64,
+        max_retries: usize,
+    ) -> Self {
         info!(
             "ClickHouse写入器初始化：批量大小={}, 超时={}秒, 重试={}",
             batch_size, write_timeout, max_retries
@@ -77,11 +82,7 @@ impl ClickHouseWriter {
                 Err(e) => {
                     warn!(
                         "第 {}/{} 批写入失败: {}, 已写入 {}/{} 条",
-                        batch_num,
-                        total_batches,
-                        e,
-                        written,
-                        total
+                        batch_num, total_batches, e, written, total
                     );
                     // 继续写入下一批，不中断整个流程
                 }
@@ -93,11 +94,7 @@ impl ClickHouseWriter {
             }
         }
 
-        info!(
-            "批量写入完成：成功 {}/{} 条记录",
-            written,
-            total
-        );
+        info!("批量写入完成：成功 {}/{} 条记录", written, total);
 
         Ok(written)
     }

@@ -13,7 +13,7 @@ pub struct LeaderItem {
     pub code: String,
     pub name: String,
     pub sector: String,
-    pub leader_height: f64,  // 龙头高度：行业排名倒数
+    pub leader_height: f64, // 龙头高度：行业排名倒数
     pub price: f64,
     pub change_percent: f64,
 }
@@ -25,14 +25,14 @@ pub struct ConsecutiveBoardItem {
     pub consecutive_days: i32,
     pub start_date: String,
     pub end_date: String,
-    pub reason: String,  // 涨停原因
+    pub reason: String, // 涨停原因
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LimitItem {
     pub code: String,
     pub name: String,
-    pub limit_time: String,    // 涨停/跌停时间
+    pub limit_time: String, // 涨停/跌停时间
     pub limit_price: f64,
     pub volume: f64,
     pub amount: f64,
@@ -51,7 +51,10 @@ impl ScreenerManager {
 
     // 计算龙头高度
     // 龙头高度 = 1 / 行业内排名
-    pub async fn calculate_leader_height(&self, sector: &str) -> Result<Vec<LeaderItem>, anyhow::Error> {
+    pub async fn calculate_leader_height(
+        &self,
+        sector: &str,
+    ) -> Result<Vec<LeaderItem>, anyhow::Error> {
         // TODO: 实现龙头高度计算逻辑
         // 1. 查询行业内所有股票
         // 2. 按市值或涨跌幅排序
@@ -60,7 +63,10 @@ impl ScreenerManager {
     }
 
     // 统计连板天数
-    pub async fn get_consecutive_boards(&self, min_days: i32) -> Result<Vec<ConsecutiveBoardItem>, anyhow::Error> {
+    pub async fn get_consecutive_boards(
+        &self,
+        min_days: i32,
+    ) -> Result<Vec<ConsecutiveBoardItem>, anyhow::Error> {
         // TODO: 实现连板统计逻辑
         // 1. 查询历史涨停数据
         // 2. 计算连续涨停天数

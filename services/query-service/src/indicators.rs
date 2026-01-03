@@ -1,9 +1,9 @@
 // 技术指标计算算法
 // 实现 MA, MACD, KDJ, RSI 四种日线技术指标
 
-use clickhouse::Client;
+use crate::types::{IndicatorResult, IndicatorRow, PriceBar, StockIndicators};
 use anyhow::Result;
-use crate::types::{PriceBar, IndicatorResult, IndicatorRow, StockIndicators};
+use clickhouse::Client;
 
 // ============================================
 // MA（移动平均线）算法
@@ -23,11 +23,7 @@ pub fn calculate_ma(bars: &[PriceBar], period: usize) -> Option<f64> {
         return None;
     }
 
-    let sum: f64 = bars.iter()
-        .rev()
-        .take(period)
-        .map(|bar| bar.close)
-        .sum();
+    let sum: f64 = bars.iter().rev().take(period).map(|bar| bar.close).sum();
 
     Some(sum / period as f64)
 }
@@ -112,7 +108,8 @@ pub fn calculate_macd(bars: &[PriceBar]) -> (Option<f64>, Option<f64>, Option<f6
     };
 
     // 计算 DIF = EMA12 - EMA26
-    let mut dif_values: Vec<f64> = ema12.iter()
+    let mut dif_values: Vec<f64> = ema12
+        .iter()
         .zip(ema26.iter())
         .map(|(e12, e26)| e12 - e26)
         .collect();
@@ -171,8 +168,14 @@ pub fn calculate_kdj(
     let recent_bars = &bars[bars.len() - 9..];
 
     // 计算 RSV
-    let high_9 = recent_bars.iter().map(|b| b.high).fold(f64::NEG_INFINITY, f64::max);
-    let low_9 = recent_bars.iter().map(|b| b.low).fold(f64::INFINITY, f64::min);
+    let high_9 = recent_bars
+        .iter()
+        .map(|b| b.high)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let low_9 = recent_bars
+        .iter()
+        .map(|b| b.low)
+        .fold(f64::INFINITY, f64::min);
     let current_close = match bars.last() {
         Some(bar) => bar.close,
         None => return (None, None, None),
@@ -369,7 +372,8 @@ impl IndicatorManager {
     /// * `Ok(None)` - 未找到数据
     /// * `Err(e)` - 查询出错
     pub async fn get_indicators(&self, code: &str) -> Result<Option<StockIndicators>> {
-        let query = format!(r#"
+        let query = format!(
+            r#"
             SELECT
                 toString(date) as date,
                 code,
@@ -391,7 +395,9 @@ impl IndicatorManager {
             WHERE code = '{}'
             ORDER BY date DESC
             LIMIT 1
-        "#, code);
+        "#,
+            code
+        );
 
         let mut cursor = self.client.query(&query).fetch::<IndicatorRow>()?;
 
@@ -435,7 +441,8 @@ impl IndicatorManager {
         start_date: &str,
         end_date: &str,
     ) -> Result<Vec<StockIndicators>> {
-        let query = format!(r#"
+        let query = format!(
+            r#"
             SELECT
                 toString(date) as date,
                 code,
@@ -458,7 +465,9 @@ impl IndicatorManager {
                 AND date >= '{}'
                 AND date <= '{}'
             ORDER BY date ASC
-        "#, code, start_date, end_date);
+        "#,
+            code, start_date, end_date
+        );
 
         let mut cursor = self.client.query(&query).fetch::<IndicatorRow>()?;
         let mut history = Vec::new();
@@ -527,16 +536,86 @@ mod tests {
 
     fn create_test_bars() -> Vec<PriceBar> {
         vec![
-            PriceBar { date: "2024-01-01".to_string(), open: 10.0, high: 11.0, low: 9.0, close: 10.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-02".to_string(), open: 10.0, high: 11.0, low: 9.0, close: 11.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-03".to_string(), open: 11.0, high: 12.0, low: 10.0, close: 12.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-04".to_string(), open: 12.0, high: 13.0, low: 11.0, close: 13.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-05".to_string(), open: 13.0, high: 14.0, low: 12.0, close: 14.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-06".to_string(), open: 14.0, high: 15.0, low: 13.0, close: 15.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-07".to_string(), open: 15.0, high: 16.0, low: 14.0, close: 16.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-08".to_string(), open: 16.0, high: 17.0, low: 15.0, close: 17.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-09".to_string(), open: 17.0, high: 18.0, low: 16.0, close: 18.0, volume: 1000.0 },
-            PriceBar { date: "2024-01-10".to_string(), open: 18.0, high: 19.0, low: 17.0, close: 19.0, volume: 1000.0 },
+            PriceBar {
+                date: "2024-01-01".to_string(),
+                open: 10.0,
+                high: 11.0,
+                low: 9.0,
+                close: 10.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-02".to_string(),
+                open: 10.0,
+                high: 11.0,
+                low: 9.0,
+                close: 11.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-03".to_string(),
+                open: 11.0,
+                high: 12.0,
+                low: 10.0,
+                close: 12.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-04".to_string(),
+                open: 12.0,
+                high: 13.0,
+                low: 11.0,
+                close: 13.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-05".to_string(),
+                open: 13.0,
+                high: 14.0,
+                low: 12.0,
+                close: 14.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-06".to_string(),
+                open: 14.0,
+                high: 15.0,
+                low: 13.0,
+                close: 15.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-07".to_string(),
+                open: 15.0,
+                high: 16.0,
+                low: 14.0,
+                close: 16.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-08".to_string(),
+                open: 16.0,
+                high: 17.0,
+                low: 15.0,
+                close: 17.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-09".to_string(),
+                open: 17.0,
+                high: 18.0,
+                low: 16.0,
+                close: 18.0,
+                volume: 1000.0,
+            },
+            PriceBar {
+                date: "2024-01-10".to_string(),
+                open: 18.0,
+                high: 19.0,
+                low: 17.0,
+                close: 19.0,
+                volume: 1000.0,
+            },
         ]
     }
 

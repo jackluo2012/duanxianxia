@@ -1,23 +1,23 @@
 use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
-use chrono::{Datelike, Local};
+use chrono::Local;
 use redis::aio::ConnectionManager;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
-mod api;
 mod alerts;
+mod api;
 mod cache;
 mod watchlist;
 
 use alerts::AlertManager;
-use watchlist::WatchlistManager;
-use api::rankings;
-use api::details;
 use api::alerts as alerts_api;
+use api::details;
+use api::rankings;
+use watchlist::WatchlistManager;
 
 /// 竞价数据结构（与 auction-service 一致）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,7 +93,8 @@ async fn consume_auction_stream(
                                                     if let Ok(quote) =
                                                         serde_json::from_str::<AuctionQuote>(
                                                             &json_str,
-                                                        ) {
+                                                        )
+                                                    {
                                                         batch.push(quote);
 
                                                         // 批量写入条件：100 条或 5 秒
@@ -102,12 +103,13 @@ async fn consume_auction_stream(
                                                                 >= Duration::from_secs(5)
                                                         {
                                                             if !batch.is_empty() {
-                                                                if let Err(e) = batch_write_clickhouse(
-                                                                    &http_client,
-                                                                    &clickhouse_url,
-                                                                    &batch,
-                                                                )
-                                                                .await
+                                                                if let Err(e) =
+                                                                    batch_write_clickhouse(
+                                                                        &http_client,
+                                                                        &clickhouse_url,
+                                                                        &batch,
+                                                                    )
+                                                                    .await
                                                                 {
                                                                     error!(
                                                                         "批量写入 ClickHouse 失败: {}",
@@ -162,18 +164,18 @@ async fn batch_write_clickhouse(
         query.push_str(&row);
     }
 
-    let response = http_client
-        .post(clickhouse_url)
-        .body(query)
-        .send()
-        .await?;
+    let response = http_client.post(clickhouse_url).body(query).send().await?;
 
     if response.status().is_success() {
         Ok(())
     } else {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        Err(anyhow::anyhow!("ClickHouse 写入失败: {} - {}", status, body))
+        Err(anyhow::anyhow!(
+            "ClickHouse 写入失败: {} - {}",
+            status,
+            body
+        ))
     }
 }
 
@@ -214,7 +216,9 @@ async fn main() -> Result<()> {
 
     // 创建自选股管理器
     let watchlist_manager = Arc::new(WatchlistManager::new());
-    let watchlist_manager_data = web::Data::new(api::watchlist::WatchlistManagerData(watchlist_manager.clone()));
+    let watchlist_manager_data = web::Data::new(api::watchlist::WatchlistManagerData(
+        watchlist_manager.clone(),
+    ));
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await; // 等待默认池初始化
 
     // 启动后台任务：消费 Redis Stream
@@ -223,12 +227,7 @@ async fn main() -> Result<()> {
     let http_client_clone = http_client.clone();
 
     tokio::spawn(async move {
-        consume_auction_stream(
-            redis_conn_clone,
-            clickhouse_url_clone,
-            http_client_clone,
-        )
-        .await
+        consume_auction_stream(redis_conn_clone, clickhouse_url_clone, http_client_clone).await
     });
 
     let bind_address = std::env::var("BIND_ADDRESS").unwrap_or("0.0.0.0:8084".to_string());

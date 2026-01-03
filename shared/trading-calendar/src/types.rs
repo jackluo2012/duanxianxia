@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 /// 交易时段
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TradingSession {
-    Morning,    // 9:30-11:30
-    Afternoon,  // 13:00-15:00
-    Auction,    // 9:15-9:25
-    Closed,     // 休市
+    Morning,   // 9:30-11:30
+    Afternoon, // 13:00-15:00
+    Auction,   // 9:15-9:25
+    Closed,    // 休市
 }
 
 /// 交易状态
@@ -21,7 +21,7 @@ pub struct TradingStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HolidayData {
     pub year: i32,
-    pub holidays: Vec<String>,  // YYYY-MM-DD 格式
+    pub holidays: Vec<String>, // YYYY-MM-DD 格式
     pub early_close: Vec<String>,
 }
 

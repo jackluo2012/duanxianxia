@@ -4,7 +4,6 @@
 /// - 排行榜结果缓存（TTL: 5 秒）
 /// - 竞价详情缓存（TTL: 10 秒）
 /// - 缓存预热策略
-
 use redis::aio::ConnectionManager;
 
 pub struct CacheManager {

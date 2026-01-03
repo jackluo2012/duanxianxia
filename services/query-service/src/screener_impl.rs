@@ -2,10 +2,10 @@
 //
 // 实际的算法实现，连接 ClickHouse 并执行查询
 
+use crate::types::*;
+use anyhow::Result;
 use clickhouse::Client;
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
-use crate::types::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LeaderItem {
@@ -69,7 +69,8 @@ impl ScreenerAlgorithmImpl {
     ) -> Result<Vec<LeaderItem>> {
         let query = if let Some(sector_code) = sector {
             // 指定板块的龙头高度
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     toString(date) as date,
                     code,
@@ -87,10 +88,13 @@ impl ScreenerAlgorithmImpl {
                 WHERE sector_code = '{}'
                 ORDER BY leader_height DESC
                 LIMIT {}
-            "#, sector_code, limit)
+            "#,
+                sector_code, limit
+            )
         } else {
             // 全市场龙头高度排行
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     toString(date) as date,
                     code,
@@ -107,7 +111,9 @@ impl ScreenerAlgorithmImpl {
                 FROM sector_leaders
                 ORDER BY leader_height DESC
                 LIMIT {}
-            "#, limit)
+            "#,
+                limit
+            )
         };
 
         let mut cursor = self.client.query(&query).fetch::<LeaderRow>()?;
@@ -146,7 +152,8 @@ impl ScreenerAlgorithmImpl {
         sector_code: &str,
     ) -> Result<Vec<LeaderItem>> {
         // 查询板块内所有股票的市值和涨跌幅
-        let query = format!(r#"
+        let query = format!(
+            r#"
             SELECT
                 sq.code,
                 sq.name,
@@ -163,7 +170,9 @@ impl ScreenerAlgorithmImpl {
             WHERE ss.sector_code = '{}'
                 AND sq.datetime >= today()
             ORDER BY sq.amount DESC
-        "#, sector_code);
+        "#,
+            sector_code
+        );
 
         let mut cursor = self.client.query(&query).fetch::<LeaderRow>()?;
         let mut stocks: Vec<(String, String, String, f64, f64, f64, f64)> = Vec::new();
@@ -176,13 +185,23 @@ impl ScreenerAlgorithmImpl {
             let change_percent = row.change_percent;
             let price = row.price;
             let amount = row.amount;
-            stocks.push((code, name, sector, market_cap, change_percent, price, amount));
+            stocks.push((
+                code,
+                name,
+                sector,
+                market_cap,
+                change_percent,
+                price,
+                amount,
+            ));
         }
 
         let total = stocks.len() as f64;
         let mut items = Vec::new();
 
-        for (idx, (code, name, sector, _market_cap, change_percent, price, amount)) in stocks.iter().enumerate() {
+        for (idx, (code, name, sector, _market_cap, change_percent, price, amount)) in
+            stocks.iter().enumerate()
+        {
             let leader_height = if total > 0.0 {
                 (1.0 - (idx as f64) / total) * 100.0
             } else {
@@ -215,7 +234,8 @@ impl ScreenerAlgorithmImpl {
         board_type: &str, // "连涨" or "连跌"
         limit: usize,
     ) -> Result<Vec<ConsecutiveBoardItem>> {
-        let query = format!(r#"
+        let query = format!(
+            r#"
             SELECT
                 toString(date) as date,
                 code,
@@ -235,7 +255,9 @@ impl ScreenerAlgorithmImpl {
                 AND board_type = '{}'
             ORDER BY consecutive_days DESC, start_date DESC
             LIMIT {}
-        "#, min_days, board_type, limit);
+        "#,
+            min_days, board_type, limit
+        );
 
         let mut cursor = self.client.query(&query).fetch::<ConsecutiveBoardRow>()?;
         let mut items = Vec::new();
@@ -268,12 +290,10 @@ impl ScreenerAlgorithmImpl {
     }
 
     // 实时计算连板天数（基于历史数据）
-    pub async fn calculate_consecutive_realtime(
-        &self,
-        code: &str,
-    ) -> Result<i32> {
+    pub async fn calculate_consecutive_realtime(&self, code: &str) -> Result<i32> {
         // 查询最近30天的涨停数据
-        let query = format!(r#"
+        let query = format!(
+            r#"
             SELECT
                 date,
                 close_price,
@@ -282,7 +302,9 @@ impl ScreenerAlgorithmImpl {
             WHERE code = '{}'
                 AND date >= today() - 30
             ORDER BY date DESC
-        "#, code);
+        "#,
+            code
+        );
 
         let mut cursor = self.client.query(&query).fetch::<DailyBarRow>()?;
         let mut consecutive_days = 0;
@@ -306,13 +328,10 @@ impl ScreenerAlgorithmImpl {
     // 算法3: 涨停跌停分析
     // ============================================
     // 查询当日涨停股票
-    pub async fn get_limit_up_stocks(
-        &self,
-        date: &str,
-        limit: usize,
-    ) -> Result<Vec<LimitItem>> {
+    pub async fn get_limit_up_stocks(&self, date: &str, limit: usize) -> Result<Vec<LimitItem>> {
         let query = if date == "today" || date.is_empty() {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     code,
                     name,
@@ -329,9 +348,12 @@ impl ScreenerAlgorithmImpl {
                 WHERE limit_type = '涨停'
                 ORDER BY time ASC
                 LIMIT {}
-            "#, limit)
+            "#,
+                limit
+            )
         } else {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     code,
                     name,
@@ -348,7 +370,9 @@ impl ScreenerAlgorithmImpl {
                 WHERE date = {} AND limit_type = '涨停'
                 ORDER BY time ASC
                 LIMIT {}
-            "#, date, limit)
+            "#,
+                date, limit
+            )
         };
 
         let mut cursor = self.client.query(&query).fetch::<LimitRow>()?;
@@ -384,13 +408,10 @@ impl ScreenerAlgorithmImpl {
     }
 
     // 查询当日跌停股票
-    pub async fn get_limit_down_stocks(
-        &self,
-        date: &str,
-        limit: usize,
-    ) -> Result<Vec<LimitItem>> {
+    pub async fn get_limit_down_stocks(&self, date: &str, limit: usize) -> Result<Vec<LimitItem>> {
         let query = if date == "today" || date.is_empty() {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     code,
                     name,
@@ -407,9 +428,12 @@ impl ScreenerAlgorithmImpl {
                 WHERE limit_type = '跌停'
                 ORDER BY time ASC
                 LIMIT {}
-            "#, limit)
+            "#,
+                limit
+            )
         } else {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     code,
                     name,
@@ -426,7 +450,9 @@ impl ScreenerAlgorithmImpl {
                 WHERE date = {} AND limit_type = '跌停'
                 ORDER BY time ASC
                 LIMIT {}
-            "#, date, limit)
+            "#,
+                date, limit
+            )
         };
 
         let mut cursor = self.client.query(&query).fetch::<LimitRow>()?;
@@ -489,8 +515,16 @@ impl ScreenerAlgorithmImpl {
             let volume = row.volume;
             let amount = row.amount;
 
-            let limit_type = if change_percent >= 9.8 { "涨停" } else { "跌停" };
-            let reason = if change_percent >= 9.8 { "市场强势" } else { "市场弱势" };
+            let limit_type = if change_percent >= 9.8 {
+                "涨停"
+            } else {
+                "跌停"
+            };
+            let reason = if change_percent >= 9.8 {
+                "市场强势"
+            } else {
+                "市场弱势"
+            };
             let limit_time = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
             items.push(LimitItem {
@@ -519,8 +553,7 @@ mod tests {
     fn test_leader_height_calculation() {
         // 测试龙头高度计算逻辑
         let total = 10.0;
-        let ranks = vec
-![0, 1, 2, 5, 9]; // 排名
+        let ranks = vec![0, 1, 2, 5, 9]; // 排名
 
         for rank in ranks {
             let height = (1.0 - rank as f64 / total) * 100.0;

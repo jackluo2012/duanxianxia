@@ -105,7 +105,7 @@ impl QuoteCollector {
                         let converted: Vec<StockQuote> = quote_data
                             .iter()
                             .map(|q| StockQuote {
-                                timestamp: chrono::Utc::now().timestamp(),  // Unix timestamp (秒)
+                                timestamp: chrono::Utc::now().timestamp(), // Unix timestamp (秒)
                                 code: q.code.clone(),
                                 name: q.name.clone(),
                                 price: q.price,
@@ -185,7 +185,12 @@ impl QuoteCollector {
                     debug!("第 {}/{} 批采集完成", i + 1, total_batches);
                 }
                 Err(e) => {
-                    warn!("第 {}/{} 批采集失败: {}, 跳过该批次", i + 1, total_batches, e);
+                    warn!(
+                        "第 {}/{} 批采集失败: {}, 跳过该批次",
+                        i + 1,
+                        total_batches,
+                        e
+                    );
                     // 继续采集下一批，不中断整个流程
                 }
             }

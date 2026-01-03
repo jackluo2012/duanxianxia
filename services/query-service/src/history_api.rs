@@ -1,8 +1,8 @@
-use actix_web::{web, HttpResponse, Error as ActixError};
-use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use actix_web::{web, Error as ActixError, HttpResponse};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use clickhouse::Row;
+use serde::{Deserialize, Serialize};
 
 // ===================================================================
 // 数据结构定义
@@ -24,7 +24,7 @@ pub struct HistoryResponse {
 #[derive(Debug, Clone, Serialize)]
 pub struct HistoryDataPoint {
     pub timestamp: DateTime<Utc>,
-    pub date: String,  // YYYY-MM-DD 格式
+    pub date: String, // YYYY-MM-DD 格式
     pub open: f64,
     pub high: f64,
     pub low: f64,
@@ -38,7 +38,7 @@ pub struct HistoryDataPoint {
 #[derive(Debug, Clone, Serialize)]
 pub struct QuotesDataPoint {
     pub timestamp: DateTime<Utc>,
-    pub time: String,  // HH:MM:SS 格式
+    pub time: String, // HH:MM:SS 格式
     pub price: f64,
     pub volume: f64,
     pub amount: f64,
@@ -58,7 +58,7 @@ pub struct KlineQuery {
     #[serde(default = "default_limit")]
     pub limit: u64,
     #[serde(default)]
-    pub adjust: Option<String>,  // "qfq"前复权, "hfq"后复权, None不复权
+    pub adjust: Option<String>, // "qfq"前复权, "hfq"后复权, None不复权
 }
 
 /// 分时查询参数
@@ -69,12 +69,18 @@ pub struct QuotesQuery {
     pub date: String,
 }
 
-fn default_period() -> String { "1m".to_string() }
-fn default_start_date() -> String { "2024-01-01".to_string() }
+fn default_period() -> String {
+    "1m".to_string()
+}
+fn default_start_date() -> String {
+    "2024-01-01".to_string()
+}
 fn default_end_date() -> String {
     chrono::Utc::now().format("%Y-%m-%d").to_string()
 }
-fn default_limit() -> u64 { 1000 }
+fn default_limit() -> u64 {
+    1000
+}
 fn default_date() -> String {
     chrono::Utc::now().format("%Y-%m-%d").to_string()
 }
@@ -114,7 +120,11 @@ pub async fn get_kline_data(
 
     tracing::info!(
         "Fetching kline data: code={}, period={}, start={}, end={}, limit={}",
-        code, period, start_date, end_date, limit
+        code,
+        period,
+        start_date,
+        end_date,
+        limit
     );
 
     // 构建SQL查询
@@ -141,13 +151,10 @@ pub async fn get_kline_data(
     );
 
     // 执行查询
-    let mut cursor = client
-        .query(&sql)
-        .fetch::<KlineRow>()
-        .map_err(|e| {
-            tracing::error!("ClickHouse query error: {}", e);
-            actix_web::error::ErrorInternalServerError(e)
-        })?;
+    let mut cursor = client.query(&sql).fetch::<KlineRow>().map_err(|e| {
+        tracing::error!("ClickHouse query error: {}", e);
+        actix_web::error::ErrorInternalServerError(e)
+    })?;
 
     let mut data_points: Vec<HistoryDataPoint> = Vec::new();
     let mut name = String::new();
@@ -232,10 +239,7 @@ pub async fn get_quotes_data(
     let code = path.into_inner();
     let date = query.date.clone();
 
-    tracing::info!(
-        "Fetching quotes data: code={}, date={}",
-        code, date
-    );
+    tracing::info!("Fetching quotes data: code={}, date={}", code, date);
 
     // 构建SQL查询
     let sql = format!(
@@ -254,13 +258,10 @@ pub async fn get_quotes_data(
     );
 
     // 执行查询
-    let mut cursor = client
-        .query(&sql)
-        .fetch::<QuotesRow>()
-        .map_err(|e| {
-            tracing::error!("ClickHouse query error: {}", e);
-            actix_web::error::ErrorInternalServerError(e)
-        })?;
+    let mut cursor = client.query(&sql).fetch::<QuotesRow>().map_err(|e| {
+        tracing::error!("ClickHouse query error: {}", e);
+        actix_web::error::ErrorInternalServerError(e)
+    })?;
 
     let mut data_points: Vec<QuotesDataPoint> = Vec::new();
     let mut name = String::new();

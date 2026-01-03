@@ -2,7 +2,7 @@ use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
 use actix_ws::Message;
 use futures_util::StreamExt;
 use redis::aio::ConnectionManager;
-use shared::{WebSocketMessage, StockQuote};
+use shared::{StockQuote, WebSocketMessage};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -79,7 +79,7 @@ async fn subscribe_redis_and_broadcast(
 
     tracing::info!("Redis 订阅任务启动");
 
-    let mut stream_id = "$".to_string();  // 从最新开始
+    let mut stream_id = "$".to_string(); // 从最新开始
 
     loop {
         let result: Result<redis::Value, redis::RedisError> = redis::cmd("XREAD")
@@ -114,12 +114,23 @@ async fn subscribe_redis_and_broadcast(
                                     for (i, field) in data_fields.iter().enumerate() {
                                         if let redis::Value::Data(field_name) = field {
                                             if field_name == b"data" {
-                                                if let Some(redis::Value::Data(json_data)) = data_fields.get(i + 1) {
-                                                    let json_str = String::from_utf8_lossy(json_data);
+                                                if let Some(redis::Value::Data(json_data)) =
+                                                    data_fields.get(i + 1)
+                                                {
+                                                    let json_str =
+                                                        String::from_utf8_lossy(json_data);
 
-                                                    if let Ok(quote) = serde_json::from_str::<StockQuote>(&json_str) {
+                                                    if let Ok(quote) =
+                                                        serde_json::from_str::<StockQuote>(
+                                                            &json_str,
+                                                        )
+                                                    {
                                                         // 广播到订阅了该股票的客户端
-                                                        broadcast_to_subscribers(&clients, &subscriptions, &quote);
+                                                        broadcast_to_subscribers(
+                                                            &clients,
+                                                            &subscriptions,
+                                                            &quote,
+                                                        );
                                                     }
                                                 }
                                             }

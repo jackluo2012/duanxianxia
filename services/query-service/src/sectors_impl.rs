@@ -2,10 +2,10 @@
 //
 // 实际的板块查询和统计算法
 
+use crate::types::*;
+use anyhow::Result;
 use clickhouse::Client;
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
-use crate::types::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Sector {
@@ -49,10 +49,10 @@ pub struct SectorPerformance {
 pub struct SectorFlow {
     pub sector_code: String,
     pub sector_name: String,
-    pub inflow: f64,       // 资金流入
-    pub outflow: f64,      // 资金流出
-    pub net_inflow: f64,   // 净流入
-    pub main_inflow: f64,  // 主力流入
+    pub inflow: f64,        // 资金流入
+    pub outflow: f64,       // 资金流出
+    pub net_inflow: f64,    // 净流入
+    pub main_inflow: f64,   // 主力流入
     pub retail_inflow: f64, // 散户流入
 }
 
@@ -71,7 +71,8 @@ impl SectorAlgorithmImpl {
     // ============================================
     pub async fn get_sectors(&self, date: &str) -> Result<Vec<Sector>> {
         let query = if date == "today" || date.is_empty() {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     sector_code as code,
                     sector_name as name,
@@ -83,9 +84,11 @@ impl SectorAlgorithmImpl {
                 FROM sector_performance
                 WHERE date = today()
                 ORDER BY total_amount DESC
-            "#)
+            "#
+            )
         } else {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     sector_code as code,
                     sector_name as name,
@@ -97,7 +100,9 @@ impl SectorAlgorithmImpl {
                 FROM sector_performance
                 WHERE date = {}
                 ORDER BY total_amount DESC
-            "#, date)
+            "#,
+                date
+            )
         };
 
         let mut cursor = self.client.query(&query).fetch::<SectorRow>()?;
@@ -135,7 +140,8 @@ impl SectorAlgorithmImpl {
         date: &str,
     ) -> Result<Vec<SectorStock>> {
         let query = if date == "today" || date.is_empty() {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     sq.code,
                     sq.name,
@@ -151,9 +157,12 @@ impl SectorAlgorithmImpl {
                 WHERE ss.sector_code = '{}'
                     AND sq.datetime >= today()
                 ORDER BY sq.amount DESC
-            "#, sector_code)
+            "#,
+                sector_code
+            )
         } else {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     sq.code,
                     sq.name,
@@ -168,7 +177,9 @@ impl SectorAlgorithmImpl {
                     AND ss.date = {}
                 WHERE ss.sector_code = '{}'
                 ORDER BY sq.amount DESC
-            "#, date, sector_code)
+            "#,
+                date, sector_code
+            )
         };
 
         let mut cursor = self.client.query(&query).fetch::<SectorStockRow>()?;
@@ -198,18 +209,21 @@ impl SectorAlgorithmImpl {
     }
 
     // 实时查询板块内股票（从 sector_stocks 表获取关联）
-    pub async fn get_sector_stocks_realtime(
-        &self,
-        sector_code: &str,
-    ) -> Result<Vec<SectorStock>> {
+    pub async fn get_sector_stocks_realtime(&self, sector_code: &str) -> Result<Vec<SectorStock>> {
         // 先获取板块内的股票代码列表
-        let codes_query = format!(r#"
+        let codes_query = format!(
+            r#"
             SELECT stock_code
             FROM sector_stocks
             WHERE sector_code = '{}' AND date = today()
-        "#, sector_code);
+        "#,
+            sector_code
+        );
 
-        let mut codes_cursor = self.client.query(&codes_query).fetch::<SectorStockCodeRow>()?;
+        let mut codes_cursor = self
+            .client
+            .query(&codes_query)
+            .fetch::<SectorStockCodeRow>()?;
         let mut stock_codes = Vec::new();
 
         while let Some(row) = codes_cursor.next().await? {
@@ -222,12 +236,14 @@ impl SectorAlgorithmImpl {
         }
 
         // 批量查询这些股票的实时行情
-        let codes_str = stock_codes.iter()
+        let codes_str = stock_codes
+            .iter()
             .map(|c| format!("'{}'", c))
             .collect::<Vec<_>>()
             .join(",");
 
-        let quotes_query = format!(r#"
+        let quotes_query = format!(
+            r#"
             SELECT
                 code,
                 name,
@@ -240,7 +256,9 @@ impl SectorAlgorithmImpl {
             WHERE code IN ({})
                 AND datetime >= today() - INTERVAL 1 HOUR
             ORDER BY amount DESC
-        "#, codes_str);
+        "#,
+            codes_str
+        );
 
         let mut quotes_cursor = self.client.query(&quotes_query).fetch::<SectorStockRow>()?;
         let mut stocks = Vec::new();
@@ -277,7 +295,8 @@ impl SectorAlgorithmImpl {
         limit: usize,
     ) -> Result<Vec<SectorPerformance>> {
         let query = if date == "today" || date.is_empty() {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     sector_code,
                     sector_name,
@@ -295,9 +314,12 @@ impl SectorAlgorithmImpl {
                 WHERE date = today()
                 ORDER BY avg_change_percent DESC
                 LIMIT {}
-            "#, limit)
+            "#,
+                limit
+            )
         } else {
-            format!(r#"
+            format!(
+                r#"
                 SELECT
                     sector_code,
                     sector_name,
@@ -315,7 +337,9 @@ impl SectorAlgorithmImpl {
                 WHERE date = {}
                 ORDER BY avg_change_percent DESC
                 LIMIT {}
-            "#, date, limit)
+            "#,
+                date, limit
+            )
         };
 
         let mut cursor = self.client.query(&query).fetch::<SectorPerformanceRow>()?;
@@ -384,9 +408,8 @@ impl SectorAlgorithmImpl {
         let total_volume: f64 = stocks.iter().map(|s| s.volume).sum();
 
         // 计算平均涨跌幅
-        let avg_change_percent: f64 = stocks.iter()
-            .map(|s| s.change_percent)
-            .sum::<f64>() / stock_count as f64;
+        let avg_change_percent: f64 =
+            stocks.iter().map(|s| s.change_percent).sum::<f64>() / stock_count as f64;
 
         // 计算中位数涨跌幅
         let mut changes: Vec<f64> = stocks.iter().map(|s| s.change_percent).collect();
@@ -398,29 +421,31 @@ impl SectorAlgorithmImpl {
         };
 
         // 统计涨跌停和平盘数量
-        let limit_up_count = stocks.iter()
-            .filter(|s| s.change_percent >= 9.8)
-            .count() as i32;
-        let limit_down_count = stocks.iter()
-            .filter(|s| s.change_percent <= -9.8)
-            .count() as i32;
-        let rise_count = stocks.iter()
+        let limit_up_count = stocks.iter().filter(|s| s.change_percent >= 9.8).count() as i32;
+        let limit_down_count = stocks.iter().filter(|s| s.change_percent <= -9.8).count() as i32;
+        let rise_count = stocks
+            .iter()
             .filter(|s| s.change_percent > 0.0 && s.change_percent < 9.8)
             .count() as i32;
-        let fall_count = stocks.iter()
+        let fall_count = stocks
+            .iter()
             .filter(|s| s.change_percent < 0.0 && s.change_percent > -9.8)
             .count() as i32;
-        let flat_count = stocks.iter()
+        let flat_count = stocks
+            .iter()
             .filter(|s| (s.change_percent - 0.0).abs() < 0.01)
             .count() as i32;
 
         // 查询板块名称
-        let name_query = format!(r#"
+        let name_query = format!(
+            r#"
             SELECT DISTINCT sector_name
             FROM sector_stocks
             WHERE sector_code = '{}' AND date = today()
             LIMIT 1
-        "#, sector_code);
+        "#,
+            sector_code
+        );
 
         let mut name_cursor = self.client.query(&name_query).fetch::<SectorNameRow>()?;
         let sector_name = if let Some(row) = name_cursor.next().await? {
@@ -448,17 +473,13 @@ impl SectorAlgorithmImpl {
     // ============================================
     // 功能4: 获取板块资金流向
     // ============================================
-    pub async fn get_sector_flow(
-        &self,
-        sector_code: &str,
-        date: &str,
-    ) -> Result<SectorFlow> {
+    pub async fn get_sector_flow(&self, sector_code: &str, date: &str) -> Result<SectorFlow> {
         // 资金流向 = 主力资金 + 散户资金
         // 简化算法：净流入 = 涨幅股票成交额 - 跌幅股票成交额
         let stocks = self.get_sector_stocks(sector_code, date).await?;
 
-        let mut inflow = 0.0;      // 流入（上涨股票成交额）
-        let mut outflow = 0.0;     // 流出（下跌股票成交额）
+        let mut inflow = 0.0; // 流入（上涨股票成交额）
+        let mut outflow = 0.0; // 流出（下跌股票成交额）
 
         for stock in &stocks {
             if stock.change_percent > 0.0 {
@@ -475,7 +496,8 @@ impl SectorAlgorithmImpl {
         stocks_by_amount.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap());
 
         let top_20_percent = (stocks_by_amount.len() as f64 * 0.2).ceil() as usize;
-        let main_inflow: f64 = stocks_by_amount.iter()
+        let main_inflow: f64 = stocks_by_amount
+            .iter()
             .take(top_20_percent)
             .filter(|s| s.change_percent > 0.0)
             .map(|s| s.amount)
@@ -484,12 +506,15 @@ impl SectorAlgorithmImpl {
         let retail_inflow = inflow - main_inflow;
 
         // 查询板块名称
-        let name_query = format!(r#"
+        let name_query = format!(
+            r#"
             SELECT DISTINCT sector_name
             FROM sector_stocks
             WHERE sector_code = '{}' AND date = today()
             LIMIT 1
-        "#, sector_code);
+        "#,
+            sector_code
+        );
 
         let mut name_cursor = self.client.query(&name_query).fetch::<SectorNameRow>()?;
         let sector_name = if let Some(row) = name_cursor.next().await? {
@@ -510,10 +535,7 @@ impl SectorAlgorithmImpl {
     }
 
     // 实时计算板块资金流向
-    pub async fn calculate_sector_flow_realtime(
-        &self,
-        sector_code: &str,
-    ) -> Result<SectorFlow> {
+    pub async fn calculate_sector_flow_realtime(&self, sector_code: &str) -> Result<SectorFlow> {
         self.get_sector_flow(sector_code, "today").await
     }
 
@@ -522,13 +544,23 @@ impl SectorAlgorithmImpl {
     // ============================================
     pub async fn calculate_all_sectors_performance(&self, date: &str) -> Result<usize> {
         // 获取所有板块代码
-        let sectors_query = format!(r#"
+        let sectors_query = format!(
+            r#"
             SELECT DISTINCT sector_code as stock_code
             FROM sector_stocks
             WHERE date = {}
-        "#, if date == "today" || date.is_empty() { "today()" } else { date });
+        "#,
+            if date == "today" || date.is_empty() {
+                "today()"
+            } else {
+                date
+            }
+        );
 
-        let mut sectors_cursor = self.client.query(&sectors_query).fetch::<SectorStockCodeRow>()?;
+        let mut sectors_cursor = self
+            .client
+            .query(&sectors_query)
+            .fetch::<SectorStockCodeRow>()?;
         let mut sector_codes = Vec::new();
 
         while let Some(row) = sectors_cursor.next().await? {
@@ -542,10 +574,16 @@ impl SectorAlgorithmImpl {
         let mut calculated_count = 0;
 
         for sector_code in &sector_codes {
-            match self.calculate_sector_performance_realtime(sector_code).await {
+            match self
+                .calculate_sector_performance_realtime(sector_code)
+                .await
+            {
                 Ok(_) => calculated_count += 1,
                 Err(e) => {
-                    eprintln!("Failed to calculate performance for sector {}: {}", sector_code, e);
+                    eprintln!(
+                        "Failed to calculate performance for sector {}: {}",
+                        sector_code, e
+                    );
                 }
             }
         }

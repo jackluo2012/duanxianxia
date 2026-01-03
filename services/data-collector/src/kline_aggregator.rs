@@ -133,11 +133,7 @@ impl KlineAggregator {
     }
 
     /// 更新或创建窗口
-    async fn update_window(
-        &self,
-        quote: &StockQuote,
-        period: KlinePeriod,
-    ) -> Option<KlineData> {
+    async fn update_window(&self, quote: &StockQuote, period: KlinePeriod) -> Option<KlineData> {
         // 从 i64 timestamp 转换为 DateTime<Utc>
         let current_time = chrono::DateTime::from_timestamp(quote.timestamp, 0)
             .unwrap_or_else(|| chrono::Utc::now());
@@ -158,12 +154,8 @@ impl KlineAggregator {
         } else {
             // 创建新窗口
             let window_start = Self::calculate_window_start(current_time, period);
-            let mut window = KlineWindow::new(
-                quote.code.clone(),
-                quote.name.clone(),
-                period,
-                window_start,
-            );
+            let mut window =
+                KlineWindow::new(quote.code.clone(), quote.name.clone(), period, window_start);
             window.update(quote);
             windows.insert(window_key, window);
         }
@@ -216,7 +208,9 @@ impl KlineAggregator {
 
         // 清理超过2小时未更新的窗口
         windows.retain(|_key, window| {
-            let elapsed = current_time.signed_duration_since(window.last_update).num_seconds();
+            let elapsed = current_time
+                .signed_duration_since(window.last_update)
+                .num_seconds();
             elapsed < 7200 // 2小时 = 7200秒
         });
 
