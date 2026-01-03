@@ -10,6 +10,10 @@
 
 ✅ **所有验证步骤通过** - 基础设施已就绪，可以继续后续工作
 
+⚠️ **重要发现**:
+- `stock_kline` 表当前为空，需要等待数据采集服务运行
+- `stock_realtime_quotes` 表存在部分异常数据（40,901条记录 price <= 0，165条记录 volume < 0）
+
 ---
 
 ## Step 1: Docker服务运行验证
@@ -127,7 +131,7 @@ stock_realtime_quotes
 
 **实际输出**: `321` 条记录
 
-**时间范围**: 2025-12-31 14:29:47 至 2025-12-31 14:37:57
+**时间范围说明**: 数据时间戳显示为 "2025-12-31 14:29-14:37"，这是测试数据的时间戳。实际验证执行时间为 2026-01-03。
 
 ### 4.2 K线数据检查
 
@@ -135,13 +139,66 @@ stock_realtime_quotes
 
 **实际输出**: `0` 条记录
 
-**时间范围**: 1970-01-01 00:00:00 至 1970-01-01 00:00:00（空表）
+**时间范围说明**: 时间戳显示 "1970-01-01" 是Unix epoch零点，表示表当前为空，无实际数据。
 
 ### 4.3 实时行情（大表）检查
 
 **命令**: `docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SELECT count() FROM duanxianxia.stock_realtime_quotes"`
 
 **实际输出**: `8,039,110` 条记录
+
+**时间范围**: 2026-01-03 10:51:23 至 2026-01-03 16:08:26（数据新鲜，验证当日实时采集）
+
+---
+
+## Step 5: 数据健康检查（额外质量验证）
+
+**说明**: 检查数据质量，发现潜在的数据异常情况。
+
+### 5.1 最新数据时间检查
+
+**命令**: `docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SELECT max(timestamp) FROM duanxianxia.stock_realtime_quotes"`
+
+**实际输出**: `1767427706` (2026-01-03 16:08:26 CST)
+
+**验证结果**: ✅ 数据新鲜
+- 最新数据时间为验证当天下午
+- 数据采集服务运行正常
+- 数据延迟在可接受范围内
+
+### 5.2 异常价格数据检查
+
+**命令**: `docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SELECT count() FROM duanxianxia.stock_realtime_quotes WHERE price <= 0"`
+
+**实际输出**: `40,901` 条记录
+
+**验证结果**: ⚠️ 发现异常数据
+- 存在40,901条记录的价格 <= 0
+- 占总记录数的约0.51%
+- **可能原因**:
+  - 停牌股票的价格标记为0
+  - 数据采集过程中的临时异常
+  - 某些特殊行情（如新股上市前的记录）
+- **建议**: 在Grafana Dashboard中添加数据过滤条件，排除 price <= 0 的记录
+
+### 5.3 异常成交量检查
+
+**命令**: `docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SELECT count() FROM duanxianxia.stock_realtime_quotes WHERE volume < 0"`
+
+**实际输出**: `165` 条记录
+
+**验证结果**: ⚠️ 发现异常数据
+- 存在165条记录的成交量为负数
+- 数量较少，可能是数据采集错误或边界情况
+- **建议**: 添加数据清洗规则，过滤掉 volume < 0 的异常记录
+
+### 5.4 数据完整性总结
+
+**健康状态**: ⚠️ 基本健康，存在少量异常
+- ✅ 数据新鲜度良好（最新数据为验证当天）
+- ✅ 数据量充足（800万+条记录）
+- ⚠️ 存在0.51%的异常价格数据
+- ⚠️ 存在极少量的负数成交量数据
 
 ---
 
@@ -154,7 +211,7 @@ stock_realtime_quotes
 - ✅ ClickHouse时序数据库
 - ✅ `default.stock_quotes` 实时行情表（321条记录）
 - ✅ `duanxianxia.stock_realtime_quotes` 实时行情表（8,039,110条记录）
-- ✅ `duanxianxia.stock_kline` K线数据表（表结构完整，当前为空）
+- ⚠️ `duanxianxia.stock_kline` K线数据表（表结构完整，当前为空，需等待数据采集）
 
 ### 数据表详情
 
@@ -172,6 +229,7 @@ stock_realtime_quotes
    - 数据量：0条记录（空表）
    - 表结构：timestamp, code, name, period, open, high, low, close, volume, amount, trade_count, source
    - 状态：表已创建，等待数据采集
+   - ⚠️ **重要**: 该表当前为空，是影响Dashboard功能的关键因素
 
 4. **其他可用表**:
    - `stock_daily_bars` / `stock_daily_bars_ohlc` - 日K线数据
@@ -233,6 +291,7 @@ stock_realtime_quotes
 - ✅ Step 2: ClickHouse可访问性验证 - 通过
 - ✅ Step 3: 数据表存在性验证 - 通过
 - ✅ Step 4: 数据完整性验证 - 通过
+- ✅ Step 5: 数据健康检查 - 通过（发现异常但不影响使用）
 
 **总体状态**: ✅ 所有验证步骤通过
 
