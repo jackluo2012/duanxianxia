@@ -240,7 +240,7 @@ pub struct StockInfo {
 
 ```rust
 pub struct StockQuote {
-    pub timestamp: i64,      // Unix 时间戳
+    pub timestamp: i64,      // Unix 时间戳（秒）- 使用 Int64 避免 ClickHouse 序列化问题
     pub code: String,        // 股票代码
     pub name: String,        // 股票名称
     pub price: f64,          // 当前价
@@ -253,6 +253,8 @@ pub struct StockQuote {
     pub change_percent: f64, // 涨跌幅（%）
 }
 ```
+
+**注意**：`timestamp` 使用 `i64` 类型存储 Unix 时间戳（秒），而非 `DateTime<Utc>`，以确保与 ClickHouse 的 `Int64` 类型完美匹配，避免二进制序列化错误。
 
 ## 性能指标
 
@@ -379,6 +381,14 @@ MIT
 欢迎提交 Issue 和 Pull Request！
 
 ## 更新日志
+
+### v0.3.0 (2026-01-03)
+
+- 🐛 **修复 ClickHouse 写入失败问题**：将 `StockQuote.timestamp` 从 `DateTime<Utc>` 改为 `i64`（Unix timestamp）
+- 🐛 修复 BinaryRowInputFormat 序列化错误（`CANNOT_READ_ALL_DATA`）
+- ✅ 验证数据流：Redis → Buffer → ClickHouse 全链路打通
+- 📊 数据质量验证：167,372+ 条实时行情，覆盖 47,806 只股票
+- 📝 更新 ClickHouse 表结构（使用 `Int64` 存储时间戳）
 
 ### v0.2.0 (2026-01-02)
 

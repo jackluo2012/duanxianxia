@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use clickhouse::Row;
-use chrono::Utc;
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 
 /// 股票基本信息
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
@@ -27,30 +26,6 @@ pub struct StockQuote {
     pub volume: f64,     // 成交量（手）
     pub amount: f64,     // 成交额（元）
     pub change_percent: f64, // 涨跌幅(%)
-}
-
-impl StockQuote {
-    /// 转换为 ClickHouse INSERT 需要的数据格式
-    pub fn to_ch_row(&self) -> (i64, &str, &str, f64, f64, f64, f64, f64, f64, f64, f64) {
-        (
-            self.timestamp,
-            &self.code,
-            &self.name,
-            self.price,
-            self.preclose,
-            self.open,
-            self.high,
-            self.low,
-            self.volume,
-            self.amount,
-            self.change_percent,
-        )
-    }
-
-    /// 转换为DateTime<Utc>
-    pub fn timestamp_ch(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp(self.timestamp, 0).unwrap_or_default()
-    }
 }
 
 /// K线周期
@@ -159,8 +134,9 @@ impl KlineWindow {
         self.amount += quote.amount;
         self.trade_count += 1;
 
-        // 更新最后更新时间
-        self.last_update = quote.timestamp_ch();
+        // 更新最后更新时间（从 i64 timestamp 转换为 DateTime<Utc>）
+        self.last_update = chrono::DateTime::from_timestamp(quote.timestamp, 0)
+            .unwrap_or_else(|| chrono::Utc::now());
     }
 
     /// 判断窗口是否应该关闭（时间窗口结束）

@@ -138,7 +138,9 @@ impl KlineAggregator {
         quote: &StockQuote,
         period: KlinePeriod,
     ) -> Option<KlineData> {
-        let current_time = quote.timestamp_ch();
+        // 从 i64 timestamp 转换为 DateTime<Utc>
+        let current_time = chrono::DateTime::from_timestamp(quote.timestamp, 0)
+            .unwrap_or_else(|| chrono::Utc::now());
         let window_key = Self::make_window_key(&quote.code, period, &current_time);
 
         let mut windows = self.windows.lock().await;
