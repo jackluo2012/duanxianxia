@@ -65,6 +65,34 @@ services:
       - redis
     restart: unless-stopped
 
+  # Grafana可视化平台 (Phase 2 Week 2)
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    ports:
+      - "127.0.0.1:3002:3000"  # 仅本机访问，改为3002避免与其他服务冲突
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_SERVER_ROOT_URL=http://localhost:3002
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - GF_ANALYTICS_ENABLED=${ANALYTICS_ENABLED:-false}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/data:/var/lib/grafana
+      - ./grafana/logs:/var/log/grafana
+    depends_on:
+      - clickhouse
+    restart: unless-stopped
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider -T 10 --tries=1 http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   clickhouse_data:
   redis_data:
