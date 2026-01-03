@@ -1,33 +1,28 @@
 // services/data-collector/src/main.rs
-use anyhow::Result;
-use redis::aio::ConnectionManager;
-use redis::Client;
-use rustdx_complete::tcp::stock::SecurityQuotes;
-use rustdx_complete::tcp::{Tcp, Tdx};
-use shared::StockQuote;
-use std::time::Duration;
-use tracing::{error, info};
+mod types;
+mod stock_list_manager;
+mod quote_collector;
+mod clickhouse_writer;
+mod buffer_manager;
+mod kline_backfill;
+mod kline_aggregator;
+mod kline_corrector;
 
-// 将 rustdx QuoteData 转换为共享类型
-fn convert_quote(quote: &rustdx_complete::tcp::stock::QuoteData) -> StockQuote {
-    StockQuote {
-        code: quote.code.clone(),
-        name: quote.name.clone(),
-        market: if quote.code.starts_with("6") { 1 } else { 0 },
-        price: quote.price,
-        preclose: quote.preclose,
-        open: quote.open,
-        high: quote.high,
-        low: quote.low,
-        vol: quote.vol as u64,
-        amount: quote.amount,
-        bid1: quote.bid1,
-        ask1: quote.ask1,
-        bid1_vol: quote.bid1_vol as u32,
-        ask1_vol: quote.ask1_vol as u32,
-        change_percent: quote.change_percent,
-    }
-}
+use buffer_manager::BufferManager;
+use clickhouse_writer::ClickHouseWriter;
+use quote_collector::QuoteCollector;
+use stock_list_manager::StockListManager;
+use kline_aggregator::KlineAggregator;
+use kline_backfill::KlineBackfill;
+use kline_corrector::KlineCorrector;
+use anyhow::Result;
+use clickhouse::Client;
+use redis::aio::ConnectionManager;
+use redis::Client as RedisClient;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::sleep;
+use tracing::{error, info, debug};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -40,57 +35,121 @@ async fn main() -> Result<()> {
 
     info!("数据采集服务启动");
 
-    // 连接 Redis
+    // 从环境变量读取配置
     let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
-    let client = Client::open(redis_url)?;
-    let mut conn = ConnectionManager::new(client).await?;
+    let clickhouse_url =
+        std::env::var("CLICKHOUSE_URL").unwrap_or("http://localhost:8123".to_string());
+
+    // 1. 连接 Redis
+    let redis_client = RedisClient::open(redis_url)?;
+    let redis_conn = ConnectionManager::new(redis_client).await?;
     info!("成功连接到 Redis");
 
-    // 连接通达信服务器
-    let mut tcp = match Tcp::new() {
-        Ok(t) => {
-            info!("成功连接到通达信服务器");
-            t
-        }
-        Err(e) => {
-            error!("连接通达信服务器失败: {}", e);
-            return Err(e.into());
-        }
-    };
+    // 2. 连接 ClickHouse
+    let ch_client = Client::default().with_url(clickhouse_url);
+    info!("成功连接到 ClickHouse");
 
-    // 持续采集行情数据
+    // 3. 初始化股票列表管理器并获取全市场股票
+    let stock_list_manager = StockListManager::new(ch_client.clone());
+    info!("正在获取全市场股票列表...");
+
+    // 4. 获取并更新股票列表到 ClickHouse，同时分批（每批 80 只，受 TDX API 限制）
+    let stock_batches = stock_list_manager.fetch_and_update(80).await?;
+    let total_stocks: usize = stock_batches.iter().map(|b| b.len()).sum();
+    info!(
+        "股票列表获取完成：共 {} 只股票，分为 {} 批",
+        total_stocks,
+        stock_batches.len()
+    );
+
+    // 5. 初始化并发行情采集器（3个TCP连接，每批80只，超时10秒）
+    let quote_collector = QuoteCollector::new(3, 80, 10)?;
+    info!("并发行情采集器初始化完成");
+
+    // 6. 初始化 ClickHouse 批量写入器（每批1000条，超时30秒，重试3次）
+    let ch_writer = ClickHouseWriter::new(ch_client.clone(), 1000, 30, 3);
+    info!("ClickHouse 批量写入器初始化完成");
+
+    // 7. 初始化K线采集器（预留接口）
+    info!("正在初始化K线采集器...");
+    // 注意：K线模块需要额外的Redis连接，暂不启用
+    // let kline_backfill = Arc::new(KlineBackfill::new(ch_client.clone(), 3, 80, 10));
+    // let kline_corrector = Arc::new(KlineCorrector::new(ch_client.clone(), "15:30", 3)?);
+    info!("K线采集器初始化完成（模块已加载，未启用）");
+
+    // 8. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
+    let buffer_manager = Arc::new(BufferManager::new(ch_writer, redis_conn, 1000, 5));
+    info!("缓冲区管理器初始化完成");
+
+    // 9. 启动定时刷新任务（后台运行）
+    let buffer_manager_clone = Arc::clone(&buffer_manager);
+    tokio::spawn(async move {
+        info!("启动定时刷新任务");
+        buffer_manager_clone.start_periodic_flush().await
+    });
+
+    // 9. 持续采集行情数据
+    info!("开始全市场行情数据采集...");
+    let mut round = 0u32;
+
     loop {
-        let mut quotes = SecurityQuotes::new(vec![
-            (0, "000001"), // 平安银行
-            (1, "600000"), // 浦发银行
-        ]);
+        round += 1;
+        info!("========== 第 {} 轮采集开始 ==========", round);
 
-        if let Err(e) = quotes.recv_parsed(&mut tcp) {
-            error!("获取行情失败: {}", e);
-            tokio::time::sleep(Duration::from_secs(5)).await;
-            continue;
+        let mut round_total = 0usize;
+
+        // 分批采集所有股票的实时行情
+        for (i, batch) in stock_batches.iter().enumerate() {
+            match quote_collector.collect_batch(batch).await {
+                Ok(quotes) => {
+                    info!(
+                        "第 {}/{} 批采集成功：{} 只股票",
+                        i + 1,
+                        stock_batches.len(),
+                        quotes.len()
+                    );
+
+                    // 立即将本批次数据添加到缓冲区（实时写入 Redis + 异步写入 ClickHouse）
+                    if !quotes.is_empty() {
+                        match buffer_manager.add_quotes(quotes).await {
+                            Ok(added) => {
+                                round_total += added;
+                                debug!("成功添加 {} 条数据到缓冲区", added);
+                            }
+                            Err(e) => {
+                                error!("添加数据到缓冲区失败: {}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        "第 {}/{} 批采集失败: {}，跳过该批次",
+                        i + 1,
+                        stock_batches.len(),
+                        e
+                    );
+                }
+            }
+
+            // 避免请求过快
+            if i < stock_batches.len() - 1 {
+                sleep(Duration::from_millis(100)).await;
+            }
         }
 
-        // 推送到 Redis Stream
-        for quote in quotes.result() {
-            let stock_quote = convert_quote(quote);
-            let data = serde_json::to_vec(&stock_quote)?;
+        info!(
+            "第 {} 轮采集完成：共 {} 条行情数据已推送到缓冲区",
+            round, round_total
+        );
 
-            let _: () = redis::cmd("XADD")
-                .arg("stock_quotes")
-                .arg("*")
-                .arg("data")
-                .arg(data)
-                .query_async(&mut conn)
-                .await?;
+        // 显示缓冲区状态
+        let buffer_size = buffer_manager.buffer_size().await;
+        info!("当前缓冲区大小：{} 条", buffer_size);
 
-            info!(
-                "推送行情: {} {} 价格:{} 涨跌幅:{}%",
-                stock_quote.code, stock_quote.name, stock_quote.price, stock_quote.change_percent
-            );
-        }
+        info!("========== 第 {} 轮采集结束 ==========", round);
 
-        // 每 3 秒采集一次
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        // 每 3 秒进行下一轮采集
+        sleep(Duration::from_secs(3)).await;
     }
 }
