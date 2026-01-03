@@ -1,25 +1,23 @@
+use crate::models::{AuthResponse, LoginRequest, RegisterRequest, UserInfo};
 use actix_web::{web, HttpResponse, Result};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::PgPool;
-use crate::models::{AuthResponse, LoginRequest, RegisterRequest, UserInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const JWT_SECRET: &str = "your-secret-key-change-in-production";
-const TOKEN_EXPIRATION: u64 = 86400;  // 24 hours
+const TOKEN_EXPIRATION: u64 = 86400; // 24 hours
 
 pub async fn register(
     pool: web::Data<PgPool>,
     req: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse> {
     // 检查用户名是否已存在
-    let exists = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM users WHERE username = $1"
-    )
-    .bind(&req.username)
-    .fetch_one(pool.get_ref())
-    .await
-    .unwrap_or(0);
+    let exists = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE username = $1")
+        .bind(&req.username)
+        .fetch_one(pool.get_ref())
+        .await
+        .unwrap_or(0);
 
     if exists > 0 {
         return Ok(HttpResponse::BadRequest().json(serde_json::json!({
@@ -32,7 +30,7 @@ pub async fn register(
 
     // 插入用户
     let user_id = match sqlx::query_scalar::<_, i32>(
-        "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id"
+        "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
     )
     .bind(&req.username)
     .bind(&req.email)
@@ -52,7 +50,8 @@ pub async fn register(
     let expiration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs() + TOKEN_EXPIRATION;
+        .as_secs()
+        + TOKEN_EXPIRATION;
 
     let claims = serde_json::json!({
         "sub": req.username,
@@ -64,7 +63,8 @@ pub async fn register(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-    ).unwrap();
+    )
+    .unwrap();
 
     let response = AuthResponse {
         token,
@@ -79,13 +79,10 @@ pub async fn register(
     Ok(HttpResponse::Ok().json(response))
 }
 
-pub async fn login(
-    pool: web::Data<PgPool>,
-    req: web::Json<LoginRequest>,
-) -> Result<HttpResponse> {
+pub async fn login(pool: web::Data<PgPool>, req: web::Json<LoginRequest>) -> Result<HttpResponse> {
     // 查询用户
     let user = match sqlx::query_as::<_, (i32, String, String, String)>(
-        "SELECT id, username, email, password_hash FROM users WHERE username = $1"
+        "SELECT id, username, email, password_hash FROM users WHERE username = $1",
     )
     .bind(&req.username)
     .fetch_optional(pool.get_ref())
@@ -115,7 +112,8 @@ pub async fn login(
     let expiration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs() + TOKEN_EXPIRATION;
+        .as_secs()
+        + TOKEN_EXPIRATION;
 
     let claims = serde_json::json!({
         "sub": user.1,
@@ -127,7 +125,8 @@ pub async fn login(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(JWT_SECRET.as_ref()),
-    ).unwrap();
+    )
+    .unwrap();
 
     let response = AuthResponse {
         token,

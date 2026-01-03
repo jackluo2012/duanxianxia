@@ -89,7 +89,8 @@ async fn consume_redis_stream(
                                                     if let Ok(quote) =
                                                         serde_json::from_str::<StockQuote>(
                                                             &json_str,
-                                                        ) {
+                                                        )
+                                                    {
                                                         batch.push(quote);
 
                                                         if batch.len() >= 100
@@ -127,27 +128,30 @@ async fn consume_redis_stream(
                                                                     ));
                                                                 }
 
-                                                                let response =
-                                                                    http_client
-                                                                        .post(&clickhouse_url)
-                                                                        .body(query)
-                                                                        .send()
-                                                                        .await;
+                                                                let response = http_client
+                                                                    .post(&clickhouse_url)
+                                                                    .body(query)
+                                                                    .send()
+                                                                    .await;
 
                                                                 match response {
                                                                     Ok(resp) => {
-                                                                        if resp.status().is_success()
+                                                                        if resp
+                                                                            .status()
+                                                                            .is_success()
                                                                         {
                                                                             info!(
                                                                                 "批量写入 ClickHouse: {} 条记录",
                                                                                 batch.len()
                                                                             );
                                                                         } else {
-                                                                            let status = resp.status();
+                                                                            let status =
+                                                                                resp.status();
                                                                             let body = resp
                                                                                 .text()
                                                                                 .await
-                                                                                .unwrap_or_default();
+                                                                                .unwrap_or_default(
+                                                                                );
                                                                             tracing::error!(
                                                                                 "写入 ClickHouse 失败: {} - {}",
                                                                                 status,
@@ -213,7 +217,8 @@ async fn get_history(
             .await;
         drop(conn); // 显式释放连接
         Ok::<_, redis::RedisError>(result?)
-    }.await;
+    }
+    .await;
 
     if let Ok(Some(cached_data)) = cached_result {
         // 缓存命中，反序列化并返回
@@ -403,7 +408,8 @@ async fn get_history(
                 .await;
             drop(conn);
             result
-        }.await;
+        }
+        .await;
 
         info!("缓存已写入: {} (TTL: {}s)", cache_key, cache_ttl);
     }
@@ -421,8 +427,7 @@ async fn main() -> Result<()> {
     info!("数据存储服务启动");
 
     // 连接 Redis
-    let redis_url =
-        std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
+    let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
 
     // ClickHouse HTTP URL
     let clickhouse_url =

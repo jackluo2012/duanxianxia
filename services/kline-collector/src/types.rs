@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// K线周期
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -8,6 +8,7 @@ pub enum KlinePeriod {
     FiveMinutes,
 }
 
+#[allow(dead_code)]
 impl KlinePeriod {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -43,6 +44,7 @@ pub struct KlineData {
 
 /// K线聚合窗口（内存中）
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct KlineWindow {
     pub code: String,
     pub name: String,
@@ -57,8 +59,15 @@ pub struct KlineWindow {
     pub trade_count: u32,
 }
 
+#[allow(dead_code)]
 impl KlineWindow {
-    pub fn new(code: String, name: String, period: KlinePeriod, window_start: DateTime<Utc>, price: f64) -> Self {
+    pub fn new(
+        code: String,
+        name: String,
+        period: KlinePeriod,
+        window_start: DateTime<Utc>,
+        price: f64,
+    ) -> Self {
         Self {
             code,
             name,
@@ -103,6 +112,7 @@ impl KlineWindow {
 
 /// 实时行情数据（从 Redis Stream 读取）
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct QuoteData {
     pub code: String,
     pub name: String,

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -16,7 +16,10 @@ pub enum AlertRuleType {
     /// 强度评分告警
     IntensityScore { threshold: f32 },
     /// 异动告警（成交量或价格突然变化）
-    Anomaly { volume_change_ratio: f64, price_change_ratio: f64 },
+    Anomaly {
+        volume_change_ratio: f64,
+        price_change_ratio: f64,
+    },
 }
 
 /// 告警规则
@@ -94,15 +97,16 @@ impl AlertManager {
     /// 获取告警历史
     pub async fn get_alert_history(&self, limit: usize) -> Vec<AlertEvent> {
         let history = self.alert_history.read().await;
-        let start = if history.len() > limit { history.len() - limit } else { 0 };
+        let start = if history.len() > limit {
+            history.len() - limit
+        } else {
+            0
+        };
         history[start..].to_vec()
     }
 
     /// 检查竞价数据是否触发告警
-    pub async fn check_alerts(
-        &self,
-        stock: &crate::AuctionQuote,
-    ) -> Result<Vec<AlertEvent>> {
+    pub async fn check_alerts(&self, stock: &crate::AuctionQuote) -> Result<Vec<AlertEvent>> {
         let rules = self.rules.read().await;
         let mut triggered_alerts = Vec::new();
 
@@ -148,7 +152,10 @@ impl AlertManager {
                 // 强度评分需要从 metadata 中获取，这里先跳过
                 (false, String::new())
             }
-            AlertRuleType::Anomaly { volume_change_ratio, price_change_ratio } => {
+            AlertRuleType::Anomaly {
+                volume_change_ratio,
+                price_change_ratio,
+            } => {
                 // 异动检测需要历史数据对比，这里先跳过
                 (false, String::new())
             }

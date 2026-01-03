@@ -44,10 +44,10 @@ pub struct SectorPerformance {
 pub struct SectorFlow {
     pub sector_code: String,
     pub sector_name: String,
-    pub inflow: f64,       // 资金流入
-    pub outflow: f64,      // 资金流出
-    pub net_inflow: f64,   // 净流入
-    pub main_inflow: f64,  // 主力流入
+    pub inflow: f64,      // 资金流入
+    pub outflow: f64,     // 资金流出
+    pub net_inflow: f64,  // 净流入
+    pub main_inflow: f64, // 主力流入
 }
 
 // SectorManager 核心管理类
@@ -70,7 +70,10 @@ impl SectorManager {
     }
 
     // 获取板块内股票列表
-    pub async fn get_sector_stocks(&self, sector_code: &str) -> Result<Vec<SectorStock>, anyhow::Error> {
+    pub async fn get_sector_stocks(
+        &self,
+        sector_code: &str,
+    ) -> Result<Vec<SectorStock>, anyhow::Error> {
         // TODO: 实现板块内股票查询
         // 1. 查询 sector_stocks 表
         // 2. 关联 stock_quotes 表获取实时行情
@@ -79,7 +82,10 @@ impl SectorManager {
     }
 
     // 获取板块表现排行
-    pub async fn get_sector_performance(&self, date: &str) -> Result<Vec<SectorPerformance>, anyhow::Error> {
+    pub async fn get_sector_performance(
+        &self,
+        date: &str,
+    ) -> Result<Vec<SectorPerformance>, anyhow::Error> {
         // TODO: 实现板块表现统计
         // 1. 计算板块平均涨跌幅
         // 2. 统计板块总成交额
@@ -89,7 +95,11 @@ impl SectorManager {
     }
 
     // 获取板块资金流向
-    pub async fn get_sector_flow(&self, sector_code: &str, date: &str) -> Result<SectorFlow, anyhow::Error> {
+    pub async fn get_sector_flow(
+        &self,
+        sector_code: &str,
+        date: &str,
+    ) -> Result<SectorFlow, anyhow::Error> {
         // TODO: 实现资金流向计算
         // 1. 计算板块内个股资金流入流出
         // 2. 汇总板块总资金流向

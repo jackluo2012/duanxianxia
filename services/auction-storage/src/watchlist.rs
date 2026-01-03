@@ -68,7 +68,10 @@ impl WatchlistManager {
             .collect();
 
         lists.insert("default".to_string(), items);
-        tracing::info!("默认自选股池初始化完成，共 {} 只股票", lists.get("default").unwrap().len());
+        tracing::info!(
+            "默认自选股池初始化完成，共 {} 只股票",
+            lists.get("default").unwrap().len()
+        );
     }
 
     /// 添加股票到自选股

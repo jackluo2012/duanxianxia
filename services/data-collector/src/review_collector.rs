@@ -8,8 +8,8 @@
 // 5. 定时写入ClickHouse
 
 use crate::types::{
-    ConsecutiveRecord, ConsecutiveBoardHistory, DailyLimitUpSummary, LimitType,
-    LimitUpEvent, SectorDailyStrength, SectorStats, StockQuote,
+    ConsecutiveBoardHistory, ConsecutiveRecord, DailyLimitUpSummary, LimitType, LimitUpEvent,
+    SectorDailyStrength, SectorStats, StockQuote,
 };
 use anyhow::Result;
 use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike, Utc};
@@ -69,7 +69,9 @@ impl ReviewCollector {
 
         // 检测涨停
         if let Some(limit_type) = self.detect_limit_up(quote) {
-            let limit_event = self.create_limit_up_event(quote, limit_type, current_time).await?;
+            let limit_event = self
+                .create_limit_up_event(quote, limit_type, current_time)
+                .await?;
 
             // 记录涨停事件
             self.record_limit_up(limit_event.clone()).await?;
@@ -279,8 +281,7 @@ impl ReviewCollector {
         if *current_date != today {
             info!(
                 "日期切换: {} -> {}，准备前一日数据汇总",
-                current_date,
-                today
+                current_date, today
             );
 
             // 执行前一日数据汇总
@@ -312,24 +313,16 @@ impl ReviewCollector {
         let consecutive_records = self.consecutive_records.lock().await.clone();
 
         // 1. 生成每日涨停汇总
-        let daily_summary = self.generate_daily_summary(
-            current_date,
-            &limit_up_events,
-            &broken_events,
-        )?;
+        let daily_summary =
+            self.generate_daily_summary(current_date, &limit_up_events, &broken_events)?;
 
         // 2. 生成连板历史记录
-        let consecutive_history = self.generate_consecutive_history(
-            current_date,
-            &consecutive_records,
-        )?;
+        let consecutive_history =
+            self.generate_consecutive_history(current_date, &consecutive_records)?;
 
         // 3. 生成板块强度记录
-        let sector_strength = self.generate_sector_strength(
-            current_date,
-            &sector_stats,
-            &consecutive_records,
-        )?;
+        let sector_strength =
+            self.generate_sector_strength(current_date, &sector_stats, &consecutive_records)?;
 
         // 4. 写入ClickHouse
         self.write_daily_summary(&daily_summary).await?;
@@ -356,27 +349,30 @@ impl ReviewCollector {
         let total_count = limit_up_events.len() as u32;
 
         // 统计首板数量
-        let first_board = limit_up_events.iter()
-            .filter(|e| e.is_first_board)
-            .count() as u32;
+        let first_board = limit_up_events.iter().filter(|e| e.is_first_board).count() as u32;
 
         // 统计各时段涨停（简化处理）
         let auction_limit = 0; // 竞价涨停（9:25之前）
-        let morning_limit = limit_up_events.iter()
+        let morning_limit = limit_up_events
+            .iter()
             .filter(|e| e.limit_time.hour() >= 9 && e.limit_time.hour() < 13)
             .count() as u32;
-        let afternoon_limit = limit_up_events.iter()
+        let afternoon_limit = limit_up_events
+            .iter()
             .filter(|e| e.limit_time.hour() >= 13)
             .count() as u32;
 
         // 统计涨停类型
-        let straight_limit = limit_up_events.iter()
+        let straight_limit = limit_up_events
+            .iter()
             .filter(|e| e.limit_type == LimitType::Straight)
             .count() as u32;
-        let t_limit = limit_up_events.iter()
+        let t_limit = limit_up_events
+            .iter()
             .filter(|e| e.limit_type == LimitType::T)
             .count() as u32;
-        let natural_limit = limit_up_events.iter()
+        let natural_limit = limit_up_events
+            .iter()
             .filter(|e| e.limit_type == LimitType::Natural)
             .count() as u32;
 
@@ -510,8 +506,8 @@ impl ReviewCollector {
                 net_inflow_ratio: 0.0,
                 strength_rank: 0, // 后续排序后更新
                 strength_score,
-                trend_3d: 0.0,    // 需要3日历史数据
-                trend_5d: 0.0,    // 需要5日历史数据
+                trend_3d: 0.0, // 需要3日历史数据
+                trend_5d: 0.0, // 需要5日历史数据
             };
 
             strength_list.push(strength_item);
@@ -547,10 +543,7 @@ impl ReviewCollector {
     }
 
     /// 写入连板历史到ClickHouse
-    async fn write_consecutive_history(
-        &self,
-        history: &[ConsecutiveBoardHistory],
-    ) -> Result<()> {
+    async fn write_consecutive_history(&self, history: &[ConsecutiveBoardHistory]) -> Result<()> {
         if history.is_empty() {
             return Ok(());
         }
@@ -596,10 +589,7 @@ impl ReviewCollector {
         ranking.sort_by(|a, b| {
             b.consecutive_days
                 .cmp(&a.consecutive_days)
-                .then_with(|| {
-                    b.last_limit_time
-                        .cmp(&a.last_limit_time)
-                })
+                .then_with(|| b.last_limit_time.cmp(&a.last_limit_time))
         });
 
         ranking
@@ -612,13 +602,11 @@ impl ReviewCollector {
 
         // 按涨停股数量降序排序
         ranking.sort_by(|a, b| {
-            b.limit_up_count
-                .cmp(&a.limit_up_count)
-                .then_with(|| {
-                    b.total_amount
-                        .partial_cmp(&a.total_amount)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
+            b.limit_up_count.cmp(&a.limit_up_count).then_with(|| {
+                b.total_amount
+                    .partial_cmp(&a.total_amount)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
         });
 
         ranking

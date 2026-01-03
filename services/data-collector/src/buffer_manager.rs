@@ -128,10 +128,7 @@ impl BufferManager {
         // 批量写入 ClickHouse
         match self.ch_writer.write_quotes(&quotes).await {
             Ok(written) => {
-                info!(
-                    "缓冲区刷新成功：写入 {} 条记录到 ClickHouse",
-                    written
-                );
+                info!("缓冲区刷新成功：写入 {} 条记录到 ClickHouse", written);
                 Ok(())
             }
             Err(e) => {
@@ -152,10 +149,7 @@ impl BufferManager {
     /// tokio::spawn(buffer_manager.start_periodic_flush());
     /// ```
     pub async fn start_periodic_flush(self: Arc<Self>) {
-        info!(
-            "启动定时刷新任务，间隔：{:?}",
-            self.flush_interval
-        );
+        info!("启动定时刷新任务，间隔：{:?}", self.flush_interval);
 
         loop {
             sleep(self.flush_interval).await;

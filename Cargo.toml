@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "shared",
+    "shared/common",
+    "shared/trading-calendar",
     # TODO: 添加其他微服务
     "services/data-collector",
     "services/storage-service",

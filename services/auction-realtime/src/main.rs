@@ -160,7 +160,8 @@ async fn subscribe_redis_and_broadcast(
                                                     if let Ok(quote) =
                                                         serde_json::from_str::<AuctionQuote>(
                                                             &json_str,
-                                                        ) {
+                                                        )
+                                                    {
                                                         // 广播到订阅了该股票的客户端
                                                         broadcast_to_subscribers(
                                                             &clients,

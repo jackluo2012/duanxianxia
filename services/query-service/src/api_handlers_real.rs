@@ -1,14 +1,16 @@
 // API Handlers - 实际实现
 // 连接到真实的算法实现
 
-use actix_web::{web, HttpResponse, HttpRequest};
-use clickhouse::Client;
-use crate::screener_impl::{ScreenerAlgorithmImpl, LeaderItem, ConsecutiveBoardItem, LimitItem};
-use crate::sectors_impl::{SectorAlgorithmImpl, Sector, SectorStock, SectorPerformance, SectorFlow};
 use crate::indicators::IndicatorManager;
+use crate::screener_impl::{ConsecutiveBoardItem, LeaderItem, LimitItem, ScreenerAlgorithmImpl};
+use crate::sectors_impl::{
+    Sector, SectorAlgorithmImpl, SectorFlow, SectorPerformance, SectorStock,
+};
 use crate::types::StockIndicators;
-use serde::{Deserialize, Serialize};
+use actix_web::{web, HttpRequest, HttpResponse};
 use anyhow::Result;
+use clickhouse::Client;
+use serde::{Deserialize, Serialize};
 
 // ============================================
 // 个股挖掘 API Handlers
@@ -179,10 +181,7 @@ pub async fn get_sector_flow(
 // 技术指标 API Handlers
 // ============================================
 
-pub async fn get_indicators(
-    client: web::Data<Client>,
-    path: web::Path<String>,
-) -> HttpResponse {
+pub async fn get_indicators(client: web::Data<Client>, path: web::Path<String>) -> HttpResponse {
     let code = path.into_inner();
     let manager = IndicatorManager::new(client.get_ref().clone());
 
@@ -221,10 +220,17 @@ pub async fn get_indicator_history(
     let code = path.into_inner();
     let manager = IndicatorManager::new(client.get_ref().clone());
 
-    let start_date = query.start_date.as_deref().unwrap_or("2024-01-01").to_string();
+    let start_date = query
+        .start_date
+        .as_deref()
+        .unwrap_or("2024-01-01")
+        .to_string();
     let end_date = query.end_date.as_deref().unwrap_or("today").to_string();
 
-    match manager.get_indicator_history(&code, &start_date, &end_date).await {
+    match manager
+        .get_indicator_history(&code, &start_date, &end_date)
+        .await
+    {
         Ok(history) => HttpResponse::Ok().json(history),
         Err(e) => {
             eprintln!("Error getting indicator history: {}", e);
@@ -251,7 +257,9 @@ pub async fn calculate_indicators(
     let date = body.date.as_deref().unwrap_or("today").to_string();
 
     // 获取请求信息
-    let user_agent = req.headers().get("user-agent")
+    let user_agent = req
+        .headers()
+        .get("user-agent")
         .and_then(|h| h.to_str().ok())
         .unwrap_or("unknown");
 
@@ -265,7 +273,7 @@ pub async fn calculate_indicators(
                 "calculated_count": count,
                 "message": "技术指标计算任务已提交"
             }))
-        },
+        }
         Err(e) => {
             eprintln!("Error calculating indicators: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
@@ -285,21 +293,33 @@ pub async fn get_ma(
     let code = path.into_inner();
     let manager = IndicatorManager::new(client.get_ref().clone());
 
-    let start_date = query.start_date.as_deref().unwrap_or("2024-01-01").to_string();
+    let start_date = query
+        .start_date
+        .as_deref()
+        .unwrap_or("2024-01-01")
+        .to_string();
     let end_date = query.end_date.as_deref().unwrap_or("today").to_string();
 
-    match manager.get_indicator_history(&code, &start_date, &end_date).await {
+    match manager
+        .get_indicator_history(&code, &start_date, &end_date)
+        .await
+    {
         Ok(history) => {
             // 提取MA数据
-            let ma_data: Vec<_> = history.into_iter().map(|item| serde_json::json!({
-                "date": item.date,
-                "ma5": item.ma5,
-                "ma10": item.ma10,
-                "ma20": item.ma20,
-                "ma60": item.ma60,
-            })).collect();
+            let ma_data: Vec<_> = history
+                .into_iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "date": item.date,
+                        "ma5": item.ma5,
+                        "ma10": item.ma10,
+                        "ma20": item.ma20,
+                        "ma60": item.ma60,
+                    })
+                })
+                .collect();
             HttpResponse::Ok().json(ma_data)
-        },
+        }
         Err(e) => {
             eprintln!("Error getting MA data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
@@ -319,20 +339,32 @@ pub async fn get_macd(
     let code = path.into_inner();
     let manager = IndicatorManager::new(client.get_ref().clone());
 
-    let start_date = query.start_date.as_deref().unwrap_or("2024-01-01").to_string();
+    let start_date = query
+        .start_date
+        .as_deref()
+        .unwrap_or("2024-01-01")
+        .to_string();
     let end_date = query.end_date.as_deref().unwrap_or("today").to_string();
 
-    match manager.get_indicator_history(&code, &start_date, &end_date).await {
+    match manager
+        .get_indicator_history(&code, &start_date, &end_date)
+        .await
+    {
         Ok(history) => {
             // 提取MACD数据
-            let macd_data: Vec<_> = history.into_iter().map(|item| serde_json::json!({
-                "date": item.date,
-                "dif": item.macd_dif,
-                "dea": item.macd_dea,
-                "bar": item.macd_bar,
-            })).collect();
+            let macd_data: Vec<_> = history
+                .into_iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "date": item.date,
+                        "dif": item.macd_dif,
+                        "dea": item.macd_dea,
+                        "bar": item.macd_bar,
+                    })
+                })
+                .collect();
             HttpResponse::Ok().json(macd_data)
-        },
+        }
         Err(e) => {
             eprintln!("Error getting MACD data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
@@ -352,20 +384,32 @@ pub async fn get_kdj(
     let code = path.into_inner();
     let manager = IndicatorManager::new(client.get_ref().clone());
 
-    let start_date = query.start_date.as_deref().unwrap_or("2024-01-01").to_string();
+    let start_date = query
+        .start_date
+        .as_deref()
+        .unwrap_or("2024-01-01")
+        .to_string();
     let end_date = query.end_date.as_deref().unwrap_or("today").to_string();
 
-    match manager.get_indicator_history(&code, &start_date, &end_date).await {
+    match manager
+        .get_indicator_history(&code, &start_date, &end_date)
+        .await
+    {
         Ok(history) => {
             // 提取KDJ数据
-            let kdj_data: Vec<_> = history.into_iter().map(|item| serde_json::json!({
-                "date": item.date,
-                "k": item.kdj_k,
-                "d": item.kdj_d,
-                "j": item.kdj_j,
-            })).collect();
+            let kdj_data: Vec<_> = history
+                .into_iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "date": item.date,
+                        "k": item.kdj_k,
+                        "d": item.kdj_d,
+                        "j": item.kdj_j,
+                    })
+                })
+                .collect();
             HttpResponse::Ok().json(kdj_data)
-        },
+        }
         Err(e) => {
             eprintln!("Error getting KDJ data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
@@ -385,20 +429,32 @@ pub async fn get_rsi(
     let code = path.into_inner();
     let manager = IndicatorManager::new(client.get_ref().clone());
 
-    let start_date = query.start_date.as_deref().unwrap_or("2024-01-01").to_string();
+    let start_date = query
+        .start_date
+        .as_deref()
+        .unwrap_or("2024-01-01")
+        .to_string();
     let end_date = query.end_date.as_deref().unwrap_or("today").to_string();
 
-    match manager.get_indicator_history(&code, &start_date, &end_date).await {
+    match manager
+        .get_indicator_history(&code, &start_date, &end_date)
+        .await
+    {
         Ok(history) => {
             // 提取RSI数据
-            let rsi_data: Vec<_> = history.into_iter().map(|item| serde_json::json!({
-                "date": item.date,
-                "rsi6": item.rsi6,
-                "rsi12": item.rsi12,
-                "rsi24": item.rsi24,
-            })).collect();
+            let rsi_data: Vec<_> = history
+                .into_iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "date": item.date,
+                        "rsi6": item.rsi6,
+                        "rsi12": item.rsi12,
+                        "rsi24": item.rsi24,
+                    })
+                })
+                .collect();
             HttpResponse::Ok().json(rsi_data)
-        },
+        }
         Err(e) => {
             eprintln!("Error getting RSI data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({

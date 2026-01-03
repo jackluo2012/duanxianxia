@@ -1,10 +1,10 @@
 use crate::types::{KlineData, KlinePeriod, StockInfo};
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveTime, Utc};
+use chrono::{NaiveDate, NaiveTime};
 use clickhouse::Client;
 use rustdx_complete::tcp::stock::Kline;
 use rustdx_complete::tcp::{Tcp, Tdx};
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// K线数据修正器（收盘后修正当天数据）
 pub struct KlineCorrector {
@@ -36,7 +36,11 @@ impl KlineCorrector {
     }
 
     /// 修正指定日期的K线数据
-    async fn correct_date(&self, date: NaiveDate, _stock_batches: &[Vec<StockInfo>]) -> Result<CorrectionReport> {
+    async fn correct_date(
+        &self,
+        date: NaiveDate,
+        _stock_batches: &[Vec<StockInfo>],
+    ) -> Result<CorrectionReport> {
         // TODO: 实现修正逻辑
         // 下一步任务实现
 
@@ -49,10 +53,7 @@ impl KlineCorrector {
     }
 
     /// 查询当日需要修正的K线数据
-    async fn fetch_realtime_klines(
-        &self,
-        _date: NaiveDate,
-    ) -> Result<Vec<KlineData>> {
+    async fn fetch_realtime_klines(&self, _date: NaiveDate) -> Result<Vec<KlineData>> {
         // TODO: 从ClickHouse查询source='realtime'的K线
         // 下一步任务实现
         Ok(Vec::new())
@@ -85,7 +86,7 @@ impl KlineCorrector {
                         let kline_date = chrono::NaiveDate::from_ymd_opt(
                             k.dt.year as i32,
                             k.dt.month as u32,
-                            k.dt.day as u32
+                            k.dt.day as u32,
                         )?;
 
                         if kline_date != date {
@@ -94,7 +95,11 @@ impl KlineCorrector {
 
                         let timestamp = chrono::NaiveDateTime::new(
                             kline_date,
-                            chrono::NaiveTime::from_hms_opt(k.dt.hour as u32, k.dt.minute as u32, 0)?
+                            chrono::NaiveTime::from_hms_opt(
+                                k.dt.hour as u32,
+                                k.dt.minute as u32,
+                                0,
+                            )?,
                         );
                         let timestamp_utc = timestamp.and_utc();
 
@@ -118,18 +123,12 @@ impl KlineCorrector {
                 debug!("从通达信获取到 {} 条官方K线", klines.len());
                 Ok(klines)
             }
-            Err(e) => {
-                Err(anyhow::anyhow!("获取官方K线失败: {}", e))
-            }
+            Err(e) => Err(anyhow::anyhow!("获取官方K线失败: {}", e)),
         }
     }
 
     /// 对比并修正K线数据
-    fn compare_and_correct(
-        &self,
-        realtime: &KlineData,
-        official: &KlineData,
-    ) -> Option<KlineData> {
+    fn compare_and_correct(&self, realtime: &KlineData, official: &KlineData) -> Option<KlineData> {
         // 异常判定标准
         let price_diff = (realtime.close - official.close).abs() / official.close;
         let volume_diff = (realtime.volume - official.volume).abs() / official.volume;
@@ -175,7 +174,10 @@ mod tests {
         assert!(corrector.is_ok());
 
         let corrector = corrector.unwrap();
-        assert_eq!(corrector.correction_time, NaiveTime::from_hms_opt(15, 30, 0).unwrap());
+        assert_eq!(
+            corrector.correction_time,
+            NaiveTime::from_hms_opt(15, 30, 0).unwrap()
+        );
         assert_eq!(corrector.max_concurrent, 3);
     }
 

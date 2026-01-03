@@ -1,30 +1,30 @@
-use serde::{Deserialize, Serialize};
-use clickhouse::Row;
 use chrono::{DateTime, Utc};
+use clickhouse::Row;
+use serde::{Deserialize, Serialize};
 
 /// 股票基本信息
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct StockInfo {
     pub code: String,
     pub name: String,
-    pub market: u8, // 0=深圳, 1=上海
+    pub market: u8,        // 0=深圳, 1=上海
     pub list_date: String, // YYYY-MM-DD
-    pub status: String, // active/suspended/delisted
+    pub status: String,    // active/suspended/delisted
 }
 
 /// 股票实时行情
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct StockQuote {
-    pub timestamp: i64,  // Unix timestamp (秒)
+    pub timestamp: i64, // Unix timestamp (秒)
     pub code: String,
     pub name: String,
-    pub price: f64,      // 当前价
-    pub preclose: f64,   // 昨收价
-    pub open: f64,       // 今开价
-    pub high: f64,       // 最高价
-    pub low: f64,        // 最低价
-    pub volume: f64,     // 成交量（手）
-    pub amount: f64,     // 成交额（元）
+    pub price: f64,          // 当前价
+    pub preclose: f64,       // 昨收价
+    pub open: f64,           // 今开价
+    pub high: f64,           // 最高价
+    pub low: f64,            // 最低价
+    pub volume: f64,         // 成交量（手）
+    pub amount: f64,         // 成交额（元）
     pub change_percent: f64, // 涨跌幅(%)
 }
 
@@ -85,7 +85,7 @@ pub struct KlineDataCH {
     pub timestamp: DateTime<Utc>,
     pub code: String,
     pub name: String,
-    pub period: String,  // "1m" 或 "5m"
+    pub period: String, // "1m" 或 "5m"
     pub open: f64,
     pub high: f64,
     pub low: f64,
@@ -177,7 +177,10 @@ impl KlineWindow {
 
     /// 判断窗口是否应该关闭（时间窗口结束）
     pub fn should_close(&self, current_time: DateTime<Utc>) -> bool {
-        let elapsed = current_time.signed_duration_since(self.start_time).num_seconds().abs() as u64;
+        let elapsed = current_time
+            .signed_duration_since(self.start_time)
+            .num_seconds()
+            .abs() as u64;
         elapsed >= self.period.minutes() * 60
     }
 
@@ -190,7 +193,11 @@ impl KlineWindow {
             name: self.name.clone(),
             period: self.period,
             open,
-            high: if self.high > f64::MIN { self.high } else { open },
+            high: if self.high > f64::MIN {
+                self.high
+            } else {
+                open
+            },
             low: if self.low < f64::MAX { self.low } else { open },
             close: self.close,
             volume: self.volume,

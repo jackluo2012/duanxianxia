@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{Local, Datelike, Timelike, Weekday};
+use chrono::{Datelike, Local, Timelike, Weekday};
 use redis::aio::ConnectionManager;
 use redis::Client;
 use rustdx_complete::tcp::stock::SecurityQuotes;
@@ -59,7 +59,12 @@ fn get_watchlist() -> Vec<(u16, String)> {
 }
 
 /// 计算封单金额
-fn calculate_sealed_amount(buy1_price: f64, buy1_volume: u64, sell1_price: f64, sell1_volume: u64) -> (f64, f64) {
+fn calculate_sealed_amount(
+    buy1_price: f64,
+    buy1_volume: u64,
+    sell1_price: f64,
+    sell1_volume: u64,
+) -> (f64, f64) {
     let sealed_buy = buy1_price * buy1_volume as f64;
     let sealed_sell = sell1_price * sell1_volume as f64;
     (sealed_buy, sealed_sell)

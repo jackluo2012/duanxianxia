@@ -5,7 +5,7 @@
 // - 概念板块：板块列表、板块股票、板块表现
 // - 技术指标：MA、MACD、KDJ、RSI
 
+pub mod indicators;
 pub mod screener;
 pub mod sectors;
-pub mod indicators;
 pub mod types;

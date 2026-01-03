@@ -1,10 +1,10 @@
 // 批量技术指标计算程序
 // 为所有股票计算历史技术指标
 
+use anyhow::Result;
 use clickhouse::Client;
 use std::env;
 use std::sync::Arc;
-use anyhow::Result;
 use tokio::sync::Semaphore;
 use tokio::time::{sleep, Duration};
 
@@ -17,8 +17,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     // 从环境变量获取 ClickHouse URL
-    let clickhouse_url = env::var("CLICKHOUSE_URL")
-        .unwrap_or_else(|_| "http://localhost:8123".to_string());
+    let clickhouse_url =
+        env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
 
     // 从环境变量获取并发限制,默认10
     let max_concurrent = env::var("MAX_CONCURRENT")
@@ -128,11 +128,7 @@ async fn get_stock_list(client: &Client) -> Result<Vec<(String, String)>> {
 }
 
 /// 计算单只股票的所有技术指标
-async fn calculate_stock_indicators(
-    client: &Client,
-    code: &str,
-    name: &str,
-) -> Result<usize> {
+async fn calculate_stock_indicators(client: &Client, code: &str, name: &str) -> Result<usize> {
     // 加载历史数据
     let bars = load_historical_data(client, code).await?;
 
@@ -148,11 +144,7 @@ async fn calculate_stock_indicators(
         let window = &bars[..=i];
 
         // 计算技术指标
-        if let Some(indicator_result) = calculate_all_indicators_for_bar(
-            window,
-            code,
-            name,
-        ) {
+        if let Some(indicator_result) = calculate_all_indicators_for_bar(window, code, name) {
             indicators.push(indicator_result);
             count += 1;
         }
@@ -168,7 +160,8 @@ async fn calculate_stock_indicators(
 
 /// 从数据库加载历史数据
 async fn load_historical_data(client: &Client, code: &str) -> Result<Vec<PriceBar>> {
-    let query = format!(r#"
+    let query = format!(
+        r#"
         SELECT
             toString(date) as date,
             open,
@@ -179,7 +172,9 @@ async fn load_historical_data(client: &Client, code: &str) -> Result<Vec<PriceBa
         FROM duanxianxia.stock_daily_bars_ohlc
         WHERE code = '{}'
         ORDER BY date ASC
-    "#, code);
+    "#,
+        code
+    );
 
     #[derive(Debug, clickhouse::Row, serde::Deserialize)]
     struct BarRow {

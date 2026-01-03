@@ -219,7 +219,11 @@ impl ReviewService {
     }
 
     /// 获取板块强度排行 (TOP N)
-    pub async fn get_sector_strength(&self, date: NaiveDate, top_n: usize) -> Result<Vec<SectorStrength>> {
+    pub async fn get_sector_strength(
+        &self,
+        date: NaiveDate,
+        top_n: usize,
+    ) -> Result<Vec<SectorStrength>> {
         let date_str = date.format("%Y-%m-%d").to_string();
 
         let query = format!(
@@ -273,7 +277,10 @@ impl ReviewService {
     }
 
     /// 获取历史涨停对比 (多个交易日)
-    pub async fn compare_multiple_days(&self, dates: Vec<NaiveDate>) -> Result<Vec<DailyLimitUpSummary>> {
+    pub async fn compare_multiple_days(
+        &self,
+        dates: Vec<NaiveDate>,
+    ) -> Result<Vec<DailyLimitUpSummary>> {
         let mut summaries = Vec::new();
 
         for date in dates {
@@ -315,9 +322,8 @@ pub async fn get_daily_review(
         Ok(summary) => Ok(HttpResponse::Ok().json(ApiResponse::ok(summary))),
         Err(e) => {
             error!("获取每日涨停汇总失败: {}", e);
-            Ok(HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                format!("查询失败: {}", e),
-            )))
+            Ok(HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error(format!("查询失败: {}", e))))
         }
     }
 }
@@ -343,9 +349,8 @@ pub async fn get_consecutive_review(
         Ok(stats) => Ok(HttpResponse::Ok().json(ApiResponse::ok(stats))),
         Err(e) => {
             error!("获取连板统计失败: {}", e);
-            Ok(HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                format!("查询失败: {}", e),
-            )))
+            Ok(HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error(format!("查询失败: {}", e))))
         }
     }
 }
@@ -376,9 +381,8 @@ pub async fn get_sector_review(
         Ok(sectors) => Ok(HttpResponse::Ok().json(ApiResponse::ok(sectors))),
         Err(e) => {
             error!("获取板块强度排行失败: {}", e);
-            Ok(HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                format!("查询失败: {}", e),
-            )))
+            Ok(HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error(format!("查询失败: {}", e))))
         }
     }
 }
@@ -398,9 +402,8 @@ pub async fn get_trend_review(
         Ok(trend) => Ok(HttpResponse::Ok().json(ApiResponse::ok(trend))),
         Err(e) => {
             error!("获取市场情绪趋势失败: {}", e);
-            Ok(HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                format!("查询失败: {}", e),
-            )))
+            Ok(HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error(format!("查询失败: {}", e))))
         }
     }
 }

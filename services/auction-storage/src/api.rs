@@ -113,7 +113,7 @@ pub mod details {
 pub mod alerts {
     use super::*;
     use crate::alerts::{AlertManager, AlertRule, AlertRuleType};
-    use actix_web::{post, delete};
+    use actix_web::{delete, post};
     use std::sync::Arc;
 
     /// AlertManager 的 Actix Web 数据包装
@@ -216,8 +216,8 @@ pub mod alerts {
 /// 自选股 API 端点
 pub mod watchlist {
     use super::*;
-    use crate::watchlist::{WatchlistManager, WatchlistItem};
-    use actix_web::{post, delete};
+    use crate::watchlist::{WatchlistItem, WatchlistManager};
+    use actix_web::{delete, post};
     use std::sync::Arc;
 
     /// WatchlistManager 的 Actix Web 数据包装
@@ -282,7 +282,10 @@ pub mod watchlist {
         query: web::Query<WatchlistQuery>,
     ) -> impl Responder {
         let code = path.into_inner();
-        let user_id = query.user_id.clone().unwrap_or_else(|| "default".to_string());
+        let user_id = query
+            .user_id
+            .clone()
+            .unwrap_or_else(|| "default".to_string());
 
         match manager.0.remove_stock(&user_id, &code).await {
             Ok(_) => HttpResponse::Ok().json(serde_json::json!({
@@ -305,7 +308,10 @@ pub mod watchlist {
         manager: web::Data<WatchlistManagerData>,
         query: web::Query<WatchlistQuery>,
     ) -> impl Responder {
-        let user_id = query.user_id.clone().unwrap_or_else(|| "default".to_string());
+        let user_id = query
+            .user_id
+            .clone()
+            .unwrap_or_else(|| "default".to_string());
         let items = manager.0.get_watchlist(&user_id).await;
         HttpResponse::Ok().json(WatchlistResponse { items })
     }
@@ -318,7 +324,10 @@ pub mod watchlist {
         query: web::Query<WatchlistQuery>,
     ) -> impl Responder {
         let code = path.into_inner();
-        let user_id = query.user_id.clone().unwrap_or_else(|| "default".to_string());
+        let user_id = query
+            .user_id
+            .clone()
+            .unwrap_or_else(|| "default".to_string());
         let watched = manager.0.is_watched(&user_id, &code).await;
         HttpResponse::Ok().json(IsWatchedResponse { watched })
     }
