@@ -3,8 +3,8 @@ use crate::types::StockQuote;
 use anyhow::Result;
 use redis::aio::ConnectionManager;
 use std::sync::Arc;
-use std::sync::Mutex as StdMutex;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
@@ -16,11 +16,11 @@ use tracing::{debug, info, warn};
 /// - 双写策略：实时推送到 Redis Stream，批量写入 ClickHouse
 pub struct BufferManager {
     /// 行情数据缓冲区
-    buffer: Arc<StdMutex<Vec<StockQuote>>>,
+    buffer: Arc<Mutex<Vec<StockQuote>>>,
     /// ClickHouse 批量写入器
     ch_writer: ClickHouseWriter,
     /// Redis 连接（用于实时推送）
-    redis_conn: Arc<StdMutex<ConnectionManager>>,
+    redis_conn: Arc<Mutex<ConnectionManager>>,
     /// 缓冲区最大容量（触发刷新）
     max_buffer_size: usize,
     /// 定时刷新间隔（秒）
@@ -47,9 +47,9 @@ impl BufferManager {
         );
 
         Self {
-            buffer: Arc::new(StdMutex::new(Vec::with_capacity(max_buffer_size))),
+            buffer: Arc::new(Mutex::new(Vec::with_capacity(max_buffer_size))),
             ch_writer,
-            redis_conn: Arc::new(StdMutex::new(redis_conn)),
+            redis_conn: Arc::new(Mutex::new(redis_conn)),
             max_buffer_size,
             flush_interval: Duration::from_secs(flush_interval_secs),
         }
@@ -74,7 +74,7 @@ impl BufferManager {
         self.push_to_redis(&quotes).await?;
 
         // 2. 添加到缓冲区（异步写入 ClickHouse）
-        let mut buffer = self.buffer.lock().unwrap();
+        let mut buffer = self.buffer.lock().await;
         let before_size = buffer.len();
         buffer.extend(quotes);
         let added = buffer.len() - before_size;
@@ -88,7 +88,7 @@ impl BufferManager {
 
         // 3. 检查是否需要刷新（大小触发）
         let current_size = {
-            let buffer = self.buffer.lock().unwrap();
+            let buffer = self.buffer.lock().await;
             buffer.len()
         };
 
@@ -112,7 +112,7 @@ impl BufferManager {
     pub async fn flush(&self) -> Result<()> {
         // 取出缓冲区中的所有数据
         let quotes = {
-            let mut buffer = self.buffer.lock().unwrap();
+            let mut buffer = self.buffer.lock().await;
             if buffer.is_empty() {
                 debug!("缓冲区为空，跳过刷新");
                 return Ok(());
@@ -137,7 +137,7 @@ impl BufferManager {
             Err(e) => {
                 // 如果写入失败，将数据放回缓冲区（避免丢失）
                 {
-                    let mut buffer = self.buffer.lock().unwrap();
+                    let mut buffer = self.buffer.lock().await;
                     buffer.extend(quotes);
                 }
                 Err(anyhow::anyhow!("刷新失败，数据已放回缓冲区: {}", e))
@@ -178,7 +178,7 @@ impl BufferManager {
             return Ok(());
         }
 
-        let mut conn = self.redis_conn.lock().unwrap();
+        let mut conn = self.redis_conn.lock().await;
         let mut pushed = 0usize;
 
         for quote in quotes {
@@ -200,14 +200,14 @@ impl BufferManager {
     }
 
     /// 获取当前缓冲区大小（用于监控）
-    pub fn buffer_size(&self) -> usize {
-        let buffer = self.buffer.lock().unwrap();
+    pub async fn buffer_size(&self) -> usize {
+        let buffer = self.buffer.lock().await;
         buffer.len()
     }
 
     /// 清空缓冲区（用于测试或异常恢复）
-    pub fn clear(&self) {
-        let mut buffer = self.buffer.lock().unwrap();
+    pub async fn clear(&self) {
+        let mut buffer = self.buffer.lock().await;
         let size = buffer.len();
         buffer.clear();
         info!("已清空缓冲区（{} 条记录）", size);

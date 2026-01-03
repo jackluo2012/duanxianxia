@@ -132,19 +132,15 @@ impl ClickHouseWriter {
 
     /// 写入单批数据到 ClickHouse
     async fn write_batch(&self, batch: &[StockQuote]) -> Result<()> {
-        // 创建 INSERT 语句
-        let mut insert = self
-            .ch_client
-            .insert("duanxianxia.stock_realtime_quotes")?
-            .with_option("async_insert", "1")
-            .with_option("wait_for_async_insert", "0");
+        // 创建 INSERT 语句（同步模式，确保数据立即写入）
+        let mut insert = self.ch_client.insert("duanxianxia.stock_realtime_quotes")?;
 
         // 批量写入数据
         for quote in batch {
             insert.write(quote).await?;
         }
 
-        // 完成写入
+        // 完成写入（同步等待）
         insert.end().await?;
 
         Ok(())

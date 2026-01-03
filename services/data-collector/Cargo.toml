@@ -14,5 +14,5 @@ tracing-subscriber = { workspace = true }
 rustdx-complete = { workspace = true }
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 clickhouse = { version = "0.12", features = ["time"] }
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 shared = { path = "../../shared" }
