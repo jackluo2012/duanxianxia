@@ -12,6 +12,9 @@ use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
 use quote_collector::QuoteCollector;
 use stock_list_manager::StockListManager;
+use kline_aggregator::KlineAggregator;
+use kline_backfill::KlineBackfill;
+use kline_corrector::KlineCorrector;
 use anyhow::Result;
 use clickhouse::Client;
 use redis::aio::ConnectionManager;
@@ -67,11 +70,18 @@ async fn main() -> Result<()> {
     let ch_writer = ClickHouseWriter::new(ch_client.clone(), 1000, 30, 3);
     info!("ClickHouse 批量写入器初始化完成");
 
-    // 7. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
+    // 7. 初始化K线采集器（预留接口）
+    info!("正在初始化K线采集器...");
+    // 注意：K线模块需要额外的Redis连接，暂不启用
+    // let kline_backfill = Arc::new(KlineBackfill::new(ch_client.clone(), 3, 80, 10));
+    // let kline_corrector = Arc::new(KlineCorrector::new(ch_client.clone(), "15:30", 3)?);
+    info!("K线采集器初始化完成（模块已加载，未启用）");
+
+    // 8. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
     let buffer_manager = Arc::new(BufferManager::new(ch_writer, redis_conn, 1000, 5));
     info!("缓冲区管理器初始化完成");
 
-    // 8. 启动定时刷新任务（后台运行）
+    // 9. 启动定时刷新任务（后台运行）
     let buffer_manager_clone = Arc::clone(&buffer_manager);
     tokio::spawn(async move {
         info!("启动定时刷新任务");
