@@ -13,10 +13,6 @@ use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
 use quote_collector::QuoteCollector;
 use stock_list_manager::StockListManager;
-use review_collector::ReviewCollector; // 导入涨停复盘采集器
-use kline_aggregator::KlineAggregator;
-use kline_backfill::KlineBackfill;
-use kline_corrector::KlineCorrector;
 use scheduler::{TradingScheduler, SchedulerState}; // 导入调度器
 use anyhow::Result;
 use clickhouse::Client;
@@ -25,7 +21,7 @@ use redis::Client as RedisClient;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{error, info, debug};
+use tracing::{error, info, debug, warn};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -73,86 +69,119 @@ async fn main() -> Result<()> {
     let ch_writer = ClickHouseWriter::new(ch_client.clone(), 1000, 30, 3);
     info!("ClickHouse 批量写入器初始化完成");
 
-    // 7. 初始化K线采集器（预留接口）
+    // 7. 初始化调度器
+    info!("正在初始化调度器...");
+    let scheduler = TradingScheduler::new().await?;
+    info!("调度器初始化完成");
+
+    // 8. 初始化K线采集器（预留接口）
     info!("正在初始化K线采集器...");
     // 注意：K线模块需要额外的Redis连接，暂不启用
     // let kline_backfill = Arc::new(KlineBackfill::new(ch_client.clone(), 3, 80, 10));
     // let kline_corrector = Arc::new(KlineCorrector::new(ch_client.clone(), "15:30", 3)?);
     info!("K线采集器初始化完成（模块已加载，未启用）");
 
-    // 8. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
+    // 9. 初始化缓冲区管理器（最大1000条，5秒定时刷新）
     let buffer_manager = Arc::new(BufferManager::new(ch_writer, redis_conn, 1000, 5));
     info!("缓冲区管理器初始化完成");
 
-    // 9. 启动定时刷新任务（后台运行）
+    // 10. 启动定时刷新任务（后台运行）
     let buffer_manager_clone = Arc::clone(&buffer_manager);
     tokio::spawn(async move {
         info!("启动定时刷新任务");
         buffer_manager_clone.start_periodic_flush().await
     });
 
-    // 9. 持续采集行情数据
+    // 11. 持续采集行情数据
     info!("开始全市场行情数据采集...");
     let mut round = 0u32;
 
     loop {
         round += 1;
-        info!("========== 第 {} 轮采集开始 ==========", round);
+        info!("========== 第 {} 轮调度检查 ==========", round);
 
-        let mut round_total = 0usize;
+        // 检查调度状态
+        let (state, next_check, interval) = scheduler.check_status().await?;
 
-        // 分批采集所有股票的实时行情
-        for (i, batch) in stock_batches.iter().enumerate() {
-            match quote_collector.collect_batch(batch).await {
-                Ok(quotes) => {
-                    info!(
-                        "第 {}/{} 批采集成功：{} 只股票",
-                        i + 1,
-                        stock_batches.len(),
-                        quotes.len()
-                    );
+        match state {
+            SchedulerState::Active => {
+                info!("【交易时段】开始采集");
 
-                    // 立即将本批次数据添加到缓冲区（实时写入 Redis + 异步写入 ClickHouse）
-                    if !quotes.is_empty() {
-                        match buffer_manager.add_quotes(quotes).await {
-                            Ok(added) => {
-                                round_total += added;
-                                debug!("成功添加 {} 条数据到缓冲区", added);
-                            }
-                            Err(e) => {
-                                error!("添加数据到缓冲区失败: {}", e);
+                // 原有的采集逻辑（保持不变）
+                let mut round_success = 0usize;
+                let mut round_failed = 0usize;
+                let start_time = std::time::Instant::now();
+
+                for (i, batch) in stock_batches.iter().enumerate() {
+                    match quote_collector.collect_batch(batch).await {
+                        Ok(quotes) => {
+                            info!(
+                                "第 {}/{} 批采集成功：{} 只股票",
+                                i + 1,
+                                stock_batches.len(),
+                                quotes.len()
+                            );
+
+                            round_success += quotes.len();
+
+                            // 立即将本批次数据添加到缓冲区（实时写入 Redis + 异步写入 ClickHouse）
+                            if !quotes.is_empty() {
+                                match buffer_manager.add_quotes(quotes).await {
+                                    Ok(added) => {
+                                        debug!("成功添加 {} 条数据到缓冲区", added);
+                                    }
+                                    Err(e) => {
+                                        error!("添加数据到缓冲区失败: {}", e);
+                                    }
+                                }
                             }
                         }
+                        Err(e) => {
+                            error!(
+                                "第 {}/{} 批采集失败: {}，跳过该批次",
+                                i + 1,
+                                stock_batches.len(),
+                                e
+                            );
+                            round_failed += batch.len();
+                        }
+                    }
+
+                    // 避免请求过快
+                    if i < stock_batches.len() - 1 {
+                        sleep(Duration::from_millis(100)).await;
                     }
                 }
-                Err(e) => {
-                    error!(
-                        "第 {}/{} 批采集失败: {}，跳过该批次",
-                        i + 1,
-                        stock_batches.len(),
-                        e
-                    );
-                }
+
+                let elapsed = start_time.elapsed();
+
+                info!(
+                    "第 {} 轮采集完成: 成功={}, 失败={}, 耗时={:?}",
+                    round, round_success, round_failed, elapsed
+                );
+
+                // 显示缓冲区状态
+                let buffer_size = buffer_manager.buffer_size().await;
+                info!("当前缓冲区大小：{} 条", buffer_size);
+
+                // 交易时段：3秒后继续下一轮
+                sleep(Duration::from_secs(3)).await;
             }
 
-            // 避免请求过快
-            if i < stock_batches.len() - 1 {
-                sleep(Duration::from_millis(100)).await;
+            SchedulerState::Inactive => {
+                info!(
+                    "【非交易时段】进入休眠，下次检查时间: {}",
+                    next_check.format("%Y-%m-%d %H:%M:%S")
+                );
+
+                // 非交易时段：使用调度器返回的间隔休眠
+                sleep(interval).await;
+            }
+
+            _ => {
+                warn!("未实现的调度器状态: {:?}", state);
+                sleep(Duration::from_secs(10)).await;
             }
         }
-
-        info!(
-            "第 {} 轮采集完成：共 {} 条行情数据已推送到缓冲区",
-            round, round_total
-        );
-
-        // 显示缓冲区状态
-        let buffer_size = buffer_manager.buffer_size().await;
-        info!("当前缓冲区大小：{} 条", buffer_size);
-
-        info!("========== 第 {} 轮采集结束 ==========", round);
-
-        // 每 3 秒进行下一轮采集
-        sleep(Duration::from_secs(3)).await;
     }
 }
