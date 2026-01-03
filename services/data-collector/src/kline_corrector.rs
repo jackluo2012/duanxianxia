@@ -169,6 +169,7 @@ pub struct CorrectionReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
 
     #[test]
     fn test_corrector_new() {
