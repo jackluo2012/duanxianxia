@@ -49,7 +49,10 @@ clickhouse            Up 3 days
 
 ### 3.1 默认数据库表检查
 
-**命令**: `docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SHOW TABLES FROM default"`
+**原始命令**: `SHOW TABLES FROM system.databases WHERE database='default'`
+**修正后命令**: `docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SHOW TABLES FROM default"`
+
+**命令修正说明**: 原始命令存在语法错误。`SHOW TABLES` 命令不支持 `WHERE` 子句过滤数据库名，正确的语法是 `SHOW TABLES FROM <database_name>`。因此将命令修正为 `SHOW TABLES FROM default`。
 
 **实际输出**:
 ```
@@ -73,6 +76,12 @@ stock_quotes
 6. `stock_quotes` - 股票实时行情（Grafana Dashboard需要）
 
 ### 3.2 K线数据表检查
+
+**验证范围扩展说明**: 在检查 `default` 数据库后，我决定额外检查 `duanxianxia` 数据库。原因如下：
+1. 在 Step 2 中发现 ClickHouse 存在多个数据库
+2. `default` 数据库中未找到 K 线数据表
+3. `duanxianxia` 数据库名称表明它是项目的主要业务数据库
+4. 为了全面了解数据分布，避免遗漏重要数据表
 
 **额外验证**: 在 `duanxianxia` 数据库中找到了K线数据表
 
@@ -101,14 +110,16 @@ stock_realtime_quotes
 - ✅ `stock_indicators` - 技术指标数据
 
 **重要发现**:
-- K线数据表名：`duanxianxia.stock_kline`（非 `kline_data`）
+- **表名更正**: 原始需求中提到的 `kline_data` 表有误，实际表名为 `duanxianxia.stock_kline`
 - 实时行情有两个位置：
   - `default.stock_quotes`（321条记录）
   - `duanxianxia.stock_realtime_quotes`（8,039,110条记录）
 
 ---
 
-## Step 4: 数据完整性验证
+## Step 4: 数据完整性验证（额外可选检查）
+
+**说明**: 此步骤不在原始需求范围内，是额外的可选验证步骤，用于进一步了解数据量和数据完整性状态。
 
 ### 4.1 实时行情数据检查
 
@@ -238,8 +249,9 @@ stock_realtime_quotes
    - `stock_quotes`: 321条最新记录（实时快照）
    - `stock_kline`: 表已创建但为空（等待数据采集）
 
-3. **表名差异**:
-   - 任务描述中的 `kline_data` 实际为 `duanxianxia.stock_kline`
+3. **表名更正**:
+   - **原始需求中提到的 `kline_data` 表应为 `stock_kline`**
+   - 实际表名：`duanxianxia.stock_kline`
    - 实时行情有两个表可用，建议根据使用场景选择
 
 ---
