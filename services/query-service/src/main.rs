@@ -11,6 +11,7 @@ mod sectors;
 mod sectors_impl;
 mod indicators;
 mod types;
+mod review;  // 涨停复盘模块
 
 async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({
@@ -59,9 +60,13 @@ async fn main() -> Result<()> {
     HttpServer::new(move || {
         let cors = Cors::permissive();
 
+        // 创建 ReviewService 实例
+        let review_service = review::ReviewService::new(clickhouse_client.clone());
+
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(clickhouse_client.clone()))
+            .app_data(web::Data::new(review_service))
             .route("/health", web::get().to(health))
             .service(
                 web::scope("/api/screener")
@@ -86,6 +91,13 @@ async fn main() -> Result<()> {
                     .route("/{code}/kdj", web::get().to(api_handlers_real::get_kdj))
                     .route("/{code}/rsi", web::get().to(api_handlers_real::get_rsi))
                     .route("/calculate", web::post().to(api_handlers_real::calculate_indicators))
+            )
+            .service(
+                web::scope("/api/review")
+                    .route("/daily", web::get().to(review::get_daily_review))
+                    .route("/consecutive", web::get().to(review::get_consecutive_review))
+                    .route("/sectors", web::get().to(review::get_sector_review))
+                    .route("/trend", web::get().to(review::get_trend_review))
             )
     })
     .bind(&bind_address)?

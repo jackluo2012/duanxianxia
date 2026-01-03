@@ -164,3 +164,187 @@ impl KlineWindow {
         })
     }
 }
+
+// ===================================================================
+// 涨停复盘类型定义
+// ===================================================================
+
+/// 涨停类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LimitType {
+    /// 一字板（开盘即涨停）
+    Straight,
+    /// T字板（曾打开但最终封住）
+    T,
+    /// 自然板（涨停前有波动）
+    Natural,
+}
+
+impl LimitType {
+    /// 转换为字符串
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LimitType::Straight => "straight",
+            LimitType::T => "t",
+            LimitType::Natural => "natural",
+        }
+    }
+
+    /// 从字符串解析
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "straight" => Some(LimitType::Straight),
+            "t" => Some(LimitType::T),
+            "natural" => Some(LimitType::Natural),
+            _ => None,
+        }
+    }
+}
+
+/// 涨停事件
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LimitUpEvent {
+    /// 股票代码
+    pub code: String,
+    /// 股票名称
+    pub name: String,
+    /// 涨停时间
+    pub limit_time: DateTime<Utc>,
+    /// 涨停类型
+    pub limit_type: LimitType,
+    /// 开盘价
+    pub open_price: f64,
+    /// 涨停价
+    pub limit_price: f64,
+    /// 封单金额（元）
+    pub sealed_amount: f64,
+    /// 封单量（手）
+    pub sealed_volume: f64,
+    /// 买一量（手）
+    pub buy1_volume: f64,
+    /// 成交量（手）
+    pub volume: f64,
+    /// 成交额（元）
+    pub amount: f64,
+    /// 换手率
+    pub turnover_rate: f32,
+    /// 所属板块
+    pub sector_name: String,
+    /// 是否首板
+    pub is_first_board: bool,
+    /// 昨收价
+    pub preclose: f64,
+}
+
+/// 连板记录（内存中状态）
+#[derive(Debug, Clone)]
+pub struct ConsecutiveRecord {
+    /// 股票代码
+    pub code: String,
+    /// 股票名称
+    pub name: String,
+    /// 连板天数
+    pub consecutive_days: u8,
+    /// 连板开始日期
+    pub start_date: chrono::NaiveDate,
+    /// 最后涨停日期
+    pub last_limit_date: chrono::NaiveDate,
+    /// 最后涨停时间
+    pub last_limit_time: DateTime<Utc>,
+    /// 是否活跃（仍在连板中）
+    pub is_active: bool,
+    /// 历史涨停事件列表
+    pub limit_events: Vec<LimitUpEvent>,
+}
+
+/// 板块统计（内存中状态）
+#[derive(Debug, Clone)]
+pub struct SectorStats {
+    /// 板块代码
+    pub sector_code: String,
+    /// 板块名称
+    pub sector_name: String,
+    /// 涨停股数量
+    pub limit_up_count: u32,
+    /// 板块总股票数
+    pub total_stocks: u32,
+    /// 成交额总和（元）
+    pub total_amount: f64,
+    /// 成交量总和（手）
+    pub total_volume: f64,
+    /// 平均涨跌幅
+    pub avg_change_percent: f64,
+    /// 最大涨幅
+    pub max_change_percent: f64,
+    /// 最小涨幅
+    pub min_change_percent: f64,
+    /// 资金净流入（元）
+    pub net_inflow: f64,
+    /// 连板加权评分
+    pub consecutive_score: f64,
+    /// 涨停股票列表
+    pub limit_up_stocks: Vec<String>,
+}
+
+/// 每日涨停汇总
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct DailyLimitUpSummary {
+    pub date: chrono::NaiveDate,
+    pub total_count: u32,
+    pub first_board: u32,
+    pub auction_limit: u32,
+    pub morning_limit: u32,
+    pub afternoon_limit: u32,
+    pub straight_limit: u32,
+    pub t_limit: u32,
+    pub natural_limit: u32,
+    pub broken_count: u32,
+    pub broken_rate: f32,
+    pub market_sentiment_index: f32,
+}
+
+/// 连板历史记录
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct ConsecutiveBoardHistory {
+    pub date: chrono::NaiveDate,
+    pub code: String,
+    pub name: String,
+    pub consecutive_days: u8,
+    pub start_date: chrono::NaiveDate,
+    pub end_date: Option<chrono::NaiveDate>,
+    pub is_active: u8,
+    pub limit_time: DateTime<Utc>,
+    pub limit_type: String,
+    pub open_price: f64,
+    pub limit_price: f64,
+    pub sealed_amount: f64,
+    pub sealed_volume: f64,
+    pub buy1_volume: u32,
+    pub volume: f64,
+    pub amount: f64,
+    pub turnover_rate: f32,
+    pub sector_name: String,
+}
+
+/// 板块每日强度
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct SectorDailyStrength {
+    pub date: chrono::NaiveDate,
+    pub sector_code: String,
+    pub sector_name: String,
+    pub limit_up_count: u32,
+    pub limit_up_ratio: f32,
+    pub consecutive_score: f64,
+    pub avg_change_percent: f64,
+    pub max_change_percent: f64,
+    pub min_change_percent: f64,
+    pub total_amount: f64,
+    pub total_volume: f64,
+    pub avg_turnover_rate: f32,
+    pub net_inflow: f64,
+    pub net_inflow_ratio: f32,
+    pub strength_rank: u32,
+    pub strength_score: f64,
+    pub trend_3d: f32,
+    pub trend_5d: f32,
+}

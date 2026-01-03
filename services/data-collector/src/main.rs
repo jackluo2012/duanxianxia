@@ -4,6 +4,7 @@ mod stock_list_manager;
 mod quote_collector;
 mod clickhouse_writer;
 mod buffer_manager;
+mod review_collector; // 涨停复盘模块
 
 // K线相关模块使用条件编译（默认禁用）
 #[cfg(feature = "kline")]
@@ -19,6 +20,7 @@ use buffer_manager::BufferManager;
 use clickhouse_writer::ClickHouseWriter;
 use quote_collector::QuoteCollector;
 use stock_list_manager::StockListManager;
+use review_collector::ReviewCollector; // 导入涨停复盘采集器
 
 #[cfg(feature = "kline")]
 use kline_aggregator::KlineAggregator;
