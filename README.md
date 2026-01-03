@@ -125,7 +125,17 @@ docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client < db/auction
 docker exec -i $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia < db/user.sql
 ```
 
-#### 3. 启动竞价分析服务 🆕
+#### 3. 配置环境变量
+
+```bash
+# 配置数据采集服务环境变量
+cp services/data-collector/.env.example services/data-collector/.env
+
+# 根据需要修改 .env 文件
+# FORCE_MODE=true  # 开启强制模式用于测试
+```
+
+#### 4. 启动竞价分析服务 🆕
 
 ```bash
 # Terminal 1: auction-storage
@@ -141,7 +151,7 @@ cd services/auction-service
 cargo run
 ```
 
-#### 4. 启动前端
+#### 5. 启动前端
 
 ```bash
 cd frontend
