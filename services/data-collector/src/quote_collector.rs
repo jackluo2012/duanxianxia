@@ -98,9 +98,7 @@ impl QuoteCollector {
                     .collect();
 
                 let mut quotes = SecurityQuotes::new(stock_codes);
-                let mut tcp_guard = tcp.lock()
-                    .expect("Failed to acquire TCP lock in quote collection");
-                match quotes.recv_parsed(&mut *tcp_guard) {
+                match quotes.recv_parsed(&mut *tcp.lock().unwrap()) {
                     Ok(_) => {
                         // 在闭包内直接转换数据为拥有所有权的结构
                         let quote_data = quotes.result();

@@ -8,9 +8,6 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
-/// Redis Stream 名称常量
-const STOCK_QUOTES_STREAM: &str = "stock_quotes";
-
 /// 缓冲区管理器
 ///
 /// ## 职责
@@ -187,7 +184,7 @@ impl BufferManager {
         for quote in quotes {
             let data = serde_json::to_vec(quote)?;
             let _: () = redis::cmd("XADD")
-                .arg(STOCK_QUOTES_STREAM)
+                .arg("stock_quotes")
                 .arg("*")
                 .arg("data")
                 .arg(data)

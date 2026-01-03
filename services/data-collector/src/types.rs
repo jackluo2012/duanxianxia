@@ -62,13 +62,13 @@ impl KlinePeriod {
     }
 }
 
-/// K线数据
-#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+/// K线数据 (内存中,使用枚举类型)
+#[derive(Debug, Clone)]
 pub struct KlineData {
     pub timestamp: DateTime<Utc>,
     pub code: String,
     pub name: String,
-    pub period: String,  // ClickHouse 需要基础类型，存储 "1m" 或 "5m"
+    pub period: KlinePeriod,
     pub open: f64,
     pub high: f64,
     pub low: f64,
@@ -77,6 +77,42 @@ pub struct KlineData {
     pub amount: f64,
     pub trade_count: u32,
     pub source: String,
+}
+
+/// K线数据 (ClickHouse存储用,使用String类型)
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct KlineDataCH {
+    pub timestamp: DateTime<Utc>,
+    pub code: String,
+    pub name: String,
+    pub period: String,  // "1m" 或 "5m"
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+    pub amount: f64,
+    pub trade_count: u32,
+    pub source: String,
+}
+
+impl From<KlineData> for KlineDataCH {
+    fn from(data: KlineData) -> Self {
+        Self {
+            timestamp: data.timestamp,
+            code: data.code,
+            name: data.name,
+            period: data.period.as_str().to_string(),
+            open: data.open,
+            high: data.high,
+            low: data.low,
+            close: data.close,
+            volume: data.volume,
+            amount: data.amount,
+            trade_count: data.trade_count,
+            source: data.source,
+        }
+    }
 }
 
 /// K线聚合窗口（内存中）
@@ -152,7 +188,7 @@ impl KlineWindow {
             timestamp: self.start_time,
             code: self.code.clone(),
             name: self.name.clone(),
-            period: self.period.as_str().to_string(),  // 转换为 String
+            period: self.period,
             open,
             high: if self.high > f64::MIN { self.high } else { open },
             low: if self.low < f64::MAX { self.low } else { open },

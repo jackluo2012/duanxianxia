@@ -1,5 +1,3 @@
-#![cfg(feature = "kline")]
-
 use crate::types::{KlineData, KlinePeriod, KlineWindow, StockQuote};
 use anyhow::Result;
 use chrono::{DateTime, Timelike, Utc};
@@ -12,12 +10,6 @@ use std::sync::Mutex as StdMutex;
 use tokio::sync::Mutex;
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
-
-/// Redis Stream 名称常量
-const STOCK_QUOTES_STREAM: &str = "stock_quotes";
-
-/// K线窗口过期时间（秒）- 2小时
-const WINDOW_EXPIRY_SECONDS: i64 = 7200;
 
 /// K线实时聚合器
 pub struct KlineAggregator {
@@ -91,8 +83,7 @@ impl KlineAggregator {
             .count(self.buffer_size);
 
         // 使用XREAD读取流数据
-        let mut conn = self.redis_conn.lock()
-            .expect("Failed to acquire Redis connection lock in KlineAggregator");
+        let mut conn = self.redis_conn.lock().unwrap();
         let result: redis::streams::StreamReadReply = conn
             .xread_options(&[stream_key], &[last_id], &options)
             .await?;
@@ -180,10 +171,10 @@ impl KlineAggregator {
         None
     }
 
-    /// 生成窗口Key（包含完整的时间戳信息，精确到分钟）
+    /// 生成窗口Key
     fn make_window_key(code: &str, period: KlinePeriod, time: &DateTime<Utc>) -> String {
-        // 包含完整的时间戳信息（精确到分钟）以避免同一天内的数据覆盖
-        format!("{}:{}:{}", code, period.as_str(), time.format("%Y-%m-%d %H:%M"))
+        let date_str = time.format("%Y-%m-%d").to_string();
+        format!("{}:{}:{}", code, period.as_str(), date_str)
     }
 
     /// 计算窗口开始时间
@@ -226,7 +217,7 @@ impl KlineAggregator {
         // 清理超过2小时未更新的窗口
         windows.retain(|_key, window| {
             let elapsed = current_time.signed_duration_since(window.last_update).num_seconds();
-            elapsed < WINDOW_EXPIRY_SECONDS
+            elapsed < 7200 // 2小时 = 7200秒
         });
 
         let removed_count = initial_count - windows.len();
@@ -261,10 +252,10 @@ mod tests {
             .with_timezone(&Utc);
 
         let key = KlineAggregator::make_window_key("000001", KlinePeriod::OneMinute, &time);
-        assert_eq!(key, "000001:1m:2026-01-02 10:30");
+        assert_eq!(key, "000001:1m:2026-01-02");
 
         let key = KlineAggregator::make_window_key("000001", KlinePeriod::FiveMinutes, &time);
-        assert_eq!(key, "000001:5m:2026-01-02 10:30");
+        assert_eq!(key, "000001:5m:2026-01-02");
     }
 
     #[test]
