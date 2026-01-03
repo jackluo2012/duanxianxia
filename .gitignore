@@ -25,3 +25,6 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+
+# Config local overrides
+config/*.local.json
