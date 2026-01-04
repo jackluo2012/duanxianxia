@@ -54,11 +54,33 @@ impl StockListManager {
                         break;
                     }
 
-                    // 转换为 StockInfo
+                    // 转换为 StockInfo（仅保留A股，过滤基金、ETF、转债等）
                     let stock_infos: Vec<StockInfo> = stocks
                         .iter()
                         .filter_map(|s| {
                             if s.code.is_empty() || s.code.len() != 6 {
+                                return None;
+                            }
+
+                            // 过滤非股票代码（基金、ETF、转债等）
+                            let code = &s.code;
+                            let is_valid_stock = match market {
+                                0 => {
+                                    // 深市：000xxx(主板), 001xxx(主板), 002xxx(中小板), 003xxx(主板), 300xxx(创业板)
+                                    code.starts_with("000") || code.starts_with("001")
+                                        || code.starts_with("002") || code.starts_with("003")
+                                        || code.starts_with("300")
+                                }
+                                1 => {
+                                    // 沪市：600xxx, 601xxx, 603xxx, 605xxx(主板), 688xxx, 689xxx(科创板)
+                                    code.starts_with("600") || code.starts_with("601")
+                                        || code.starts_with("603") || code.starts_with("605")
+                                        || code.starts_with("688") || code.starts_with("689")
+                                }
+                                _ => false,
+                            };
+
+                            if !is_valid_stock {
                                 return None;
                             }
 
@@ -113,9 +135,7 @@ impl StockListManager {
         for (i, batch) in batches.enumerate() {
             let mut insert = self
                 .ch_client
-                .insert("duanxianxia.stock_list")?
-                .with_option("async_insert", "1")
-                .with_option("wait_for_async_insert", "0");
+                .insert("duanxianxia.stock_list")?;
 
             for stock in batch {
                 insert.write(stock).await?;

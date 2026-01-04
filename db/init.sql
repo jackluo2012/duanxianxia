@@ -1,10 +1,13 @@
 -- db/init.sql
 -- 初始化 ClickHouse 表结构
 
+-- 使用 duanxianxia 数据库
+USE duanxianxia;
+
 -- 1. 股票实时行情表（旧版）
-CREATE TABLE IF NOT EXISTS stock_quotes (
-    date Date DEFAULT today(),
-    datetime DateTime DEFAULT now(),
+CREATE TABLE IF NOT EXISTS duanxianxia.stock_quotes (
+    date Date DEFAULT today('Asia/Shanghai'),
+    datetime DateTime DEFAULT now('Asia/Shanghai'),
     code FixedString(6),
     name String,
     market UInt8,
@@ -26,19 +29,19 @@ ORDER BY (code, datetime)
 SETTINGS index_granularity = 8192;
 
 -- 2. 股票列表表
-CREATE TABLE IF NOT EXISTS stock_list (
+CREATE TABLE IF NOT EXISTS duanxianxia.stock_list (
     code String,
     name String,
     market UInt8,
-    list_date Date,
+    list_date String,
     status String,
-    updated_at DateTime DEFAULT now()
+    updated_at DateTime DEFAULT now('Asia/Shanghai')
 ) ENGINE = ReplacingMergeTree()
 ORDER BY (market, code)
 SETTINGS index_granularity = 8192;
 
 -- 3. K线数据表
-CREATE TABLE IF NOT EXISTS stock_kline (
+CREATE TABLE IF NOT EXISTS duanxianxia.stock_kline (
     timestamp DateTime,
     code String,
     name String,
@@ -52,13 +55,13 @@ CREATE TABLE IF NOT EXISTS stock_kline (
     trade_count UInt32,
     source LowCardinality(String)
 ) ENGINE = MergeTree()
-PARTITION BY toYYYYMM(timestamp)
+PARTITION BY toYYYYMM(toDateTime(timestamp, 'Asia/Shanghai'))
 ORDER BY (code, period, timestamp)
 TTL timestamp + INTERVAL 6 MONTH
 SETTINGS index_granularity = 8192;
 
 -- 4. 实时行情表（新版）
-CREATE TABLE IF NOT EXISTS stock_realtime_quotes (
+CREATE TABLE IF NOT EXISTS duanxianxia.stock_realtime_quotes (
     timestamp DateTime,
     code String,
     name String,
@@ -71,6 +74,6 @@ CREATE TABLE IF NOT EXISTS stock_realtime_quotes (
     amount Float64,
     change_percent Float64
 ) ENGINE = MergeTree()
-PARTITION BY toYYYYMM(timestamp)
+PARTITION BY toYYYYMM(toDateTime(timestamp, 'Asia/Shanghai'))
 ORDER BY (code, timestamp)
 SETTINGS index_granularity = 8192;

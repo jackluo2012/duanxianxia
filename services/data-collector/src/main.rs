@@ -41,6 +41,8 @@ async fn main() -> Result<()> {
     let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
     let clickhouse_url =
         std::env::var("CLICKHOUSE_URL").unwrap_or("http://localhost:8123".to_string());
+    let clickhouse_db =
+        std::env::var("CLICKHOUSE_DATABASE").unwrap_or("duanxianxia".to_string());
 
     // 1. 连接 Redis
     let redis_client = RedisClient::open(redis_url)?;
@@ -48,7 +50,9 @@ async fn main() -> Result<()> {
     info!("成功连接到 Redis");
 
     // 2. 连接 ClickHouse
-    let ch_client = Client::default().with_url(clickhouse_url);
+    let ch_client = Client::default()
+        .with_url(clickhouse_url)
+        .with_database(&clickhouse_db);
     info!("成功连接到 ClickHouse");
 
     // 3. 初始化股票列表管理器并获取全市场股票

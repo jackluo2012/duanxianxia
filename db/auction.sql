@@ -1,6 +1,6 @@
 -- 竞价原始数据表
-CREATE TABLE IF NOT EXISTS auction_quotes (
-    date Date,
+CREATE TABLE IF NOT EXISTS duanxianxia.auction_quotes (
+    date Date DEFAULT today('Asia/Shanghai'),
     code String,
     name String,
     time DateTime,
@@ -16,12 +16,12 @@ CREATE TABLE IF NOT EXISTS auction_quotes (
     sealed_amount_buy Float64,
     sealed_amount_sell Float64
 ) ENGINE = MergeTree()
-PARTITION BY date
+PARTITION BY toYYYYMM(toDateTime(time, 'Asia/Shanghai'))
 ORDER BY (code, time)
 SETTINGS index_granularity = 8192;
 
 -- 竞价分析结果表
-CREATE TABLE IF NOT EXISTS auction_analysis (
+CREATE TABLE IF NOT EXISTS duanxianxia.auction_analysis (
     date Date,
     code String,
     name String,
@@ -35,5 +35,5 @@ CREATE TABLE IF NOT EXISTS auction_analysis (
     intensity_score Float32,
     matched_ratio Float32
 ) ENGINE = SummingMergeTree()
-PARTITION BY date
+PARTITION BY toYYYYMM(toDateTime(date, 'Asia/Shanghai'))
 ORDER BY (code, date);

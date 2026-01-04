@@ -47,6 +47,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 更新 `db/init.sql`，添加所有必需的表结构
   - 修复 `start-all.sh` 使用 `--multiquery` 参数执行多条 SQL
   - 新增表：股票列表表、K线数据表、实时行情表（新版）
+- ✅ **修复 ClickHouse 数据库连接问题**:
+  - 添加 `CLICKHOUSE_DATABASE=duanxianxia` 环境变量
+  - 修改代码使用 `.with_database()` 指定数据库
+  - 修复表在 `default` 数据库创建的问题
+- ✅ **修复数据类型不匹配错误**:
+  - 将 `stock_list.list_date` 从 `Date` 改为 `String` 类型
+  - 移除异步插入选项导致的写入问题
+  - 成功写入 48711 只股票到 ClickHouse
+- ✅ **修复股票数据包含非股票产品**:
+  - 添加股票代码过滤逻辑，仅保留真实 A 股
+  - 深市：过滤掉基金、ETF、转债等，仅保留 000/001/002/003/300 开头
+  - 沪市：过滤掉基金、ETF、转债等，仅保留 600/601/603/605/688/689 开头
+  - 股票数量从 48711 只降至 4731 只（符合实际 A 股数量）
+- ✅ **修复时区配置问题**:
+  - 所有 DateTime 字段添加 `'Asia/Shanghai'` 时区
+  - `stock_quotes`: datetime DEFAULT now('Asia/Shanghai')
+  - `stock_list`: updated_at DEFAULT now('Asia/Shanghai')
+  - `auction_quotes`: date DEFAULT today('Asia/Shanghai')
+  - 确保数据时间与北京时间一致（UTC+8）
+- ✅ **更新部署文档**:
+  - 修正 docker-compose ps 输出示例（容器名称格式）
+  - 添加股票过滤和时区配置说明
+  - 确保文档与实际输出一致
 
 ### Planned
 - 历史数据回测引擎

@@ -179,10 +179,10 @@ docker-compose ps redis clickhouse postgres
 
 预期输出：
 ```
-NAME                        STATUS          PORTS
-duanxianxia-redis-1         Up 10 seconds   0.0.0.0:6379->6379/tcp
-duanxianxia-clickhouse-1    Up 10 seconds   0.0.0.0:8123->8123/tcp, 0.0.0.0:9000->9000/tcp
-duanxianxia-postgres-1      Up 10 seconds   0.0.0.0:5433->5432/tcp
+NAME                       STATUS          PORTS
+duanxianxia-redis-1        Up 10 seconds   0.0.0.0:6379->6379/tcp
+duanxianxia-clickhouse-1   Up 10 seconds   0.0.0.0:8123->8123/tcp, 0.0.0.0:9000->9000/tcp
+duanxianxia-postgres-1     Up 10 seconds   0.0.0.0:5433->5432/tcp
 ```
 
 ### 步骤 2: 初始化数据库
