@@ -25,13 +25,17 @@ use std::time::Duration;
 use stock_list_manager::StockListManager;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
+use tracing_subscriber::fmt::time::OffsetTime;
+use time::UtcOffset;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 初始化日志
+    // 初始化日志（使用北京时间 UTC+8）
+    let offset = UtcOffset::from_hms(8, 0, 0).unwrap();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_target(false)
+        .with_timer(OffsetTime::new(offset, time::format_description::well_known::Rfc3339))
         .json()
         .init();
 

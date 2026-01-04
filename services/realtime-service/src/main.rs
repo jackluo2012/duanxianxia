@@ -6,6 +6,8 @@ use shared::{StockQuote, WebSocketMessage};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
+use tracing_subscriber::fmt::time::OffsetTime;
+use time::UtcOffset;
 
 // WebSocket 客户端会话
 type ClientSender = mpsc::UnboundedSender<String>;
@@ -20,8 +22,11 @@ struct SubscriptionManager {
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
+    // 初始化日志（使用北京时间 UTC+8）
+    let offset = UtcOffset::from_hms(8, 0, 0).unwrap();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
+        .with_timer(OffsetTime::new(offset, time::format_description::well_known::Rfc3339))
         .json()
         .init();
 

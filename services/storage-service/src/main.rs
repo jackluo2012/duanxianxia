@@ -419,8 +419,11 @@ async fn get_history(
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // 初始化日志（使用北京时间 UTC+8）
+    let offset = time::UtcOffset::from_hms(8, 0, 0).unwrap();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
+        .with_timer(tracing_subscriber::fmt::time::OffsetTime::new(offset, time::format_description::well_known::Rfc3339))
         .json()
         .init();
 
