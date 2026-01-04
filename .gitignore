@@ -1,30 +1,84 @@
+# Rust 编译产物
 /target
-/.env
-/.vscode
-*.log
-node_modules/
-dist/
-.env.local
-
-# Rust specific
 **/*.rs.bk
 *.pdb
+*.profraw
+*.profdata
 
-# OS specific
-.DS_Store
-Thumbs.db
+# 环境配置文件
+.env
+.env.local
+.env.*.local
 
-# IDE/Editor
-.idea/
+# IDE 和编辑器
+/.vscode
+/.idea
 *.swp
 *.swo
+.project
+.classpath
+.settings/
 
-# Test files
+# 操作系统
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 日志文件
+*.log
+logs/
+*.pid
+
+# Node.js / 前端
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# 测试文件
 *.tmp
 *.temp
+
+# 覆盖率报告
+coverage/
+*.lcov
+.nyc_output/
 
 # Git worktrees
 .worktrees/
 
-# Config local overrides
+# 配置本地覆盖
 config/*.local.json
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 备份文件
+*.bak
+*.backup
+*~
+
+# 临时构建文件
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+
+# ClickHouse 数据
+clickhouse_data/
+
+# Redis 数据
+dump.rdb
+appendonly.aof

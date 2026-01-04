@@ -2,6 +2,7 @@ use crate::types::StockQuote;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clickhouse::Client;
+use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tracing::{debug, info, warn};
@@ -15,6 +16,41 @@ pub struct CompletenessReport {
     pub missing_count: usize,
     pub missing_stocks: Vec<String>,
     pub completeness_rate: f64,
+}
+
+/// 异常数据日志
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct AbnormalDataLog {
+    pub timestamp: DateTime<Utc>,
+    pub code: String,
+    pub error_type: String,
+    pub error_message: String,
+    pub raw_data: String,
+    pub severity: String,
+}
+
+/// 数据质量指标
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct DataQualityMetric {
+    pub timestamp: DateTime<Utc>,
+    pub metric_type: String,
+    pub metric_name: String,
+    pub metric_value: f64,
+    pub metadata: String,
+}
+
+/// 数据修复日志
+#[derive(Debug, Clone, Serialize, Deserialize, Row)]
+pub struct DataRepairLog {
+    pub timestamp: DateTime<Utc>,
+    pub code: String,
+    pub repair_type: String,
+    pub start_date: chrono::NaiveDate,
+    pub end_date: chrono::NaiveDate,
+    pub records_repaired: u32,
+    pub records_failed: u32,
+    pub duration_ms: u32,
+    pub metadata: String,
 }
 
 /// 数据质量监控器
@@ -86,24 +122,19 @@ impl QualityMonitor {
         let mut insert = self.clickhouse.insert("abnormal_data_log")?;
 
         for code in missing_stocks {
-            let timestamp = Utc::now();
-            let error_type = "missing_stock".to_string();
-            let error_message = format!("股票 {} 在采集周期内未采集到数据", code);
-            let raw_data = serde_json::json!({ "code": code }).to_string();
-            let severity = if self.expected_stocks.contains(code) {
-                "high"
-            } else {
-                "low"
+            let log = AbnormalDataLog {
+                timestamp: Utc::now(),
+                code: code.clone(),
+                error_type: "missing_stock".to_string(),
+                error_message: format!("股票 {} 在采集周期内未采集到数据", code),
+                raw_data: serde_json::json!({ "code": code }).to_string(),
+                severity: if self.expected_stocks.contains(code) {
+                    "high".to_string()
+                } else {
+                    "low".to_string()
+                },
             };
-
-            insert.write(&(
-                timestamp,
-                code.as_str(),
-                error_type.as_str(),
-                error_message.as_str(),
-                raw_data.as_str(),
-                severity,
-            ))?;
+            insert.write(&log);
         }
 
         insert.end().await?;
@@ -120,40 +151,40 @@ impl QualityMonitor {
         let metric_type = "completeness";
 
         // 预期数量
-        insert.write(&(
+        insert.write(&DataQualityMetric {
             timestamp,
-            metric_type,
-            "expected_count",
-            report.expected_count as f64,
-            "{}",
-        ))?;
+            metric_type: metric_type.to_string(),
+            metric_name: "expected_count".to_string(),
+            metric_value: report.expected_count as f64,
+            metadata: "{}".to_string(),
+        });
 
         // 实际数量
-        insert.write(&(
+        insert.write(&DataQualityMetric {
             timestamp,
-            metric_type,
-            "actual_count",
-            report.actual_count as f64,
-            "{}",
-        ))?;
+            metric_type: metric_type.to_string(),
+            metric_name: "actual_count".to_string(),
+            metric_value: report.actual_count as f64,
+            metadata: "{}".to_string(),
+        });
 
         // 缺失数量
-        insert.write(&(
+        insert.write(&DataQualityMetric {
             timestamp,
-            metric_type,
-            "missing_count",
-            report.missing_count as f64,
-            "{}",
-        ))?;
+            metric_type: metric_type.to_string(),
+            metric_name: "missing_count".to_string(),
+            metric_value: report.missing_count as f64,
+            metadata: "{}".to_string(),
+        });
 
         // 完整性比率
-        insert.write(&(
+        insert.write(&DataQualityMetric {
             timestamp,
-            metric_type,
-            "completeness_rate",
-            report.completeness_rate,
-            "{}",
-        ))?;
+            metric_type: metric_type.to_string(),
+            metric_name: "completeness_rate".to_string(),
+            metric_value: report.completeness_rate,
+            metadata: "{}".to_string(),
+        });
 
         insert.end().await?;
 
@@ -175,12 +206,12 @@ impl QualityMonitor {
         }
 
         // 昨收价必须大于0
-        if quote.pre_close <= 0.0 || quote.pre_close > 10000.0 {
+        if quote.preclose <= 0.0 || quote.preclose > 10000.0 {
             return Ok(false);
         }
 
         // 涨跌幅检查（-20%到+20%）
-        let change_percent = (quote.price - quote.pre_close) / quote.pre_close * 100.0;
+        let change_percent = (quote.price - quote.preclose) / quote.preclose * 100.0;
         if change_percent < -20.0 || change_percent > 20.0 {
             // ST股票、新股可能超过20%，这里只记录不拒绝
             debug!(
@@ -232,23 +263,18 @@ impl QualityMonitor {
         let mut insert = self.clickhouse.insert("abnormal_data_log")?;
 
         for quote in invalid_quotes {
-            let timestamp = Utc::now();
-            let error_type = "invalid_quote";
-            let error_message = format!(
-                "无效行情数据: code={}, price={:.2}, volume={:.0}",
-                quote.code, quote.price, quote.volume
-            );
-            let raw_data = serde_json::to_string(quote).unwrap_or_default();
-            let severity = "medium";
-
-            insert.write(&(
-                timestamp,
-                quote.code.as_str(),
-                error_type,
-                error_message.as_str(),
-                raw_data.as_str(),
-                severity,
-            ))?;
+            let log = AbnormalDataLog {
+                timestamp: Utc::now(),
+                code: quote.code.clone(),
+                error_type: "invalid_quote".to_string(),
+                error_message: format!(
+                    "无效行情数据: code={}, price={:.2}, volume={:.0}",
+                    quote.code, quote.price, quote.volume
+                ),
+                raw_data: serde_json::to_string(quote).unwrap_or_default(),
+                severity: "medium".to_string(),
+            };
+            insert.write(&log);
         }
 
         insert.end().await?;
@@ -290,17 +316,19 @@ impl QualityMonitor {
             }
         });
 
-        insert.write(&(
-            Utc::now(),
-            code,
-            repair_type,
+        let log = DataRepairLog {
+            timestamp: Utc::now(),
+            code: code.to_string(),
+            repair_type: repair_type.to_string(),
             start_date,
             end_date,
             records_repaired,
             records_failed,
             duration_ms,
-            metadata.to_string(),
-        ))?;
+            metadata: metadata.to_string(),
+        };
+
+        insert.write(&log);
 
         insert.end().await?;
 

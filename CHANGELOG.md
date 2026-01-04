@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - 2026-01-04
+
+#### 部署和配置修复
+- ✅ **docker-compose.yml**: 添加 ClickHouse 认证配置环境变量
+  - `CLICKHOUSE_USER=default`
+  - `CLICKHOUSE_PASSWORD=""`
+  - `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1`
+
+- ✅ **start-all.sh**: 优化启动脚本
+  - 自动检测并停止占用端口 8080-8085 的旧进程
+  - 自动创建 data-collector 的 .env 配置文件
+  - 改进错误处理和日志输出
+
+- ✅ **stop-all.sh**: 增强停止脚本
+  - 使用循环清理 PID 文件
+  - 强制清理残留进程（lsof 检测端口）
+  - 防止进程遗漏
+
+- ✅ **.gitignore**: 大幅优化忽略规则
+  - 添加日志文件（*.log, logs/）
+  - 添加 PID 文件（*.pid）
+  - 添加 Rust 覆盖率文件（*.profraw, *.profdata）
+  - 添加更多 IDE 和操作系统临时文件
+  - 添加数据库文件（*.db, *.sqlite）
+  - 添加前端构建产物（dist-ssr, .cache 等）
+
+- ✅ **部署文档**: 更新 docs/DEPLOYMENT.md
+  - 添加数据库认证说明
+  - 添加端口冲突解决方案
+  - 添加自动化改进说明
+  - 更新快速开始指南
+
+#### 问题解决
+- 修复了因旧进程占用端口导致的 "Address already in use" 错误
+- 修复了缺少 .env 文件导致的配置问题
+- 改进了 ClickHouse 连接配置的文档说明
+
 ### Planned
 - 历史数据回测引擎
 - 策略配置和回测模块
