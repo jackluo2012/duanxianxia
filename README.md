@@ -102,6 +102,21 @@
 
 ## 快速开始
 
+### 完全重置（从干净环境开始）
+
+如果遇到问题或想重新部署：
+
+```bash
+# 运行重置脚本（交互式确认每一步）
+./reset-all.sh
+
+# 或快速重置
+./stop-all.sh
+docker-compose down -v
+rm -rf logs/*.log logs/*.pid
+./start-all.sh
+```
+
 ### 一键启动 (推荐)
 
 ```bash

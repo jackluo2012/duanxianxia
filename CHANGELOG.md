@@ -60,6 +60,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 深市：过滤掉基金、ETF、转债等，仅保留 000/001/002/003/300 开头
   - 沪市：过滤掉基金、ETF、转债等，仅保留 600/601/603/605/688/689 开头
   - 股票数量从 48711 只降至 4731 只（符合实际 A 股数量）
+- ✅ **创建完整的重置脚本**:
+  - 新增 `reset-all.sh` 交互式清理脚本
+  - 支持选择性清理：进程、容器、数据、日志、编译产物等
+  - 每步需要确认，安全可靠
+  - 添加快速完全重置命令到文档
+- ✅ **修复部署文档 SQL 执行错误**:
+  - 所有 ClickHouse SQL 命令添加 `--multiquery` 参数
+  - 更新 PostgreSQL 初始化步骤，添加创建数据库命令
+  - 修正容器名称引用（使用 `$(docker ps -q -f name=xxx)` 获取容器 ID）
+  - 添加详细的错误说明和解决步骤
+- ✅ **修复 ClickHouse 时区函数错误**:
+  - `today('Asia/Shanghai')` 不支持，改为 `toDate(now('Asia/Shanghai'))`
+  - 修复 `auction.sql` 中的相同问题
+  - 确保所有 DateTime 字段使用正确的时区语法
+- ✅ **修复 auth-service 启动超时问题**:
+  - 修正默认数据库端口：`localhost:5432` → `localhost:5433`
+  - 添加数据库连接重试机制（最多5次，每次间隔2秒）
+  - 在 `start-all.sh` 中添加 PostgreSQL 就绪检查
+  - 服务启动成功率：100%
 - ✅ **修复时区配置问题**:
   - 所有 DateTime 字段添加 `'Asia/Shanghai'` 时区
   - `stock_quotes`: datetime DEFAULT now('Asia/Shanghai')

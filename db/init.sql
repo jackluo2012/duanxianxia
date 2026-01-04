@@ -6,7 +6,7 @@ USE duanxianxia;
 
 -- 1. 股票实时行情表（旧版）
 CREATE TABLE IF NOT EXISTS duanxianxia.stock_quotes (
-    date Date DEFAULT today('Asia/Shanghai'),
+    date Date DEFAULT toDate(now('Asia/Shanghai')),
     datetime DateTime DEFAULT now('Asia/Shanghai'),
     code FixedString(6),
     name String,

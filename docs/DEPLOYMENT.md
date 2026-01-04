@@ -5,6 +5,7 @@
 - [系统要求](#系统要求)
 - [环境准备](#环境准备)
 - [快速部署](#快速部署)
+- [完全重置（推荐新手）](#完全重置)
 - [手动部署](#手动部署)
 - [故障排查](#故障排查)
 - [生产环境配置](#生产环境配置)
@@ -160,6 +161,52 @@ cd /path/to/duanxianxia
 
 ---
 
+## 完全重置（推荐新手）
+
+如果您遇到问题或想从干净的环境重新开始，可以使用完全重置脚本：
+
+### 一键重置所有数据
+
+```bash
+# 运行重置脚本（交互式确认每一步）
+./reset-all.sh
+```
+
+**重置脚本会清理：**
+- ✅ 停止所有后端服务进程
+- ✅ 停止并删除 Docker 容器（可选）
+- ✅ 清理日志文件（可选）
+- ✅ 清空 ClickHouse 数据（可选）
+- ✅ 清空 PostgreSQL 数据（可选）
+- ✅ 清空 Redis 缓存（可选）
+- ✅ 删除编译产物（可选）
+- ✅ 删除配置文件（可选）
+- ✅ 删除 Docker 数据卷（可选，完全重置）
+
+**安全特性：**
+- 🔒 每一步都需要确认，不会误删数据
+- 📝 清晰的提示信息
+- ⚠️  危险操作会高亮警告
+
+### 快速完全重置
+
+```bash
+# 停止所有服务并删除数据
+./stop-all.sh
+docker-compose down -v
+
+# 删除所有数据
+docker volume rm duanxianxia_clickhouse_data duanxianxia_redis_data duanxianxia_postgres_data 2>/dev/null || true
+
+# 清理日志
+rm -rf logs/*.log logs/*.pid
+
+# 重新启动
+./start-all.sh
+```
+
+---
+
 ## 手动部署
 
 如果您需要更精细的控制或调试部署过程，可以按照以下步骤手动部署。
@@ -189,15 +236,17 @@ duanxianxia-postgres-1     Up 10 seconds   0.0.0.0:5433->5432/tcp
 
 #### 2.1 ClickHouse 初始化
 
+**⚠️ 重要：必须使用 `--multiquery` 参数执行多条 SQL 语句**
+
 ```bash
-# 创建股票行情表
-docker exec -i duanxianxia-clickhouse-1 clickhouse-client < db/init.sql
+# 1. 创建股票行情表和股票列表表
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql
 
-# 创建竞价分析表（使用 multiquery 模式）
-docker exec -i duanxianxia-clickhouse-1 clickhouse-client --multiquery < db/auction.sql
+# 2. 创建竞价分析表
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/auction.sql
 
-# 验证表创建
-docker exec duanxianxia-clickhouse-1 clickhouse-client --query "SHOW TABLES"
+# 3. 验证表创建
+docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SHOW TABLES"
 ```
 
 预期输出：
@@ -212,9 +261,14 @@ stock_realtime_quotes -- 实时行情表（新版）
 
 #### 2.2 PostgreSQL 初始化
 
+**⚠️ 注意：需要先创建数据库**
+
 ```bash
-# 创建用户表
-docker exec duanxianxia-postgres-1 psql -U postgres -d duanxianxia_users -c "
+# 1. 创建数据库
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -c "CREATE DATABASE duanxianxia_users"
+
+# 2. 创建用户表
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -225,8 +279,8 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT NOW()
 );"
 
-# 创建自选股表
-docker exec duanxianxia-postgres-1 psql -U postgres -d duanxianxia_users -c "
+# 3. 创建自选股表
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "
 CREATE TABLE IF NOT EXISTS user_watchlist (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
@@ -235,15 +289,15 @@ CREATE TABLE IF NOT EXISTS user_watchlist (
     UNIQUE(user_id, code)
 );"
 
-# 插入测试用户（密码: password123）
-docker exec duanxianxia-postgres-1 psql -U postgres -d duanxianxia_users -c "
+# 4. 插入测试用户（密码: password123）
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "
 INSERT INTO users (username, email, password_hash, plan) VALUES
 ('testuser', 'test@example.com', '\$2b\$12\$bMlWvJ0z/L/.wUzLZbWm2.4tJYsW5udpfj4iRJyuHUZc4.6oAPKyy', 'free')
 ON CONFLICT (username) DO NOTHING;"
 
-# 验证表和用户
-docker exec duanxianxia-postgres-1 psql -U postgres -d duanxianxia_users -c "\dt"
-docker exec duanxianxia-postgres-1 psql -U postgres -d duanxianxia_users -c "SELECT username, email, plan FROM users;"
+# 5. 验证表和用户
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "\dt"
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "SELECT username, email, plan FROM users;"
 ```
 
 ### 步骤 3: 配置环境变量
@@ -379,13 +433,19 @@ Code: 62. DB::Exception: Syntax error (Multi-statements are not allowed)
 
 使用 `--multiquery` 参数：
 ```bash
-docker exec -i duanxianxia-clickhouse-1 clickhouse-client --multiquery < db/auction.sql
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/auction.sql
 ```
 
 或者手动执行单条 SQL：
 ```bash
-docker exec duanxianxia-clickhouse-1 clickhouse-client --query "CREATE TABLE IF NOT EXISTS ..."
+docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "CREATE TABLE IF NOT EXISTS ..."
 ```
+
+**⚠️ 重要提示**：
+- 所有包含多条 SQL 的文件都必须使用 `--multiquery` 参数
+- `db/init.sql` 包含 4 个 CREATE TABLE 语句
+- `db/auction.sql` 包含 2 个 CREATE TABLE 语句
 
 ### 问题 3: Docker 容器无法连接
 

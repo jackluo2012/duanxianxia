@@ -46,6 +46,19 @@ docker-compose up -d redis clickhouse postgres
 echo "⏳ 等待数据库启动..."
 sleep 10
 
+# 等待 PostgreSQL 就绪
+echo "🔍 检查 PostgreSQL 就绪状态..."
+for i in {1..30}; do
+    if docker exec $(docker ps -q -f name=postgres) pg_isready -U postgres > /dev/null 2>&1; then
+        echo "  ✅ PostgreSQL 已就绪"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "  ⚠️  PostgreSQL 启动超时，继续尝试..."
+    fi
+    sleep 1
+done
+
 # 3. 初始化数据库
 echo "📝 初始化数据库..."
 

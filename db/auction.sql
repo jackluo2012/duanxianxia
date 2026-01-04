@@ -1,6 +1,6 @@
 -- 竞价原始数据表
 CREATE TABLE IF NOT EXISTS duanxianxia.auction_quotes (
-    date Date DEFAULT today('Asia/Shanghai'),
+    date Date DEFAULT toDate(now('Asia/Shanghai')),
     code String,
     name String,
     time DateTime,
