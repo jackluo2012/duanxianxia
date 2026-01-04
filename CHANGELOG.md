@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 修复了因旧进程占用端口导致的 "Address already in use" 错误
 - 修复了缺少 .env 文件导致的配置问题
 - 改进了 ClickHouse 连接配置的文档说明
+- ✅ **修复 data-collector 启动错误**: 缺少 `stock_list`、`stock_kline`、`stock_realtime_quotes` 表
+  - 更新 `db/init.sql`，添加所有必需的表结构
+  - 修复 `start-all.sh` 使用 `--multiquery` 参数执行多条 SQL
+  - 新增表：股票列表表、K线数据表、实时行情表（新版）
 
 ### Planned
 - 历史数据回测引擎

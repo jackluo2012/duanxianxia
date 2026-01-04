@@ -204,7 +204,10 @@ docker exec duanxianxia-clickhouse-1 clickhouse-client --query "SHOW TABLES"
 ```
 auction_analysis
 auction_quotes
-stock_quotes
+stock_kline         -- K线数据表
+stock_list          -- 股票列表表
+stock_quotes        -- 实时行情表（旧版）
+stock_realtime_quotes -- 实时行情表（新版）
 ```
 
 #### 2.2 PostgreSQL 初始化

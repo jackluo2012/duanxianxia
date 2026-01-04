@@ -61,11 +61,14 @@ echo ""
 # ClickHouse
 if docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "EXISTS TABLE stock_quotes" | grep -q "0"; then
     echo "  创建 ClickHouse 表..."
-    docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client < db/init.sql
+    docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql
     docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/auction.sql
     echo "  ✅ ClickHouse 表创建完成"
 else
-    echo "  ✅ ClickHouse 表已存在"
+    echo "  ✅ ClickHouse 表已存在，检查新增表..."
+    # 即使表已存在，也尝试创建新表（使用 IF NOT EXISTS）
+    docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql 2>/dev/null || true
+    echo "  ✅ 表结构检查完成"
 fi
 
 # PostgreSQL
