@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
@@ -26,6 +28,7 @@ pub struct StockQuote {
     pub volume: f64,         // 成交量（手）
     pub amount: f64,         // 成交额（元）
     pub change_percent: f64, // 涨跌幅(%)
+    pub market: u8,          // 0=深圳, 1=上海
 }
 
 /// K线周期

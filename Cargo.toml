@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "shared/common",
     "shared/trading-calendar",
+    "crates/domain",
     # TODO: 添加其他微服务
     "services/data-collector",
     "services/storage-service",
@@ -14,6 +15,7 @@ members = [
     "services/auction-storage",
     "services/auction-realtime",
     "services/kline-collector",
+    "services/backtest-service",
 ]
 
 [workspace.dependencies]
@@ -28,4 +30,5 @@ chrono = "0.4"
 time = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter", "chrono", "time"] }
+async-trait = "0.1"
 rustdx-complete = "0.6.4"

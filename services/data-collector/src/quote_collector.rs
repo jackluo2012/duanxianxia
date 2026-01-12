@@ -78,10 +78,10 @@ impl QuoteCollector {
 
         debug!("开始采集 {} 只股票的实时行情", stocks.len());
 
-        // 将股票代码收集为 Owned String 以避免生命周期问题
-        let stock_codes_owned: Vec<(u16, String)> = stocks
+        // 将股票代码收集为 Owned String 以避免生命周期问题，同时包含 market 信息
+        let stock_codes_owned: Vec<(u16, String, u8)> = stocks
             .iter()
-            .map(|s| (s.market as u16, s.code.clone()))
+            .map(|s| (s.market as u16, s.code.clone(), s.market as u8))
             .collect();
 
         // 从连接池获取连接
@@ -91,10 +91,16 @@ impl QuoteCollector {
         let result = timeout(
             Duration::from_secs(self.collect_timeout),
             tokio::task::spawn_blocking(move || {
-                // 在闭包内创建临时 &str 引用
+                // 在闭包内创建临时 &str 引用，并提取 market 信息映射
                 let stock_codes: Vec<(u16, &str)> = stock_codes_owned
                     .iter()
-                    .map(|(m, c)| (*m, c.as_str()))
+                    .map(|(m, c, _market)| (*m, c.as_str()))
+                    .collect();
+
+                // 创建 code -> market 的映射
+                let market_map: std::collections::HashMap<&str, u8> = stock_codes_owned
+                    .iter()
+                    .map(|(_m, c, market)| (c.as_str(), *market))
                     .collect();
 
                 let mut quotes = SecurityQuotes::new(stock_codes);
@@ -120,6 +126,7 @@ impl QuoteCollector {
                                 } else {
                                     0.0
                                 },
+                                market: market_map.get(q.code.as_str()).copied().unwrap_or(0),
                             })
                             .collect();
                         Ok(converted)

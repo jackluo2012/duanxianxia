@@ -1,6 +1,7 @@
 use crate::types::StockInfo;
 use anyhow::Result;
 use clickhouse::Client;
+use clickhouse::insert::Insert;
 use rustdx_complete::tcp::stock::SecurityList;
 use rustdx_complete::tcp::{Tcp, Tdx};
 use tracing::{debug, info, warn};
@@ -133,9 +134,9 @@ impl StockListManager {
         let mut total_written = 0usize;
 
         for (i, batch) in batches.enumerate() {
-            let mut insert = self
+            let mut insert: Insert<StockInfo> = self
                 .ch_client
-                .insert("duanxianxia.stock_list")?;
+                .insert("stock_list").await?;
 
             for stock in batch {
                 insert.write(stock).await?;

@@ -1,6 +1,7 @@
 use crate::types::StockQuote;
 use anyhow::Result;
 use clickhouse::Client;
+use clickhouse::insert::Insert;
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
@@ -130,7 +131,7 @@ impl ClickHouseWriter {
     /// 写入单批数据到 ClickHouse
     async fn write_batch(&self, batch: &[StockQuote]) -> Result<()> {
         // 创建 INSERT 语句（同步模式，确保数据立即写入）
-        let mut insert = self.ch_client.insert("duanxianxia.stock_realtime_quotes")?;
+        let mut insert: Insert<StockQuote> = self.ch_client.insert("stock_realtime_quotes").await?;
 
         // 批量写入数据
         for quote in batch {

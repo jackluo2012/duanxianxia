@@ -1,6 +1,9 @@
 // services/data-collector/src/main.rs
+mod adapters;
+mod application;
 mod buffer_manager;
 mod clickhouse_writer;
+mod hexagonal_service; // NEW: Hexagonal architecture service
 mod kline_aggregator;
 mod kline_backfill;
 mod kline_corrector;

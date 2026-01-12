@@ -12,12 +12,13 @@ use crate::types::{
     SectorDailyStrength, SectorStats, StockQuote,
 };
 use anyhow::Result;
-use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike, Utc};
+use chrono::{Local, NaiveDate, Timelike, Utc};
 use clickhouse::Client;
+use clickhouse::insert::Insert;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// ReviewCollector - 涨停复盘采集器
 pub struct ReviewCollector {
@@ -529,7 +530,7 @@ impl ReviewCollector {
 
     /// 写入每日涨停汇总到ClickHouse
     async fn write_daily_summary(&self, summary: &DailyLimitUpSummary) -> Result<()> {
-        let mut insert = self.ch_client.insert("daily_limit_up_summary")?;
+        let mut insert: Insert<DailyLimitUpSummary> = self.ch_client.insert("daily_limit_up_summary").await?;
 
         insert.write(summary).await?;
         insert.end().await?;
@@ -548,7 +549,7 @@ impl ReviewCollector {
             return Ok(());
         }
 
-        let mut insert = self.ch_client.insert("consecutive_boards_history")?;
+        let mut insert: Insert<ConsecutiveBoardHistory> = self.ch_client.insert("consecutive_boards_history").await?;
 
         for item in history {
             insert.write(item).await?;
@@ -567,7 +568,7 @@ impl ReviewCollector {
             return Ok(());
         }
 
-        let mut insert = self.ch_client.insert("sector_daily_strength")?;
+        let mut insert: Insert<SectorDailyStrength> = self.ch_client.insert("sector_daily_strength").await?;
 
         for item in strength {
             insert.write(item).await?;

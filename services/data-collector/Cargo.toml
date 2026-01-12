@@ -3,6 +3,14 @@ name = "data-collector"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "data-collector"
+path = "src/main.rs"
+
+[[bin]]
+name = "hexagonal-collector"
+path = "src/hexagonal_main.rs"
+
 [features]
 kline = []  # K线采集功能（默认禁用）
 
@@ -17,7 +25,9 @@ tracing-subscriber = { workspace = true }
 time = { workspace = true }
 rustdx-complete = { workspace = true }
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
-clickhouse = { version = "0.12", features = ["time"] }
+clickhouse = { version = "0.14.1", features = ["time"] }
 chrono = { version = "0.4", features = ["serde"] }
+async-trait = { workspace = true }
 shared = { path = "../../shared" }
 trading-calendar = { path = "../../shared/trading-calendar" }
+domain = { path = "../../crates/domain" }

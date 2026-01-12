@@ -3,6 +3,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clickhouse::Client;
 use clickhouse::Row;
+use clickhouse::insert::Insert;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tracing::{debug, info, warn};
@@ -119,7 +120,7 @@ impl QualityMonitor {
         }
 
         // 插入到异常数据日志
-        let mut insert = self.clickhouse.insert("abnormal_data_log")?;
+        let mut insert: Insert<AbnormalDataLog> = self.clickhouse.insert("abnormal_data_log").await?;
 
         for code in missing_stocks {
             let log = AbnormalDataLog {
@@ -145,7 +146,7 @@ impl QualityMonitor {
 
     /// 记录完整性指标到ClickHouse
     async fn record_completeness_metrics(&self, report: &CompletenessReport) -> Result<()> {
-        let mut insert = self.clickhouse.insert("data_quality_metrics")?;
+        let mut insert: Insert<DataQualityMetric> = self.clickhouse.insert("data_quality_metrics").await?;
 
         let timestamp = report.timestamp;
         let metric_type = "completeness";
@@ -260,7 +261,7 @@ impl QualityMonitor {
             return Ok(());
         }
 
-        let mut insert = self.clickhouse.insert("abnormal_data_log")?;
+        let mut insert: Insert<AbnormalDataLog> = self.clickhouse.insert("abnormal_data_log").await?;
 
         for quote in invalid_quotes {
             let log = AbnormalDataLog {
@@ -305,7 +306,7 @@ impl QualityMonitor {
         records_failed: u32,
         duration_ms: u32,
     ) -> Result<()> {
-        let mut insert = self.clickhouse.insert("data_repair_log")?;
+        let mut insert: Insert<DataRepairLog> = self.clickhouse.insert("data_repair_log").await?;
 
         let metadata = serde_json::json!({
             "repair_type": repair_type,
