@@ -11,6 +11,9 @@ path = "src/main.rs"
 name = "hexagonal-collector"
 path = "src/hexagonal_main.rs"
 
+# 指定默认运行的二进制文件
+default-run = "hexagonal-collector"
+
 [features]
 kline = []  # K线采集功能（默认禁用）
 
