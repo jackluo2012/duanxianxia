@@ -8,6 +8,8 @@
 - **[部署安装文档](./docs/DEPLOYMENT.md)** - 详细部署步骤和故障排查
 - **[用户使用指南](./docs/USER_GUIDE.md)** - 功能说明和最佳实践
 - **[系统架构文档](./docs/ARCHITECTURE.md)** - 技术架构和设计
+- **[故障排查指南](./docs/TROUBLESHOOTING.md)** - 常见问题及解决方案 ⭐
+- **[部署测试报告](./docs/DEPLOYMENT_TEST_REPORT.md)** - 真实数据测试验证 ⭐
 
 ## 技术栈
 

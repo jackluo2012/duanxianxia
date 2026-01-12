@@ -22,7 +22,7 @@ impl ClickHouseQuoteRepository {
 
     /// Convert legacy StockQuote to domain StockQuote
     fn legacy_to_domain(&self, legacy: &LegacyStockQuote) -> Result<StockQuote, String> {
-        let timestamp = DateTime::from_timestamp(legacy.timestamp, 0)
+        let timestamp = DateTime::from_timestamp(legacy.timestamp as i64, 0)
             .unwrap_or_else(|| Utc::now());
         let code = StockCode::new(legacy.code.clone())?;
         let price = Price::new(legacy.price)?;
@@ -49,7 +49,7 @@ impl ClickHouseQuoteRepository {
     /// Convert domain StockQuote to legacy StockQuote for ClickHouse
     fn domain_to_legacy(&self, domain: &StockQuote) -> LegacyStockQuote {
         LegacyStockQuote {
-            timestamp: domain.timestamp.timestamp(),
+            timestamp: domain.timestamp.timestamp() as u64,
             code: domain.code.as_str().to_string(),
             name: domain.name.clone(),
             price: domain.price.value(),

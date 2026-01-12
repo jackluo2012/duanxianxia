@@ -17,7 +17,7 @@ pub struct StockInfo {
 /// 股票实时行情
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct StockQuote {
-    pub timestamp: i64, // Unix timestamp (秒)
+    pub timestamp: u64, // Unix timestamp (秒)
     pub code: String,
     pub name: String,
     pub price: f64,          // 当前价
@@ -173,8 +173,8 @@ impl KlineWindow {
         self.amount += quote.amount;
         self.trade_count += 1;
 
-        // 更新最后更新时间（从 i64 timestamp 转换为 DateTime<Utc>）
-        self.last_update = chrono::DateTime::from_timestamp(quote.timestamp, 0)
+        // 更新最后更新时间（从 u64 timestamp 转换为 DateTime<Utc>）
+        self.last_update = chrono::DateTime::from_timestamp(quote.timestamp as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now());
     }
 

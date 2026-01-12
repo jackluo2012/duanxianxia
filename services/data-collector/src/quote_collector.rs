@@ -111,7 +111,7 @@ impl QuoteCollector {
                         let converted: Vec<StockQuote> = quote_data
                             .iter()
                             .map(|q| StockQuote {
-                                timestamp: chrono::Utc::now().timestamp(), // Unix timestamp (秒)
+                                timestamp: chrono::Utc::now().timestamp() as u64, // Unix timestamp (秒)
                                 code: q.code.clone(),
                                 name: q.name.clone(),
                                 price: q.price,

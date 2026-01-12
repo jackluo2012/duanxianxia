@@ -108,7 +108,7 @@ mkdir -p logs
 # 启动数据采集服务
 echo "  启动 data-collector..."
 cd services/data-collector
-cargo run > ../../logs/data-collector.log 2>&1 &
+cargo run --bin data-collector > ../../logs/data-collector.log 2>&1 &
 COLLECTOR_PID=$!
 echo "  PID: $COLLECTOR_PID"
 cd ../..

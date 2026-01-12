@@ -62,7 +62,7 @@ SETTINGS index_granularity = 8192;
 
 -- 4. 实时行情表（新版）
 CREATE TABLE IF NOT EXISTS duanxianxia.stock_realtime_quotes (
-    timestamp DateTime,
+    timestamp UInt64,  -- Unix timestamp (秒)
     code String,
     name String,
     price Float64,
@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS duanxianxia.stock_realtime_quotes (
     low Float64,
     volume Float64,
     amount Float64,
-    change_percent Float64
+    change_percent Float64,
+    market UInt8
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(toDateTime(timestamp, 'Asia/Shanghai'))
 ORDER BY (code, timestamp)

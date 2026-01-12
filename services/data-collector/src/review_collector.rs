@@ -63,7 +63,7 @@ impl ReviewCollector {
         // 检查日期切换
         self.check_date_change().await?;
 
-        let current_time = chrono::DateTime::from_timestamp(quote.timestamp, 0)
+        let current_time = chrono::DateTime::from_timestamp(quote.timestamp as i64, 0)
             .unwrap_or_else(|| chrono::Utc::now())
             .with_timezone(&Local)
             .naive_local();
