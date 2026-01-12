@@ -1,0 +1,23 @@
+# Backtest Service 配置文件
+
+[database]
+clickhouse_url = "http://localhost:8123"
+pool_size = 10
+query_timeout_secs = 30
+
+[server]
+host = "0.0.0.0"
+port = 8086
+metrics_port = 9091
+max_body_size = 10  # MB
+
+[backtest]
+max_backtest_days = 90
+default_commission_rate = 0.0003
+min_initial_capital = 10000.0
+max_concurrent_tasks = 5
+
+[logging]
+level = "info"
+log_to_file = false
+log_file = "logs/backtest-service.log"
