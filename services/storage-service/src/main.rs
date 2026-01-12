@@ -99,7 +99,7 @@ async fn consume_redis_stream(
                                                         {
                                                             if !batch.is_empty() {
                                                                 let mut query = String::from(
-                                                                    "INSERT INTO stock_quotes (date, datetime, code, name, market, price, preclose, open, high, low, vol, amount, bid1, ask1, bid1_vol, ask1_vol, change_percent) VALUES ",
+                                                                    "INSERT INTO duanxianxia.stock_quotes (date, datetime, code, name, market, price, preclose, open, high, low, vol, amount, bid1, ask1, bid1_vol, ask1_vol, change_percent) VALUES ",
                                                                 );
 
                                                                 for (idx, quote) in
@@ -240,7 +240,7 @@ async fn get_history(
                  toMinute(toStartOfInterval(datetime, INTERVAL 5 minute)) as minute, \
                  argMin(price, datetime) as open, max(price) as high, min(price) as low, \
                  argMax(price, datetime) as close, sum(vol) as vol \
-                 FROM stock_quotes \
+                 FROM duanxianxia.stock_quotes \
                  WHERE code = '{}' \
                  GROUP BY toStartOfInterval(datetime, INTERVAL 5 minute) \
                  ORDER BY toStartOfInterval(datetime, INTERVAL 5 minute) ASC \
@@ -254,7 +254,7 @@ async fn get_history(
                 "SELECT toString(date) as time, \
                  argMin(price, datetime) as open, max(price) as high, min(price) as low, \
                  argMax(price, datetime) as close, sum(vol) as vol \
-                 FROM stock_quotes \
+                 FROM duanxianxia.stock_quotes \
                  WHERE code = '{}' \
                  GROUP BY date, code \
                  ORDER BY date ASC \
@@ -263,10 +263,10 @@ async fn get_history(
             )
         }
         _ => {
-            // 默认分时图（1m）
+            // 默认分时图(1m)
             format!(
                 "SELECT formatDateTime(datetime, '%T') as time, price, vol \
-                 FROM stock_quotes \
+                 FROM duanxianxia.stock_quotes \
                  WHERE code = '{}' \
                  ORDER BY datetime ASC \
                  LIMIT 1000",
@@ -354,9 +354,9 @@ async fn get_history(
         }
     }
 
-    // 获取股票名称（从最新的一条记录）
+    // 获取股票名称(从最新的一条记录)
     let name_query = format!(
-        "SELECT name FROM stock_quotes WHERE code = '{}' ORDER BY datetime DESC LIMIT 1",
+        "SELECT name FROM duanxianxia.stock_quotes WHERE code = '{}' ORDER BY datetime DESC LIMIT 1",
         code
     );
     let name_response = match client.post(&**clickhouse_url).body(name_query).send().await {
