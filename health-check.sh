@@ -76,7 +76,7 @@ echo ""
 echo "🔧 后端服务进程:"
 echo ""
 
-# 定义要检查的服务
+# 定义要检查的服务（正确的端口映射）
 declare -A SERVICES=(
     ["realtime-service"]="8080"
     ["auth-service"]="8082"
