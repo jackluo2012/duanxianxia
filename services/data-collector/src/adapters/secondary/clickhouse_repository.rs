@@ -9,6 +9,8 @@ use domain::ports::secondary::{RepositoryError, StockQuoteRepository};
 use domain::entities::StockQuote;
 use domain::value_objects::{Market, Price, StockCode};
 use chrono::{DateTime, Utc};
+use tracing::{debug, warn};
+use std::collections::HashMap;
 
 /// ClickHouse Repository for Stock Quotes
 pub struct ClickHouseQuoteRepository {
@@ -18,6 +20,70 @@ pub struct ClickHouseQuoteRepository {
 impl ClickHouseQuoteRepository {
     pub fn new(client: Client) -> Self {
         Self { client }
+    }
+
+    /// 从历史数据中获取昨收价和股票名称
+    async fn fetch_historical_data(&self, codes: &[String]) -> Result<HashMap<String, (String, f64)>, RepositoryError> {
+        if codes.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let codes_str = codes
+            .iter()
+            .map(|c| format!("'{}'", c))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        let query = format!(
+            "
+            SELECT
+                code,
+                argMax(name, timestamp) as name,
+                argMax(price, timestamp) as price
+            FROM stock_realtime_quotes
+            WHERE code IN ({})
+            AND timestamp > now() - INTERVAL 7 DAY
+            GROUP BY code
+            ",
+            codes_str
+        );
+
+        let rows = self.client
+            .query(&query)
+            .fetch_all::<(String, String, f64)>()
+            .await
+            .map_err(|e| RepositoryError::Query(format!("Query failed: {}", e)))?;
+
+        let mut result = HashMap::new();
+        for (code, name, price) in rows {
+            if !name.is_empty() {
+                debug!("找到历史数据: {} -> name={}, price={}", code, name, price);
+                result.insert(code, (name, price));
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// 增强单条行情数据（补充 preclose 和 name）
+    async fn enrich_quote(&self, quote: &mut StockQuote, historical_data: &HashMap<String, (String, f64)>) {
+        let code = quote.code.as_str();
+
+        // 如果 name 为空，尝试从历史数据获取
+        if quote.name.is_empty() {
+            if let Some((name, _)) = historical_data.get(code) {
+                quote.name = name.clone();
+                debug!("补充股票 {} 的名称: {}", code, name);
+            }
+        }
+
+        // 如果 preclose 为 0，尝试从历史数据获取（使用上一次的收盘价）
+        if quote.preclose.value() == 0.0 {
+            if let Some((_, close)) = historical_data.get(code) {
+                quote.preclose = Price::new(*close).unwrap_or_else(|_| quote.preclose);
+                debug!("补充股票 {} 的昨收价: {}", code, close);
+            }
+        }
     }
 
     /// Convert legacy StockQuote to domain StockQuote
@@ -68,7 +134,14 @@ impl ClickHouseQuoteRepository {
 #[async_trait]
 impl StockQuoteRepository for ClickHouseQuoteRepository {
     async fn save(&self, quote: &StockQuote) -> Result<(), RepositoryError> {
-        let legacy = self.domain_to_legacy(quote);
+        // 克隆 quote 因为我们需要修改它
+        let mut enriched_quote = quote.clone();
+
+        // 尝试从历史数据补充缺失字段
+        let historical_data = self.fetch_historical_data(&[enriched_quote.code.as_str().to_string()]).await?;
+        self.enrich_quote(&mut enriched_quote, &historical_data).await;
+
+        let legacy = self.domain_to_legacy(&enriched_quote);
 
         let mut insert = self.client
             .insert::<LegacyStockQuote>("stock_realtime_quotes")
@@ -91,7 +164,21 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
             return Ok(());
         }
 
-        let legacy_quotes: Vec<LegacyStockQuote> = quotes
+        // 批量获取历史数据
+        let codes: Vec<String> = quotes.iter()
+            .map(|q| q.code.as_str().to_string())
+            .collect();
+        let historical_data = self.fetch_historical_data(&codes).await?;
+
+        // 增强每条行情数据
+        let mut enriched_quotes = Vec::new();
+        for quote in quotes {
+            let mut enriched = quote.clone();
+            self.enrich_quote(&mut enriched, &historical_data).await;
+            enriched_quotes.push(enriched);
+        }
+
+        let legacy_quotes: Vec<LegacyStockQuote> = enriched_quotes
             .iter()
             .map(|q| self.domain_to_legacy(q))
             .collect();

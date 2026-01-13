@@ -16,6 +16,7 @@ members = [
     "services/auction-realtime",
     "services/kline-collector",
     "services/backtest-service",
+    "services/limit-review-service",
 ]
 
 [workspace.dependencies]
