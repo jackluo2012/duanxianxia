@@ -3,6 +3,13 @@
 # 短线侠系统 - 多模式部署脚本
 # 用途: 支持 quick/full/update 三种部署模式
 
+# 检查是否在 bash 环境中运行
+if [ -z "$BASH_VERSION" ]; then
+    echo "❌ 错误: 此脚本需要 bash 环境"
+    echo "请使用以下命令运行: bash $0"
+    exit 1
+fi
+
 set -e
 
 # 颜色定义

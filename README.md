@@ -4,12 +4,19 @@
 
 ## 📚 文档导航
 
+**快速开始:**
+- **[部署文档导航](./docs/deployment-index.md)** ⭐⭐⭐ - 所有部署选项和脚本说明
 - **[快速入门](./docs/QUICK_START.md)** - 5 分钟快速部署体验
-- **[部署安装文档](./docs/DEPLOYMENT.md)** - 详细部署步骤和故障排查
+- **[完整部署指南](./docs/deployment/DEPLOYMENT.md)** - 详细部署步骤和故障排查
+
+**功能文档:**
 - **[用户使用指南](./docs/USER_GUIDE.md)** - 功能说明和最佳实践
 - **[系统架构文档](./docs/ARCHITECTURE.md)** - 技术架构和设计
 - **[故障排查指南](./docs/TROUBLESHOOTING.md)** - 常见问题及解决方案 ⭐
-- **[部署测试报告](./docs/DEPLOYMENT_TEST_REPORT.md)** - 真实数据测试验证 ⭐
+
+**测试报告:**
+- **[部署流程测试](./docs/DEPLOYMENT_FLOW_TEST.md)** - 完整部署测试验证
+- **[数据采集测试](./docs/DEPLOYMENT_TEST_REPORT.md)** - 真实数据测试验证
 
 ## 技术栈
 
@@ -104,71 +111,105 @@
 
 ## 快速开始
 
-### ⚡ 5分钟快速部署
+### ⚡ 5分钟快速部署（新手推荐）
 
-> **重要提示:** 所有部署脚本必须在 **bash** 环境中运行，不支持 zsh。
+> **⚠️ 重要:** 所有部署脚本必须在 **bash** 环境中运行
 
 ```bash
-# 1. 启动所有服务（自动完成所有配置和初始化）
+# 1. 启动所有服务
 bash ./start-all.sh
 
 # 2. 验证服务状态
 bash ./health-check.sh
-
-# 3. 测试 API
-curl http://localhost:8082/api/auth/login -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"password123"}'
 ```
 
 **就这么简单！** 系统将自动:
-- ✅ 检查环境依赖（Docker、Rust、端口）
-- ✅ 启动基础设施数据库（Redis、ClickHouse、PostgreSQL）
+- ✅ 检查并停止占用端口的旧进程
+- ✅ 启动数据库（Redis、ClickHouse、PostgreSQL）
 - ✅ 初始化数据库表结构
 - ✅ 自动创建配置文件
 - ✅ 编译并启动所有后端服务
 
+---
+
+### 🛠️ 部署脚本说明
+
+| 脚本 | 用途 | 何时使用 |
+|------|------|----------|
+| `start-all.sh` | 一键启动所有服务 | 日常使用 ⭐ |
+| `stop-all.sh` | 停止所有服务 | 日常使用 |
+| `check-env.sh` | 环境检查 | 部署前检查 |
+| `health-check.sh` | 健康检查 | 验证服务状态 ⭐ |
+| `deploy.sh` | 多模式部署 | 高级用户 |
+
+**部署方式选择:**
+
+**方式一：简单启动（推荐新手）**
+```bash
+bash ./start-all.sh      # 启动
+bash ./health-check.sh   # 验证
+```
+
+**方式二：带检查的部署**
+```bash
+bash ./check-env.sh      # 1. 环境检查
+bash ./deploy.sh quick   # 2. 部署
+bash ./health-check.sh   # 3. 验证
+```
+
+**方式三：多模式部署（高级用户）**
+```bash
+# 快速部署（重启服务，保留数据）
+bash ./deploy.sh quick
+
+# 完全部署（清理后重新部署）
+bash ./deploy.sh full
+
+# 增量更新（更新代码并重新编译）
+bash ./deploy.sh update
+```
+
+---
+
 ### 📋 常用命令
 
 ```bash
-# 停止所有服务
+# 停止服务
 bash ./stop-all.sh
 
-# 查看服务日志
-tail -f logs/data-collector.log   # 数据采集服务
-tail -f logs/storage-service.log  # 存储服务
-tail -f logs/realtime-service.log # 实时推送服务
-tail -f logs/auth-service.log     # 认证服务
+# 查看日志
+tail -f logs/data-collector.log
 
 # 健康检查
 bash ./health-check.sh
 
 # 完全重置（清理所有数据）
-./stop-all.sh
+bash ./stop-all.sh
 docker-compose down -v
 rm -rf logs/*.log logs/*.pid
 bash ./start-all.sh
 ```
 
+---
+
 ### ⚠️ 重要说明
 
 **Shell 兼容性:**
-- 脚本必须在 **bash** 环境中运行：`bash ./start-all.sh`
-- 不支持 zsh，如果遇到错误请检查当前 shell 类型
+- 必须使用 bash：`bash ./start-all.sh`
+- 不支持 zsh，会自动检测并提示
 
 **数据采集时间:**
-- **交易时段 (09:30-15:00):** 每 3 秒采集一次实时行情
-- **竞价时段 (09:15-09:25):** 实时采集竞价数据
-- **非交易时段:** 服务自动休眠（这是正常行为）
+- **交易时段 (09:30-15:00):** 每 3 秒采集一次
+- **竞价时段 (09:15-09:25):** 实时采集
+- **非交易时段:** 服务休眠（这是正常的！）
 
 **查看日志确认状态:**
 ```bash
-# 查看调度器状态
 tail -f logs/data-collector.log | grep "调度"
-
 # 看到 "【非交易时段】进入休眠" 是正常的
-# 看到 "【交易时段】开始高频采集" 表示正在采集
 ```
+
+---
 
 ### 🌐 启动前端
 
@@ -178,16 +219,16 @@ npm install  # 首次运行需要
 npm run dev
 ```
 
-访问:
-- 实时行情: http://localhost:5173
-- 竞价分析: http://localhost:5173/auction
+访问: http://localhost:5173
 
-### 📖 详细文档
+---
 
-- **[完整部署指南](./docs/DEPLOYMENT.md)** - 详细部署步骤、环境要求、故障排查 ⭐
-- **[故障排查指南](./docs/TROUBLESHOOTING.md)** - 常见问题及解决方案 ⭐
-- **[系统架构文档](./docs/ARCHITECTURE.md)** - 技术架构和设计
-- **[部署测试报告](./docs/DEPLOYMENT_FLOW_TEST.md)** - 真实部署测试验证
+### 📖 更多文档
+
+**需要帮助？** 查看 [部署文档导航](./docs/deployment-index.md) ⭐⭐⭐
+
+- **[完整部署指南](./docs/deployment/DEPLOYMENT.md)** - 所有部署选项和详细步骤
+- **[故障排查指南](./docs/TROUBLESHOOTING.md)** - 常见问题解答
 
 ## API 端点
 
