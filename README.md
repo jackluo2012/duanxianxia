@@ -104,136 +104,90 @@
 
 ## 快速开始
 
-### 完全重置（从干净环境开始）
+### ⚡ 5分钟快速部署
 
-如果遇到问题或想重新部署：
+> **重要提示:** 所有部署脚本必须在 **bash** 环境中运行，不支持 zsh。
 
 ```bash
-# 运行重置脚本（交互式确认每一步）
-./reset-all.sh
+# 1. 启动所有服务（自动完成所有配置和初始化）
+bash ./start-all.sh
 
-# 或快速重置
+# 2. 验证服务状态
+bash ./health-check.sh
+
+# 3. 测试 API
+curl http://localhost:8082/api/auth/login -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"password123"}'
+```
+
+**就这么简单！** 系统将自动:
+- ✅ 检查环境依赖（Docker、Rust、端口）
+- ✅ 启动基础设施数据库（Redis、ClickHouse、PostgreSQL）
+- ✅ 初始化数据库表结构
+- ✅ 自动创建配置文件
+- ✅ 编译并启动所有后端服务
+
+### 📋 常用命令
+
+```bash
+# 停止所有服务
+bash ./stop-all.sh
+
+# 查看服务日志
+tail -f logs/data-collector.log   # 数据采集服务
+tail -f logs/storage-service.log  # 存储服务
+tail -f logs/realtime-service.log # 实时推送服务
+tail -f logs/auth-service.log     # 认证服务
+
+# 健康检查
+bash ./health-check.sh
+
+# 完全重置（清理所有数据）
 ./stop-all.sh
 docker-compose down -v
 rm -rf logs/*.log logs/*.pid
-./start-all.sh
+bash ./start-all.sh
 ```
 
-### 一键启动 (推荐)
+### ⚠️ 重要说明
 
+**Shell 兼容性:**
+- 脚本必须在 **bash** 环境中运行：`bash ./start-all.sh`
+- 不支持 zsh，如果遇到错误请检查当前 shell 类型
+
+**数据采集时间:**
+- **交易时段 (09:30-15:00):** 每 3 秒采集一次实时行情
+- **竞价时段 (09:15-09:25):** 实时采集竞价数据
+- **非交易时段:** 服务自动休眠（这是正常行为）
+
+**查看日志确认状态:**
 ```bash
-# 启动所有服务（自动检测并停止旧进程、创建配置文件）
-./start-all.sh
+# 查看调度器状态
+tail -f logs/data-collector.log | grep "调度"
 
-# 测试数据流转
-./test-data-flow.sh
-
-# 停止所有服务
-./stop-all.sh
+# 看到 "【非交易时段】进入休眠" 是正常的
+# 看到 "【交易时段】开始高频采集" 表示正在采集
 ```
 
-**启动脚本会自动处理：**
-- ✅ 检测并停止占用端口的旧进程（8080-8085）
-- ✅ 启动基础设施数据库（Redis、ClickHouse、PostgreSQL）
-- ✅ 自动创建 .env 配置文件
-- ✅ 初始化数据库表结构
-- ✅ 编译并启动后端服务
-
-**如果遇到问题：**
-```bash
-# 清理所有进程和容器
-./stop-all.sh
-docker-compose down -v
-
-# 重新启动
-./start-all.sh
-```
-
-### 手动启动
-
-#### 1. 启动基础设施
-
-```bash
-docker-compose up -d redis clickhouse postgres
-```
-
-#### 2. 初始化数据库
-
-```bash
-# ClickHouse
-docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client < db/init.sql
-
-# 竞价分析表
-docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client < db/auction.sql
-
-# PostgreSQL
-docker exec -i $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia < db/user.sql
-```
-
-#### 3. 配置环境变量
-
-```bash
-# 配置数据采集服务环境变量
-cp services/data-collector/.env.example services/data-collector/.env
-
-# 根据需要修改 .env 文件
-# FORCE_MODE=true  # 开启强制模式用于测试
-```
-
-#### 4. 启动竞价分析服务 🆕
-
-```bash
-# Terminal 1: auction-storage
-cd services/auction-storage
-cargo run
-
-# Terminal 2: auction-realtime
-cd services/auction-realtime
-cargo run
-
-# Terminal 3: auction-service (可选，竞价时段自动运行)
-cd services/auction-service
-cargo run
-```
-
-#### 5. 启动前端
+### 🌐 启动前端
 
 ```bash
 cd frontend
-npm install
+npm install  # 首次运行需要
 npm run dev
 ```
 
 访问:
 - 实时行情: http://localhost:5173
-- 竞价分析: http://localhost:5173/auction ⭐
-```
+- 竞价分析: http://localhost:5173/auction
 
-#### 3. 启动后端服务
+### 📖 详细文档
 
-```bash
-# 终端1: 数据采集
-cd services/data-collector && cargo run
-
-# 终端2: 存储服务
-cd services/storage-service && cargo run
-
-# 终端3: WebSocket 服务
-cd services/realtime-service && cargo run
-
-# 终端4: 认证服务
-cd services/auth-service && cargo run
-```
-
-#### 4. 启动前端
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-访问 http://localhost:3000
+- **[完整部署指南](./docs/DEPLOYMENT.md)** - 详细部署步骤、环境要求、故障排查 ⭐
+- **[故障排查指南](./docs/TROUBLESHOOTING.md)** - 常见问题及解决方案 ⭐
+- **[系统架构文档](./docs/ARCHITECTURE.md)** - 技术架构和设计
+- **[部署测试报告](./docs/DEPLOYMENT_FLOW_TEST.md)** - 真实部署测试验证
 
 ## API 端点
 

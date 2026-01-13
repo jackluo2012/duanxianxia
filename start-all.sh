@@ -2,6 +2,13 @@
 
 # 短线侠 - 完整系统启动脚本
 
+# 检查是否在 bash 环境中运行
+if [ -z "$BASH_VERSION" ]; then
+    echo "❌ 错误: 此脚本需要 bash 环境"
+    echo "请使用以下命令运行: bash $0"
+    exit 1
+fi
+
 set -e
 
 echo "🚀 启动短线侠系统..."
@@ -152,38 +159,29 @@ echo "⏳ 等待服务启动..."
 sleep 5
 
 # 6. 显示服务状态
-echo "📊 服务状态:"
 echo ""
-echo "  数据库服务:"
-docker-compose ps redis clickhouse postgres | tail -n +3
-echo ""
-echo "  后端服务 (日志位置: logs/):"
-echo "    - data-collector (PID: $COLLECTOR_PID)"
-echo "    - storage-service (PID: $STORAGE_PID)"
-echo "    - realtime-service (PID: $REALTIME_PID)"
-echo "    - auth-service (PID: $AUTH_PID)"
-echo ""
-
-# 7. 显示日志查看命令
-echo "📋 查看日志命令:"
-echo "  tail -f logs/data-collector.log   # 数据采集服务"
-echo "  tail -f logs/storage-service.log  # 存储服务"
-echo "  tail -f logs/realtime-service.log # 实时推送服务"
-echo "  tail -f logs/auth-service.log     # 认证服务"
-echo ""
-
-# 8. 显示停止命令
-echo "🛑 停止服务:"
-echo "  ./stop-all.sh"
-echo ""
-
-# 9. 前端启动提示
-echo "🌐 前端启动:"
-echo "  cd frontend"
-echo "  npm install  # 首次运行需要"
-echo "  npm run dev"
-echo ""
-
+echo "========================================"
 echo "✅ 系统启动完成!"
 echo ""
+echo "📊 服务状态:"
+echo ""
+echo "  🗄️  数据库服务:"
+docker-compose ps redis clickhouse postgres 2>/dev/null | tail -n +3 || echo "    (数据库未运行)"
+echo ""
+echo "  🔧 后端服务:"
+echo "    • data-collector (PID: $COLLECTOR_PID) - 日志: logs/data-collector.log"
+echo "    • storage-service (PID: $STORAGE_PID) - 日志: logs/storage-service.log"
+echo "    • realtime-service (PID: $REALTIME_PID) - 日志: logs/realtime-service.log"
+echo "    • auth-service (PID: $AUTH_PID) - 日志: logs/auth-service.log"
+echo ""
+echo "📋 常用命令:"
+echo "  • 查看日志: tail -f logs/<service>.log"
+echo "  • 健康检查: ./health-check.sh"
+echo "  • 停止服务: ./stop-all.sh"
+echo ""
+echo "🌐 前端启动:"
+echo "  cd frontend && npm install && npm run dev"
+echo ""
 echo "🎯 测试账号: testuser / password123"
+echo "========================================"
+echo ""
