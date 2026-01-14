@@ -1,0 +1,82 @@
+import type { LeaderBoardResponse, LeaderDetail } from '../types/leader';
+
+export const mockLeaderBoardResponse: LeaderBoardResponse = {
+  total: 45,
+  items: [
+    {
+      code: '000001',
+      name: '平安银行',
+      price: 13.75,
+      change_percent: 10.0,
+      market_cap: 250.5,
+      sector: '银行',
+      consecutive_limit_up: 5,
+      history_max: 8,
+      recent_limit_ups: ['2026-01-14', '2026-01-13', '2026-01-10', '2026-01-09', '2026-01-08'],
+      sealed_amount: 500000000,
+    },
+    {
+      code: '600000',
+      name: '浦发银行',
+      price: 8.95,
+      change_percent: 10.02,
+      market_cap: 180.3,
+      sector: '银行',
+      consecutive_limit_up: 4,
+      history_max: 6,
+      recent_limit_ups: ['2026-01-14', '2026-01-13', '2026-01-10', '2026-01-09'],
+      sealed_amount: 350000000,
+    },
+    {
+      code: '000002',
+      name: '万科A',
+      price: 12.50,
+      change_percent: 9.98,
+      market_cap: 145.8,
+      sector: '房地产',
+      consecutive_limit_up: 3,
+      history_max: 5,
+      recent_limit_ups: ['2026-01-14', '2026-01-13', '2026-01-10'],
+      sealed_amount: 280000000,
+    },
+  ],
+};
+
+export const mockLeaderDetail: LeaderDetail = {
+  code: '000001',
+  name: '平安银行',
+  price: 13.75,
+  change_percent: 10.0,
+  market_cap: 250.5,
+  sector: '银行',
+  consecutive_limit_up: 5,
+  history_max: 8,
+  first_limit_up_date: '2026-01-08',
+  latest_limit_up_date: '2026-01-14',
+  total_sealed_amount: 5000000000,
+  recent_limit_ups: ['2026-01-14', '2026-01-13', '2026-01-10', '2026-01-09', '2026-01-08'],
+  sealed_amount: 500000000,
+  limit_up_history: [
+    {
+      date: '2026-01-14',
+      change_percent: 10.0,
+      sealed_amount: 500000000,
+      open_count: 2,
+      final_sealed: 480000000,
+    },
+    {
+      date: '2026-01-13',
+      change_percent: 9.98,
+      sealed_amount: 450000000,
+      open_count: 1,
+      final_sealed: 445000000,
+    },
+    {
+      date: '2026-01-10',
+      change_percent: 10.02,
+      sealed_amount: 420000000,
+      open_count: 0,
+      final_sealed: 420000000,
+    },
+  ],
+};
