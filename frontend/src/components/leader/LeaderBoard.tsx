@@ -1,5 +1,6 @@
 import { Spin, Empty, Alert } from 'antd';
 import { FixedSizeList } from 'react-window';
+import { useMemo } from 'react';
 import { useLeaderBoard } from '../../hooks/useLeader';
 import { useLeaderStore } from '../../store/leaderStore';
 import LeaderItem from './LeaderItem';
@@ -43,20 +44,22 @@ function LeaderBoard({ onStockSelect, onAddCompare }: LeaderBoardProps) {
     );
   }
 
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const item = data.items[index];
-    const isSelected = false;  // TODO: 从store获取选中状态
+  const Row = useMemo(() => {
+    return ({ index, style }: { index: number; style: React.CSSProperties }) => {
+      const item = data.items[index];
+      const isSelected = false;  // TODO: 从store获取选中状态
 
-    return (
-      <LeaderItem
-        item={item}
-        isSelected={isSelected}
-        onSelect={onStockSelect}
-        onAddCompare={onAddCompare}
-        style={style}
-      />
-    );
-  };
+      return (
+        <LeaderItem
+          item={item}
+          isSelected={isSelected}
+          onSelect={onStockSelect}
+          onAddCompare={onAddCompare}
+          style={style}
+        />
+      );
+    };
+  }, [data, onStockSelect, onAddCompare]);
 
   return (
     <div>

@@ -10,6 +10,13 @@ export const useLeaderBoard = (filters: LeaderFilters) => {
     queryFn: () => getLeaderBoard(filters),
     staleTime: 30000,  // 30秒
     gcTime: 300000,  // 5分钟
+    select: (data) => ({
+      ...data,
+      items: data.items.map(item => ({
+        ...item,
+        id: `${item.code}-${item.consecutive_limit_up}`,  // 添加唯一ID
+      })),
+    }),
   });
 };
 
