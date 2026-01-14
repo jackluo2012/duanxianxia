@@ -7,6 +7,7 @@ import {
   TrophyOutlined,
   AppstoreOutlined,
   FundOutlined,
+  RiseOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -14,6 +15,7 @@ import AuctionDashboard from './pages/AuctionDashboard';
 import ScreenerPage from './pages/ScreenerPage';
 import SectorsPage from './pages/SectorsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
+import LeaderPage from './pages/LeaderPage';
 
 const { Content, Sider } = Layout;
 
@@ -47,6 +49,11 @@ function App() {
       icon: <FundOutlined />,
       label: '技术指标',
     },
+    {
+      key: '/leader',
+      icon: <RiseOutlined />,
+      label: '龙头高度',
+    },
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -76,6 +83,7 @@ function App() {
             <Route path="/screener" element={<ScreenerPage />} />
             <Route path="/sectors" element={<SectorsPage />} />
             <Route path="/indicators" element={<IndicatorsPage />} />
+            <Route path="/leader" element={<LeaderPage />} />
           </Routes>
         </Content>
       </Layout>
