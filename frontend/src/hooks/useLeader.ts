@@ -3,27 +3,27 @@ import { getLeaderBoard, getLeaderDetail } from '../api/leader';
 import { useLeaderStore } from '../store/leaderStore';
 import type { LeaderFilters } from '../types/leader';
 
-// �֒L�pn
+// 获取排行榜数据
 export const useLeaderBoard = (filters: LeaderFilters) => {
   return useQuery({
     queryKey: ['leaderBoard', filters],
     queryFn: () => getLeaderBoard(filters),
-    staleTime: 30000,  // 30�X
-    gcTime: 300000,  // 5�X
+    staleTime: 30000,  // 30秒
+    gcTime: 300000,  // 5分钟
   });
 };
 
-// �֡h��
+// 获取股票详情
 export const useLeaderDetail = (code: string) => {
   return useQuery({
     queryKey: ['leaderDetail', code],
     queryFn: () => getLeaderDetail(code),
-    enabled: !!code,  // �ScodeX(�M�B
-    staleTime: 60000,  // 60�X
+    enabled: !!code,  // 只有code存在时才启用
+    staleTime: 60000,  // 60秒
   });
 };
 
-// [	a��
+// 筛选条件管理
 export const useLeaderFilters = () => {
   const { filters, updateFilters } = useLeaderStore();
 
