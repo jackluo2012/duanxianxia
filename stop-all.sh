@@ -8,7 +8,7 @@ echo ""
 # 1. 停止后端服务（从 PID 文件）
 echo "🔧 停止后端服务..."
 
-for service in data-collector storage-service realtime-service auth-service; do
+for service in data-collector storage-service realtime-service auth-service limit-review-service; do
     if [ -f logs/$service.pid ]; then
         PID=$(cat logs/$service.pid)
         if ps -p $PID > /dev/null 2>&1; then
@@ -21,7 +21,7 @@ done
 
 # 2. 强制停止所有可能的后端服务进程（防止遗漏）
 echo "🧹 清理残留进程..."
-for port in 8080 8082 8083 8084 8085; do
+for port in 8080 8082 8083 8084 8085 8087; do
     PID=$(lsof -ti:$port 2>/dev/null || true)
     if [ -n "$PID" ]; then
         echo "  ⚠️  强制停止端口 $port 的进程 $PID"

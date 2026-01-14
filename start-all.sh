@@ -17,7 +17,7 @@ echo ""
 # 0. 检查并停止旧的后端服务
 echo "🧹 检查旧的服务进程..."
 OLD_PIDS=""
-for port in 8080 8082 8083 8084 8085; do
+for port in 8080 8082 8083 8084 8085 8087; do
     PID=$(lsof -ti:$port 2>/dev/null || true)
     if [ -n "$PID" ]; then
         echo "  ⚠️  端口 $port 被进程 $PID 占用，正在停止..."
@@ -144,11 +144,20 @@ AUTH_PID=$!
 echo "  PID: $AUTH_PID"
 cd ../..
 
+# 启动涨停复盘服务
+echo "  启动 limit-review-service..."
+cd services/limit-review-service
+cargo run > ../../logs/limit-review-service.log 2>&1 &
+LIMIT_REVIEW_PID=$!
+echo "  PID: $LIMIT_REVIEW_PID"
+cd ../..
+
 # 保存 PID 到文件
 echo "$COLLECTOR_PID" > logs/data-collector.pid
 echo "$STORAGE_PID" > logs/storage-service.pid
 echo "$REALTIME_PID" > logs/realtime-service.pid
 echo "$AUTH_PID" > logs/auth-service.pid
+echo "$LIMIT_REVIEW_PID" > logs/limit-review-service.pid
 
 echo ""
 echo "✅ 后端服务启动完成"
@@ -173,6 +182,7 @@ echo "    • data-collector (PID: $COLLECTOR_PID) - 日志: logs/data-collector
 echo "    • storage-service (PID: $STORAGE_PID) - 日志: logs/storage-service.log"
 echo "    • realtime-service (PID: $REALTIME_PID) - 日志: logs/realtime-service.log"
 echo "    • auth-service (PID: $AUTH_PID) - 日志: logs/auth-service.log"
+echo "    • limit-review-service (PID: $LIMIT_REVIEW_PID) - 日志: logs/limit-review-service.log"
 echo ""
 echo "📋 常用命令:"
 echo "  • 查看日志: tail -f logs/<service>.log"

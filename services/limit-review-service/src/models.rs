@@ -166,3 +166,54 @@ pub struct MarketSentiment {
     pub total_sealed_amount: f64,
     pub avg_sealed_amount: f64,
 }
+
+/// 龙头高度排行榜项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeaderBoardItem {
+    pub code: String,
+    pub name: String,
+    pub price: f64,
+    pub change_percent: f64,
+    pub market_cap: f64,
+    pub sector: String,
+    pub consecutive_limit_up: i32,
+    pub history_max: i32,
+    pub recent_limit_ups: Vec<String>,
+    pub sealed_amount: f64,
+}
+
+/// 龙头高度详情
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeaderDetail {
+    pub code: String,
+    pub name: String,
+    pub price: f64,
+    pub change_percent: f64,
+    pub market_cap: f64,
+    pub sector: String,
+    pub consecutive_limit_up: i32,
+    pub history_max: i32,
+    pub first_limit_up_date: String,
+    pub latest_limit_up_date: String,
+    pub total_sealed_amount: f64,
+    pub recent_limit_ups: Vec<String>,
+    pub sealed_amount: f64,
+    pub limit_up_history: Vec<LimitUpHistoryRecord>,
+}
+
+/// 涨停历史记录
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LimitUpHistoryRecord {
+    pub date: String,
+    pub change_percent: f64,
+    pub sealed_amount: f64,
+    pub open_count: i32,
+    pub final_sealed: f64,
+}
+
+/// 龙头高度排行榜响应
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeaderBoardResponse {
+    pub total: i32,
+    pub items: Vec<LeaderBoardItem>,
+}

@@ -20,7 +20,7 @@ impl Config {
     pub fn from_env() -> Result<AppConfig> {
         Ok(AppConfig {
             host: "127.0.0.1".to_string(),
-            port: 8086,
+            port: 8087,
         })
     }
 }

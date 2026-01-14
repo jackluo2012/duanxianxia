@@ -18,12 +18,12 @@ const queryClient = new QueryClient({
   },
 });
 
-// 仅在开发环境启用Mock
-if (import.meta.env.DEV) {
-  worker.start({
-    onUnhandledRequest: 'bypass',
-  });
-}
+// 禁用Mock以连接真实后端API
+// if (import.meta.env.DEV) {
+//   worker.start({
+//     onUnhandledRequest: 'bypass',
+//   });
+// }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
