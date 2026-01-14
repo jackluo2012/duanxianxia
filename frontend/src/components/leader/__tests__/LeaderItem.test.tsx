@@ -48,7 +48,7 @@ describe('LeaderItem', () => {
       />
     );
 
-    const card = screen.getByText('平安银行').closest('.ant-card');
+    const card = screen.getByText('平安银行').closest('.ant-card') as HTMLElement;
     card?.click();
 
     expect(onSelect).toHaveBeenCalledWith(mockItem);
