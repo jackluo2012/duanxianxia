@@ -1,7 +1,7 @@
 import { Card, Table, Empty, Tag, Button } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
 import { useLeaderStore } from '../../store/leaderStore';
-import type { LeaderStock } from '../../types/leader';
+import type { LeaderBoardItem } from '../../types/leader';
 
 function LeaderComparison() {
   const { comparedStocks, removeComparedStock, clearComparedStocks } = useLeaderStore();
@@ -30,8 +30,8 @@ function LeaderComparison() {
       title: '连板天数',
       dataIndex: 'consecutive_limit_up',
       key: 'consecutive_limit_up',
-      sorter: (a: LeaderStock, b: LeaderStock) =>
-        (a as any).consecutive_limit_up - (b as any).consecutive_limit_up,
+      sorter: (a: LeaderBoardItem, b: LeaderBoardItem) =>
+        a.consecutive_limit_up - b.consecutive_limit_up,
       render: (days: number) => (
         <Tag color={days >= 7 ? 'error' : days >= 5 ? 'warning' : 'processing'}>
           {days}板
@@ -42,7 +42,7 @@ function LeaderComparison() {
       title: '市值(亿)',
       dataIndex: 'market_cap',
       key: 'market_cap',
-      sorter: (a: LeaderStock, b: LeaderStock) => a.market_cap - b.market_cap,
+      sorter: (a: LeaderBoardItem, b: LeaderBoardItem) => a.market_cap - b.market_cap,
       render: (value: number) => value.toFixed(2),
     },
     {
@@ -54,7 +54,7 @@ function LeaderComparison() {
       title: '操作',
       key: 'action',
       width: 80,
-      render: (_: any, record: LeaderStock) => (
+      render: (_: any, record: LeaderBoardItem) => (
         <Button
           type="text"
           danger

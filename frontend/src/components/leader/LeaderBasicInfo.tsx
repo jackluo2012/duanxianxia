@@ -1,5 +1,5 @@
 import { Card, Descriptions, Tag, Statistic, Row, Col } from 'antd';
-import { RiseOutlined, FireOutlined, DollarOutlined } from '@ant-design/icons';
+import { DollarOutlined } from '@ant-design/icons';
 import type { LeaderBoardItem } from '../../types/leader';
 
 interface LeaderBasicInfoProps {

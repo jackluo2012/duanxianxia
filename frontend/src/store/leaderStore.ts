@@ -1,15 +1,15 @@
 import { create } from 'zustand';
-import type { LeaderStock, LeaderFilters } from '../types/leader';
+import type { LeaderBoardItem, LeaderFilters } from '../types/leader';
 
 interface LeaderStore {
   // State
-  selectedStock: LeaderStock | null;
-  comparedStocks: LeaderStock[];
+  selectedStock: LeaderBoardItem | null;
+  comparedStocks: LeaderBoardItem[];
   filters: LeaderFilters;
 
   // Actions
-  setSelectedStock: (stock: LeaderStock | null) => void;
-  addComparedStock: (stock: LeaderStock) => void;
+  setSelectedStock: (stock: LeaderBoardItem | null) => void;
+  addComparedStock: (stock: LeaderBoardItem) => void;
   removeComparedStock: (code: string) => void;
   updateFilters: (filters: Partial<LeaderFilters>) => void;
   clearComparedStocks: () => void;

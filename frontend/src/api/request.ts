@@ -1,9 +1,18 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
+
+// 创建一个已解包响应的Axios实例类型
+type UnwrappedAxiosInstance = Omit<AxiosInstance, 'get' | 'post' | 'put' | 'delete' | 'patch'> & {
+  get: <T>(url: string, config?: any) => Promise<T>;
+  post: <T>(url: string, data?: any, config?: any) => Promise<T>;
+  put: <T>(url: string, data?: any, config?: any) => Promise<T>;
+  delete: <T>(url: string, config?: any) => Promise<T>;
+  patch: <T>(url: string, data?: any, config?: any) => Promise<T>;
+};
 
 const request = axios.create({
   baseURL: '/api',
   timeout: 10000,
-});
+}) as UnwrappedAxiosInstance;
 
 // 请求拦截器 - 自动携带 JWT
 request.interceptors.request.use((config) => {

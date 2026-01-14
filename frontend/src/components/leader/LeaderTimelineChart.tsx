@@ -34,9 +34,9 @@ function LeaderTimelineChart({ stock }: LeaderTimelineChartProps) {
     );
   }
 
-  const dates = detail.limit_up_history.map(record => record.date);
-  const changes = detail.limit_up_history.map(record => record.change_percent);
-  const sealedAmounts = detail.limit_up_history.map(record =>
+  const dates = detail.limit_up_history.map((record) => record.date);
+  const changes = detail.limit_up_history.map((record) => record.change_percent);
+  const sealedAmounts = detail.limit_up_history.map((record) =>
     (record.sealed_amount / 100000000).toFixed(2)
   );
 
