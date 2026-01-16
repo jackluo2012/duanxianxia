@@ -2,7 +2,7 @@
 // 涨停识别器 - 核心算法实现
 // ===================================================================
 
-use crate::models::*;
+use crate::domain::entities::models::*;
 use anyhow::{Result, Context};
 use chrono::{DateTime, Utc, Timelike, NaiveDate};
 
@@ -23,6 +23,44 @@ impl LimitDetector {
         let high_touched_limit = quote.high >= limit_price - price_tolerance;
 
         close_at_limit && high_touched_limit
+    }
+
+    /// 判断是否跌停
+    ///
+    /// # 判定条件
+    /// 1. 收盘价 <= 跌停价 + 0.01 (允许1分钱误差)
+    /// 2. 最低价 <= 跌停价 + 0.01 (盘中触及跌停)
+    pub fn is_limit_down(quote: &StockQuote) -> bool {
+        let limit_down_price = quote.limit_down_price();
+        let price_tolerance = 0.01;
+
+        // 收盘价接近跌停价 且 最低价触及跌停价
+        let close_at_limit = quote.close <= limit_down_price + price_tolerance;
+        let low_touched_limit = quote.low <= limit_down_price + price_tolerance;
+
+        close_at_limit && low_touched_limit
+    }
+
+    /// 同时检测涨停和跌停
+    ///
+    /// # 返回值
+    /// (limit_direction, is_limit_up, is_limit_down)
+    /// - limit_direction: LimitDirection枚举
+    /// - is_limit_up: 是否涨停
+    /// - is_limit_down: 是否跌停
+    pub fn detect_limit(quote: &StockQuote) -> (LimitDirection, bool, bool) {
+        let is_up = Self::is_limit_up(quote);
+        let is_down = Self::is_limit_down(quote);
+
+        let direction = if is_up {
+            LimitDirection::Up
+        } else if is_down {
+            LimitDirection::Down
+        } else {
+            LimitDirection::None
+        };
+
+        (direction, is_up, is_down)
     }
 
     /// 分类板类型
@@ -328,5 +366,219 @@ mod tests {
         );
 
         assert_eq!(limit_type, LimitType::Straight);
+    }
+
+    #[test]
+    fn test_is_limit_down_true() {
+        let quote = StockQuote {
+            code: "000001".to_string(),
+            name: "测试股票".to_string(),
+            date: Utc::now().date_naive(),
+            datetime: Utc::now(),
+            open: 9.0,
+            high: 9.0,
+            low: 9.0,
+            close: 9.0,
+            pre_close: 10.0,
+            volume: 1000000.0,
+            change_percent: -10.0,
+            amount: 10000000.0,
+            turnover_rate: 5.0,
+            buy1_price: 0.0,
+            buy1_vol: 0,
+            buy2_price: 0.0,
+            buy2_vol: 0,
+            buy3_price: 0.0,
+            buy3_vol: 0,
+            buy4_price: 0.0,
+            buy4_vol: 0,
+            buy5_price: 0.0,
+            buy5_vol: 0,
+            sell1_price: 0.0,
+            sell1_vol: 0,
+            sell2_price: 0.0,
+            sell2_vol: 0,
+            sell3_price: 0.0,
+            sell3_vol: 0,
+            sell4_price: 0.0,
+            sell4_vol: 0,
+            sell5_price: 0.0,
+            sell5_vol: 0,
+        };
+
+        assert!(LimitDetector::is_limit_down(&quote));
+    }
+
+    #[test]
+    fn test_is_limit_down_false() {
+        let quote = StockQuote {
+            code: "000001".to_string(),
+            name: "测试股票".to_string(),
+            date: Utc::now().date_naive(),
+            datetime: Utc::now(),
+            open: 10.0,
+            high: 9.5,
+            low: 9.0,
+            close: 9.5,
+            pre_close: 10.0,
+            volume: 1000000.0,
+            change_percent: -5.0,
+            amount: 10000000.0,
+            turnover_rate: 5.0,
+            buy1_price: 0.0,
+            buy1_vol: 0,
+            buy2_price: 0.0,
+            buy2_vol: 0,
+            buy3_price: 0.0,
+            buy3_vol: 0,
+            buy4_price: 0.0,
+            buy4_vol: 0,
+            buy5_price: 0.0,
+            buy5_vol: 0,
+            sell1_price: 0.0,
+            sell1_vol: 0,
+            sell2_price: 0.0,
+            sell2_vol: 0,
+            sell3_price: 0.0,
+            sell3_vol: 0,
+            sell4_price: 0.0,
+            sell4_vol: 0,
+            sell5_price: 0.0,
+            sell5_vol: 0,
+        };
+
+        assert!(!LimitDetector::is_limit_down(&quote));
+    }
+
+    #[test]
+    fn test_detect_limit_up() {
+        let quote = StockQuote {
+            code: "000001".to_string(),
+            name: "测试股票".to_string(),
+            date: Utc::now().date_naive(),
+            datetime: Utc::now(),
+            open: 10.0,
+            high: 11.0,
+            low: 10.0,
+            close: 11.0,
+            pre_close: 10.0,
+            volume: 1000000.0,
+            change_percent: 10.0,
+            amount: 10000000.0,
+            turnover_rate: 5.0,
+            buy1_price: 0.0,
+            buy1_vol: 0,
+            buy2_price: 0.0,
+            buy2_vol: 0,
+            buy3_price: 0.0,
+            buy3_vol: 0,
+            buy4_price: 0.0,
+            buy4_vol: 0,
+            buy5_price: 0.0,
+            buy5_vol: 0,
+            sell1_price: 0.0,
+            sell1_vol: 0,
+            sell2_price: 0.0,
+            sell2_vol: 0,
+            sell3_price: 0.0,
+            sell3_vol: 0,
+            sell4_price: 0.0,
+            sell4_vol: 0,
+            sell5_price: 0.0,
+            sell5_vol: 0,
+        };
+
+        let result = LimitDetector::detect_limit(&quote);
+        assert_eq!(result.0, LimitDirection::Up);
+        assert_eq!(result.1, true);
+        assert_eq!(result.2, false);
+    }
+
+    #[test]
+    fn test_detect_limit_down() {
+        let quote = StockQuote {
+            code: "000001".to_string(),
+            name: "测试股票".to_string(),
+            date: Utc::now().date_naive(),
+            datetime: Utc::now(),
+            open: 10.0,
+            high: 9.0,
+            low: 9.0,
+            close: 9.0,
+            pre_close: 10.0,
+            volume: 1000000.0,
+            change_percent: -10.0,
+            amount: 10000000.0,
+            turnover_rate: 5.0,
+            buy1_price: 0.0,
+            buy1_vol: 0,
+            buy2_price: 0.0,
+            buy2_vol: 0,
+            buy3_price: 0.0,
+            buy3_vol: 0,
+            buy4_price: 0.0,
+            buy4_vol: 0,
+            buy5_price: 0.0,
+            buy5_vol: 0,
+            sell1_price: 0.0,
+            sell1_vol: 0,
+            sell2_price: 0.0,
+            sell2_vol: 0,
+            sell3_price: 0.0,
+            sell3_vol: 0,
+            sell4_price: 0.0,
+            sell4_vol: 0,
+            sell5_price: 0.0,
+            sell5_vol: 0,
+        };
+
+        let result = LimitDetector::detect_limit(&quote);
+        assert_eq!(result.0, LimitDirection::Down);
+        assert_eq!(result.1, false);
+        assert_eq!(result.2, true);
+    }
+
+    #[test]
+    fn test_detect_limit_none() {
+        let quote = StockQuote {
+            code: "000001".to_string(),
+            name: "测试股票".to_string(),
+            date: Utc::now().date_naive(),
+            datetime: Utc::now(),
+            open: 10.0,
+            high: 10.5,
+            low: 9.5,
+            close: 10.0,
+            pre_close: 10.0,
+            volume: 1000000.0,
+            change_percent: 0.0,
+            amount: 10000000.0,
+            turnover_rate: 5.0,
+            buy1_price: 0.0,
+            buy1_vol: 0,
+            buy2_price: 0.0,
+            buy2_vol: 0,
+            buy3_price: 0.0,
+            buy3_vol: 0,
+            buy4_price: 0.0,
+            buy4_vol: 0,
+            buy5_price: 0.0,
+            buy5_vol: 0,
+            sell1_price: 0.0,
+            sell1_vol: 0,
+            sell2_price: 0.0,
+            sell2_vol: 0,
+            sell3_price: 0.0,
+            sell3_vol: 0,
+            sell4_price: 0.0,
+            sell4_vol: 0,
+            sell5_price: 0.0,
+            sell5_vol: 0,
+        };
+
+        let result = LimitDetector::detect_limit(&quote);
+        assert_eq!(result.0, LimitDirection::None);
+        assert_eq!(result.1, false);
+        assert_eq!(result.2, false);
     }
 }
