@@ -1,5 +1,6 @@
 # Rust 编译产物
-/target
+/target/
+**/target/
 **/*.rs.bk
 *.pdb
 *.profraw
