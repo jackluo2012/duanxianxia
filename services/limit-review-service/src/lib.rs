@@ -5,9 +5,11 @@
 pub mod domain;
 pub mod application;
 pub mod adapters;
+pub mod models;
 
 // 重新导出核心类型
 pub use domain::*;
+pub use models::*;
 
 // 导出HTTP处理器
 pub use adapters::primary::http::*;

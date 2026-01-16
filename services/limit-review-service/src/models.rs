@@ -217,3 +217,80 @@ pub struct LeaderBoardResponse {
     pub total: i32,
     pub items: Vec<LeaderBoardItem>,
 }
+
+/// 题材周期阶段
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ThemeCycleStage {
+    /// 启动期
+    Init,
+    /// 发酵期
+    Fermentation,
+    /// 高潮期
+    Climax,
+    /// 分化期
+    Differentiation,
+    /// 衰退期
+    Recession,
+}
+
+impl ThemeCycleStage {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ThemeCycleStage::Init => "init",
+            ThemeCycleStage::Fermentation => "fermentation",
+            ThemeCycleStage::Climax => "climax",
+            ThemeCycleStage::Differentiation => "differentiation",
+            ThemeCycleStage::Recession => "recession",
+        }
+    }
+}
+
+/// 题材统计信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemeStats {
+    pub limit_up_count: i32,
+    pub limit_up_ratio: f64,
+    pub avg_consecutive: f64,
+    pub max_consecutive: i32,
+    pub total_sealed_amount: f64,
+    pub daily_limits: Vec<LimitUpReview>,
+    pub period_analysis: ThemePeriod,
+}
+
+/// 题材周期分析
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemePeriod {
+    pub start_date: DateTime<Utc>,
+    pub end_date: DateTime<Utc>,
+    pub duration_days: i32,
+    pub trend_3d: f64,
+    pub trend_7d: f64,
+    pub peak_date: DateTime<Utc>,
+}
+
+/// 题材模型
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Theme {
+    pub id: uuid::Uuid,
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub stocks: Vec<String>,
+    pub stats: Option<ThemeStats>,
+    pub relations: Vec<ThemeRelation>,
+    pub cycle_stage: ThemeCycleStage,
+    pub hotness_score: f64,
+}
+
+/// 题材关联关系
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemeRelation {
+    pub id: uuid::Uuid,
+    pub source_id: uuid::Uuid,
+    pub target_id: uuid::Uuid,
+    pub relation_type: String,
+    pub strength: f64,
+    pub created_at: DateTime<Utc>,
+}
