@@ -1,213 +1,331 @@
 # 短线侠平台 - 部署文档
 
-## 📋 概述
-
-本文档描述短线侠股票交易平台的部署流程和运维指南。
-
-**架构模式**: 六边形架构（Hexagonal Architecture）
-**服务数量**: 11 个微服务
-**技术栈**: Rust, Actix-Web, ClickHouse, PostgreSQL, Redis
+本文档提供短线侠平台的完整部署指南，确保您能够成功运行所有服务。
 
 ---
 
-## 🏗️ 系统架构
+## 📋 目录
 
-### 服务列表
-
-| 服务 | 端口 | 数据库 | 功能 |
-|------|------|--------|------|
-| auction-realtime | 8081 | Redis | 集合竞价实时推送 |
-| auction-service | 8082 | PostgreSQL | 竞价数据分析 |
-| auction-storage | 8083 | PostgreSQL | 竞价数据存储 |
-| auth-service | 8084 | PostgreSQL | 用户认证授权 |
-| backtest-service | 8085 | PostgreSQL | 策略回测 |
-| data-collector | 8086 | ClickHouse | 数据采集 |
-| kline-collector | 8087 | ClickHouse | K线采集 |
-| limit-review-service | 8088 | ClickHouse | 涨停复盘 |
-| query-service | 8089 | ClickHouse | 选股查询 |
-| realtime-service | 8090 | Redis | 实时行情推送 |
-| storage-service | 8091 | PostgreSQL | 通用存储 |
-
-### 依赖服务
-
-| 服务 | 版本 | 端口 | 用途 |
-|------|------|------|------|
-| ClickHouse | 24.x | 8123 | 时序数据分析 |
-| PostgreSQL | 15.x | 5432 | 持久化存储 |
-| Redis | 7.x | 6379 | 缓存和消息队列 |
+1. [环境要求](#环境要求)
+2. [快速部署](#快速部署)
+3. [详细部署步骤](#详细部署步骤)
+4. [服务配置](#服务配置)
+5. [生产环境部署](#生产环境部署)
+6. [监控和日志](#监控和日志)
+7. [故障排查](#故障排查)
 
 ---
 
-## 🚀 快速部署
+## 环境要求
 
-### 1. 环境要求
-
-#### 硬件要求
+### 硬件要求
 
 - **CPU**: 4 核心以上
-- **内存**: 8GB 以上
+- **内存**: 8GB 以上（推荐 16GB）
 - **磁盘**: 100GB 以上 SSD
 
-#### 软件要求
+### 软件要求
 
-- **操作系统**: Linux (Ubuntu 22.04 推荐)
-- **Rust**: 1.75.0 或更高版本
-- **Docker**: 20.10 或更高版本（可选）
-- **Docker Compose**: 2.20 或更高版本（可选）
+- **操作系统**: Linux (Ubuntu 22.04 推荐) / macOS / Windows (WSL2)
+- **Docker**: 20.10+ （必需）
+- **Docker Compose**: 2.20+ （必需）
+- **Bash**: 4.0+ （必需，不支持 zsh）
+- **Rust**: 1.75+ （可选，仅开发需要）
 
-### 2. 安装依赖
+### 端口要求
 
-#### 方式一：Docker Compose（推荐）
+确保以下端口未被占用：
 
-```bash
-# 克隆项目
-git clone https://github.com/your-org/duanxianxia.git
-cd duanxianxia
+| 端口 | 服务 | 用途 |
+|------|------|------|
+| 6379 | Redis | 缓存和消息队列 |
+| 8123 | ClickHouse | HTTP 接口 |
+| 5433 | PostgreSQL | 数据库连接 |
+| 8082 | auth-service | 认证服务 |
+| 8083 | storage-service | 存储服务 |
+| 8084 | auction-storage | 竞价存储 |
+| 8088 | limit-review-service | 涨停复盘 |
+| 8089 | query-service | 查询服务 |
+| 8090 | realtime-service | 实时推送 |
 
-# 启动基础设施服务
-docker-compose up -d clickhouse postgres redis
+---
 
-# 等待服务启动
-sleep 30
+## 快速部署
 
-# 初始化数据库
-docker-compose exec clickhouse clickhouse-client < scripts/init_clickhouse.sql
-docker-compose exec postgres psql -U postgres < scripts/init_postgres.sql
-```
-
-#### 方式二：手动安装
-
-##### ClickHouse 安装
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install -y apt-transport-https ca-certificates dirmngr
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 8919F6BD2B48D756
-
-echo "deb https://packages.clickhouse.com/deb stable main" | sudo tee \
-    /etc/apt/sources.list.d/clickhouse.list
-
-sudo apt-get update
-sudo apt-get install -y clickhouse-server clickhouse-client
-
-# 启动服务
-sudo service clickhouse-server start
-```
-
-##### PostgreSQL 安装
+### 一键启动（推荐）
 
 ```bash
-# Ubuntu/Debian
-sudo apt-get install -y postgresql postgresql-contrib
-
-# 启动服务
-sudo service postgresql start
-
-# 创建数据库
-sudo -u postgres psql
-CREATE DATABASE duanxianxia;
-CREATE USER duanxianxia WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE duanxianxia TO duanxianxia;
-\q
-```
-
-##### Redis 安装
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install -y redis-server
-
-# 启动服务
-sudo service redis-server start
-```
-
-### 3. 编译服务
-
-```bash
-# 进入项目根目录
+# 1. 进入项目目录
 cd /path/to/duanxianxia
 
-# 编译所有服务（开发模式）
-cargo build --workspace
+# 2. 启动所有服务
+bash ./start-all.sh
 
-# 编译所有服务（发布模式，优化性能）
-cargo build --workspace --release
-
-# 二进制文件位置
-# 开发模式: target/debug/
-# 发布模式: target/release/
+# 3. 验证服务状态
+bash ./health-check.sh
 ```
 
-### 4. 配置环境变量
+**start-all.sh 会自动完成：**
+1. ✅ 检查并停止占用端口的旧进程
+2. ✅ 启动 Docker 数据库（Redis, ClickHouse, PostgreSQL）
+3. ✅ 等待数据库就绪
+4. ✅ 初始化数据库表结构
+5. ✅ 配置环境变量
+6. ✅ 编译所有服务（首次启动需要 5-10 分钟）
+7. ✅ 启动所有后端服务
 
-创建 `.env` 文件：
+---
+
+## 详细部署步骤
+
+### 步骤 1：克隆项目
 
 ```bash
+# 克隆仓库
+git clone https://github.com/your-org/duanxianxia.git
+cd duanxianxia
+```
+
+### 步骤 2：检查环境
+
+```bash
+# 运行环境检查脚本
+bash ./check-env.sh
+```
+
+脚本会检查：
+- ✅ Docker 是否运行
+- ✅ Rust 是否安装（可选）
+- ✅ 端口是否被占用
+- ✅ 是否在 bash 环境中
+
+**解决常见问题：**
+
+```bash
+# 如果 Docker 未运行
+# macOS: 打开 Docker Desktop 应用
+# Linux: sudo systemctl start docker
+
+# 如果端口被占用
+# 查看占用进程
+lsof -ti:8089
+
+# 停止进程
+kill -9 $(lsof -ti:8089)
+
+# 或使用 start-all.sh 自动清理
+```
+
+### 步骤 3：启动数据库
+
+```bash
+# 启动 Docker 数据库
+docker-compose up -d redis clickhouse postgres
+
+# 等待数据库启动（约 10 秒）
+sleep 10
+
+# 验证数据库状态
+docker-compose ps
+```
+
+应该看到三个服务都是 `Up` 状态：
+
+```
+NAME                 IMAGE                          STATUS
+duanxianxia_clickhouse   clickhouse/clickhouse-server:24.11   Up
+duanxianxia_postgres      postgres:15-alpine                     Up
+duanxianxia_redis         redis:7-alpine                          Up
+```
+
+### 步骤 4：初始化数据库
+
+#### ClickHouse 初始化
+
+```bash
+# 初始化 ClickHouse 表结构
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql
+
+# 初始化竞价分析表
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/auction.sql
+```
+
+#### PostgreSQL 初始化
+
+```bash
+# 创建用户表
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    plan VARCHAR(20) DEFAULT 'free',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+"
+
+# 创建自选股表
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "
+CREATE TABLE IF NOT EXISTS user_watchlist (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    code VARCHAR(6) NOT NULL,
+    added_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, code)
+);
+"
+
+# 创建测试用户
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -d duanxianxia_users -c "
+INSERT INTO users (username, email, password_hash, plan)
+VALUES ('testuser', 'test@example.com', '\$2b\$12\$bMlWvJ0z/L/.wUzLZbWm2.4tJYsW5udpfj4iRJyuHUZc4.6oAPKyy', 'free')
+ON CONFLICT (username) DO NOTHING;
+"
+```
+
+**测试账号:**
+- 用户名: `testuser`
+- 密码: `password123`
+
+### 步骤 5：配置环境变量
+
+```bash
+# 为 data-collector 创建 .env 文件
+cat > services/data-collector/.env << 'EOF'
+# Redis
+REDIS_URL=redis://127.0.0.1:6379
+
 # ClickHouse
 CLICKHOUSE_URL=http://localhost:8123
 CLICKHOUSE_DATABASE=duanxianxia
 
-# PostgreSQL
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=duanxianxia
-POSTGRES_PASSWORD=your_password
-POSTGRES_DB=duanxianxia
+# TDX (通达信数据源)
+TDX_HOST=218.108.47.69
+TDX_PORT=7709
+EOF
 
-# Redis
-REDIS_URL=redis://127.0.0.1:6379
+echo "✅ 环境变量配置完成"
 ```
 
-### 5. 启动服务
-
-#### 方式一：手动启动（开发环境）
+### 步骤 6：编译服务
 
 ```bash
-# 使用 cargo run
-cargo run --bin auction-realtime
-cargo run --bin auction-service
-cargo run --bin auction-storage
-cargo run --bin auth-service
-cargo run --bin backtest-service
-cargo run --bin hexagonal-collector  # data-collector
-cargo run --bin kline-collector
-cargo run --bin limit-review-service
-cargo run --bin query-service
-cargo run --bin realtime-service
-cargo run --bin storage-service
+# 编译所有服务（首次需要 5-10 分钟）
+cargo build --workspace
+
+# 如果只想编译特定服务
+cargo build -p query-service
+cargo build -p auth-service
+cargo build -p auction-storage
 ```
 
-#### 方式二：使用编译后的二进制文件（生产环境）
+**编译输出位置：**
+- 开发模式: `target/debug/`
+- 发布模式: `target/release/`
+
+### 步骤 7：启动服务
 
 ```bash
-#!/bin/bash
-# start_all.sh
+# 方式一：使用启动脚本（推荐）
+bash ./start-all.sh
 
-# 进入项目目录
-cd /path/to/duanxianxia
+# 方式二：手动启动
+# 创建日志目录
+mkdir -p logs
 
-# 启动所有服务（使用 release 二进制）
-./target/release/auction-realtime &
-./target/release/auction-service &
-./target/release/auction-storage &
-./target/release/auth-service &
-./target/release/backtest-service &
-./target/release/hexagonal-collector &
-./target/release/kline-collector &
-./target/release/limit-review-service &
-./target/release/query-service &
-./target/release/realtime-service &
-./target/release/storage-service &
+# 启动各个服务（后台运行）
+nohup ./target/debug/auth-service > logs/auth-service.log 2>&1 &
+echo $! > logs/auth-service.pid
 
-echo "所有服务已启动"
+nohup ./target/debug/query-service > logs/query-service.log 2>&1 &
+echo $! > logs/query-service.pid
+
+nohup ./target/debug/limit-review-service > logs/limit-review-service.log 2>&1 &
+echo $! > logs/limit-review-service.pid
+
+nohup ./target/debug/realtime-service > logs/realtime-service.log 2>&1 &
+echo $! > logs/realtime-service.pid
+
+nohup ./target/debug/storage-service > logs/storage-service.log 2>&1 &
+echo $! > logs/storage-service.pid
+
+nohup ./target/debug/auction-storage > logs/auction-storage.log 2>&1 &
+echo $! > logs/auction-storage.pid
 ```
 
-#### 方式三：使用 systemd（生产环境推荐）
+### 步骤 8：验证部署
+
+```bash
+# 运行健康检查
+bash ./health-check.sh
+
+# 手动检查各个服务
+curl http://localhost:8082/health  # auth-service
+curl http://localhost:8083/health  # storage-service
+curl http://localhost:8084/health  # auction-storage
+curl http://localhost:8088/health  # limit-review-service
+curl http://localhost:8089/health  # query-service
+curl http://localhost:8090/health  # realtime-service
+```
+
+所有服务应返回 `{"status":"ok"}` 或类似响应。
+
+---
+
+## 服务配置
+
+### Auth Service 配置
+
+**端口**: 8082
+**数据库**: PostgreSQL
+
+```bash
+# 环境变量
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5433
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=password
+export POSTGRES_DB=duanxianxia_users
+export JWT_SECRET=your-secret-key-here
+```
+
+### Query Service 配置
+
+**端口**: 8089
+**数据库**: ClickHouse
+
+```bash
+# 环境变量
+export CLICKHOUSE_URL=http://localhost:8123
+export CLICKHOUSE_DATABASE=duanxianxia
+```
+
+### Auction Storage 配置
+
+**端口**: 8084
+**数据库**: ClickHouse + Redis
+
+```bash
+# 环境变量
+export CLICKHOUSE_URL=http://localhost:8123
+export REDIS_URL=redis://127.0.0.1:6379
+```
+
+---
+
+## 生产环境部署
+
+### 使用 systemd 管理
 
 为每个服务创建 systemd unit 文件：
 
-```ini
+#### 1. 创建服务文件
+
+```bash
 # /etc/systemd/system/duanxianxia-query.service
+cat > /etc/systemd/system/duanxianxia-query.service << 'EOF'
 [Unit]
 Description=短线侠查询服务
 After=network.target clickhouse-server.service
@@ -217,385 +335,408 @@ Type=simple
 User=duanxianxia
 WorkingDirectory=/opt/duanxianxia
 Environment="CLICKHOUSE_URL=http://localhost:8123"
+Environment="RUST_LOG=info"
 ExecStart=/opt/duanxianxia/target/release/query-service
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
+EOF
 ```
 
-启用并启动服务：
+#### 2. 启用并启动服务
 
 ```bash
+# 创建用户
+sudo useradd -r -s /bin/bash duanxianxia
+
+# 复制文件到生产目录
+sudo cp -r . /opt/duanxianxia
+sudo chown -R duanxianxia:duanxianxia /opt/duanxianxia
+
+# 编译发布版本
+cd /opt/duanxianxia
+cargo build --workspace --release
+
+# 重新加载 systemd
 sudo systemctl daemon-reload
+
+# 启用服务
 sudo systemctl enable duanxianxia-query
+
+# 启动服务
 sudo systemctl start duanxianxia-query
-```
 
-### 6. 验证部署
-
-```bash
-# 检查服务健康状态
-curl http://localhost:8089/health  # query-service
-curl http://localhost:8088/health  # limit-review-service
-curl http://localhost:8090/health  # realtime-service
+# 查看状态
+sudo systemctl status duanxianxia-query
 
 # 查看日志
-tail -f /var/log/duanxianxia/*.log
+sudo journalctl -u duanxianxia-query -f
 ```
 
----
+### 使用 Nginx 反向代理
 
-## 🔧 配置管理
+```nginx
+# /etc/nginx/sites-available/duanxianxia
+upstream query_service {
+    server localhost:8089;
+}
 
-### ClickHouse 配置
+upstream auth_service {
+    server localhost:8082;
+}
 
-#### 初始化数据库
+upstream auction_storage {
+    server localhost:8084;
+}
 
-```sql
--- scripts/init_clickhouse.sql
+server {
+    listen 80;
+    server_name api.duanxianxia.com;
 
-CREATE DATABASE IF NOT EXISTS duanxianxia;
+    # 查询服务
+    location /api/query/ {
+        proxy_pass http://query_service/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 
--- 创建行情表
-CREATE TABLE IF NOT EXISTS duanxianxia.stock_realtime_quotes (
-    timestamp DateTime64(3, 'Asia/Shanghai'),
-    code String,
-    name String,
-    price Float64,
-    volume Float64,
-    amount Float64,
-    bid1_price Float64,
-    ask1_price Float64,
-    change_percent Float64
-) ENGINE = MergeTree()
-ORDER BY (code, timestamp);
+    # 认证服务
+    location /api/auth/ {
+        proxy_pass http://auth_service/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 
--- 创建K线表
-CREATE TABLE IF NOT EXISTS duanxianxia.stock_daily_bars_ohlc (
-    date Date,
-    code String,
-    name String,
-    open Float64,
-    high Float64,
-    low Float64,
-    close Float64,
-    volume Float64,
-    amount Float64
-) ENGINE = MergeTree()
-ORDER BY (code, date);
-
--- 创建涨停分析表
-CREATE TABLE IF NOT EXISTS duanxianxia.limit_up_analysis (
-    date Date,
-    code String,
-    name String,
-    limit_type String,
-    limit_times UInt32,
-    seal_amount Float64,
-    open_times UInt32
-) ENGINE = MergeTree()
-ORDER BY (date, code);
+    # 竞价服务
+    location /api/auction/ {
+        proxy_pass http://auction_storage/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
-### PostgreSQL 配置
-
-#### 初始化数据库
-
-```sql
--- scripts/init_postgres.sql
-
--- 创建用户和数据库
-CREATE USER duanxianxia WITH PASSWORD 'your_password';
-CREATE DATABASE duanxianxia OWNER duanxianxia;
-
--- 连接到数据库
-\c duanxianxia
-
--- 创建用户表
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 创建竞价数据表
-CREATE TABLE IF NOT EXISTS auction_data (
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(10) NOT NULL,
-    name VARCHAR(50),
-    auction_type VARCHAR(20), -- 'morning' or 'afternoon'
-    price Float64,
-    volume Float64,
-    amount Float64,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 创建回测结果表
-CREATE TABLE IF NOT EXISTS backtest_results (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    strategy_name VARCHAR(100),
-    start_date DATE,
-    end_date DATE,
-    initial_capital Float64,
-    final_capital Float64,
-    return_rate Float64,
-    max_drawdown Float64,
-    sharpe_ratio Float64,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
----
-
-## 📊 监控和日志
-
-### 日志配置
-
-所有服务使用 `tracing` 库进行结构化日志记录。
-
-#### 日志级别
-
-- `ERROR`: 错误日志
-- `WARN`: 警告日志
-- `INFO`: 信息日志（默认）
-- `DEBUG`: 调试日志
-- `TRACE`: 追踪日志
-
-#### 配置日志
+启用配置：
 
 ```bash
-# 设置日志级别
+# 创建软链接
+sudo ln -s /etc/nginx/sites-available/duanxianxia /etc/nginx/sites-enabled/
+
+# 测试配置
+sudo nginx -t
+
+# 重载 Nginx
+sudo systemctl reload nginx
+```
+
+---
+
+## 监控和日志
+
+### 查看日志
+
+```bash
+# 查看所有日志
+tail -f logs/*.log
+
+# 查看特定服务日志
+tail -f logs/query-service.log
+tail -f logs/auth-service.log
+
+# 查看最近 100 行
+tail -n 100 logs/query-service.log
+
+# 搜索错误
+grep -i "error" logs/*.log
+```
+
+### 日志级别配置
+
+```bash
+# 设置日志级别（开发环境）
+export RUST_LOG=debug
+cargo run -p query-service
+
+# 设置日志级别（生产环境）
 export RUST_LOG=info
+cargo run -p query-service
+
+# 仅显示特定模块的日志
 export RUST_LOG=duanxianxia=debug,query_service=info
-
-# 输出到文件
-export RUST_LOG=info
-cargo run 2>&1 | tee /var/log/duanxianxia/service.log
 ```
 
-### 监控指标
-
-#### 系统监控
-
-```bash
-# CPU 使用率
-top -b -n 1 | grep "Cpu(s)"
-
-# 内存使用
-free -h
-
-# 磁盘使用
-df -h
-
-# 网络连接
-netstat -tunlp | grep LISTEN
-```
-
-#### 服务监控
+### 性能监控
 
 ```bash
 # 检查服务进程
 ps aux | grep "duanxianxia"
 
-# 检查端口占用
-netstat -tunlp | grep -E "808[0-9]|8123|5432|6379"
+# 检查端口监听
+netstat -tunlp | grep -E "808[0-9]"
 
-# 查看 ClickHouse 查询
-clickhouse-client --query "SELECT * FROM system.processes"
+# 检查内存使用
+free -h
 
-# 查看 PostgreSQL 连接
-psql -U duanxianxia -d duanxianxia -c "SELECT * FROM pg_stat_activity;"
+# 检查磁盘使用
+df -h
+
+# ClickHouse 查询监控
+docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "
+SELECT * FROM system.processes WHERE query NOT LIKE '%system.%'
+ORDER BY query_duration_ms DESC LIMIT 10
+"
 ```
 
 ---
 
-## 🔄 升级和维护
+## 故障排查
 
-### 服务升级
+### 问题 1：端口被占用
+
+**症状**: 服务启动失败，日志显示 "Address already in use"
+
+**解决方案**:
+
+```bash
+# 查看占用端口的进程
+lsof -ti:8089
+
+# 停止进程
+kill -9 $(lsof -ti:8089)
+
+# 或使用停止脚本
+bash ./stop-all.sh
+```
+
+### 问题 2：Docker 未运行
+
+**症状**: "Cannot connect to the Docker daemon"
+
+**解决方案**:
+
+```bash
+# macOS
+open -a Docker
+
+# Linux
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# 验证 Docker 状态
+docker info
+```
+
+### 问题 3：数据库连接失败
+
+**症状**: "Connection refused" 或 "Could not connect to database"
+
+**解决方案**:
+
+```bash
+# 检查数据库状态
+docker-compose ps
+
+# 重启数据库
+docker-compose restart clickhouse
+docker-compose restart postgres
+docker-compose restart redis
+
+# 检查数据库日志
+docker-compose logs clickhouse
+docker-compose logs postgres
+docker-compose logs redis
+```
+
+### 问题 4：编译失败
+
+**症状**: cargo build 报错
+
+**解决方案**:
+
+```bash
+# 清理构建缓存
+cargo clean
+
+# 更新依赖
+cargo update
+
+# 重新编译
+cargo build --workspace
+
+# 如果内存不足，单独编译
+cargo build -p query-service
+```
+
+### 问题 5：服务启动失败
+
+**症状**: 服务启动后立即退出
+
+**解决方案**:
+
+```bash
+# 查看详细日志
+tail -f logs/query-service.log
+
+# 手动运行以查看错误
+cargo run -p query-service
+
+# 常见错误：
+# - 数据库未连接 → 检查 docker-compose ps
+# - 环境变量缺失 → 检查 .env 文件
+# - 端口占用 → 检查 lsof -ti:PORT
+```
+
+### 问题 6：ClickHouse 表不存在
+
+**症状**: "Table duanxianxia.xxx doesn't exist"
+
+**解决方案**:
+
+```bash
+# 重新初始化 ClickHouse
+docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql
+
+# 验证表已创建
+docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "SHOW TABLES FROM duanxianxia"
+```
+
+---
+
+## 停止和清理
+
+### 停止服务
+
+```bash
+# 停止所有后端服务
+bash ./stop-all.sh
+
+# 停止 Docker 数据库
+docker-compose down
+
+# 停止但保留数据
+docker-compose stop
+```
+
+### 清理数据
+
+```bash
+# ⚠️ 警告：这将删除所有数据！
+
+# 停止服务
+bash ./stop-all.sh
+docker-compose down -v
+
+# 删除日志
+rm -rf logs/*.log
+
+# 删除编译产物
+cargo clean
+
+# 完全重置
+docker-compose down -v
+rm -rf logs/*.log
+cargo clean
+bash ./start-all.sh
+```
+
+---
+
+## 备份和恢复
+
+### ClickHouse 备份
+
+```bash
+# 备份
+docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "
+BACKUP TABLE duanxianxia.stock_quotes TO File('/var/lib/clickhouse/backups/stock_quotes.zip')
+"
+
+# 恢复
+docker exec $(docker ps -q -f name=clickhouse) clickhouse-client --query "
+RESTORE TABLE duanxianxia.stock_quotes FROM File('/var/lib/clickhouse/backups/stock_quotes.zip')
+"
+```
+
+### PostgreSQL 备份
+
+```bash
+# 备份
+docker exec $(docker ps -q -f name=postgres) pg_dump -U postgres duanxianxia_users > backup_$(date +%Y%m%d).sql
+
+# 恢复
+docker exec -i $(docker ps -q -f name=postgres) psql -U postgres duanxianxia_users < backup_20250116.sql
+```
+
+---
+
+## 升级服务
 
 ```bash
 # 1. 拉取最新代码
 git pull origin main
 
-# 2. 编译新版本
+# 2. 停止服务
+bash ./stop-all.sh
+
+# 3. 备份当前版本
+cp target/release/query-service target/release/query-service.backup
+
+# 4. 重新编译
 cargo build --workspace --release
 
-# 3. 停止服务
-sudo systemctl stop duanxianxia-query
+# 5. 启动服务
+bash ./start-all.sh
 
-# 4. 备份当前版本
-cp /opt/duanxianxia/target/release/query-service /opt/duanxianxia/backups/query-service.old
-
-# 5. 部署新版本
-cp target/release/query-service /opt/duanxianxia/target/release/
-
-# 6. 启动服务
-sudo systemctl start duanxianxia-query
-
-# 7. 验证服务
-curl http://localhost:8089/health
-```
-
-### 数据库备份
-
-#### ClickHouse 备份
-
-```bash
-# 创建备份目录
-mkdir -p /backups/clickhouse
-
-# 备份数据库
-clickhouse-client --query "BACKUP TABLE duanxianxia.stock_realtime_quotes TO File('/backups/clickhouse/stock_realtime_quotes.zip')"
-
-# 恢复数据库
-clickhouse-client --query "RESTORE TABLE duanxianxia.stock_realtime_quotes FROM File('/backups/clickhouse/stock_realtime_quotes.zip')"
-```
-
-#### PostgreSQL 备份
-
-```bash
-# 备份
-pg_dump -U duanxianxia duanxianxia > /backups/postgres/duanxianxia_$(date +%Y%m%d).sql
-
-# 恢复
-psql -U duanxianxia duanxianxia < /backups/postgres/duanxianxia_20250116.sql
+# 6. 验证
+bash ./health-check.sh
 ```
 
 ---
 
-## 🛠️ 故障排查
+## 安全建议
 
-### 常见问题
-
-#### 1. 服务无法启动
-
-**症状**: 服务启动失败，日志显示连接错误
-
-**解决方案**:
-```bash
-# 检查依赖服务状态
-sudo systemctl status clickhouse-server
-sudo systemctl status postgresql
-sudo systemctl status redis-server
-
-# 检查端口占用
-netstat -tunlp | grep -E "8123|5432|6379"
-
-# 查看服务日志
-journalctl -u duanxianxia-query -n 50
-```
-
-#### 2. ClickHouse 查询慢
-
-**症状**: API 响应时间长
-
-**解决方案**:
-```sql
--- 查看慢查询
-SELECT * FROM system.query_log
-WHERE type = 'QueryFinish'
-AND query_duration_ms > 1000
-ORDER BY event_time DESC
-LIMIT 10;
-
--- 优化索引
-OPTIMIZE TABLE duanxianxia.stock_realtime_quotes FINAL;
-```
-
-#### 3. 内存占用高
-
-**症状**: 服务 OOM (Out of Memory)
-
-**解决方案**:
-```bash
-# 检查内存使用
-free -h
-
-# 限制 ClickHouse 内存
-# /etc/clickhouse-server/config.xml
-<max_memory_usage>10000000000</max_memory_usage>
-
-# 配置 Rust 服务内存限制
-# systemctl edit duanxianxia-query
-[Service]
-MemoryLimit=2G
-```
-
----
-
-## 🔐 安全配置
-
-### 1. 防火墙配置
+### 1. 修改默认密码
 
 ```bash
-# 仅允许必要端口
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw allow 22/tcp    # SSH
-sudo ufw deny 8123/tcp   # ClickHouse（内网）
-sudo ufw deny 5432/tcp   # PostgreSQL（内网）
+# 修改 PostgreSQL 密码
+docker exec $(docker ps -q -f name=postgres) psql -U postgres -c "
+ALTER USER postgres PASSWORD 'your-strong-password';
+"
+```
+
+### 2. 配置防火墙
+
+```bash
+# 仅允许必要的端口
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 22/tcp
+sudo ufw deny 8123/tcp  # ClickHouse（内网）
+sudo ufw deny 5433/tcp  # PostgreSQL（内网）
+sudo ufw deny 6379/tcp  # Redis（内网）
 sudo ufw enable
 ```
 
-### 2. 数据库访问控制
+### 3. 使用 HTTPS
 
-#### ClickHouse
+```bash
+# 安装 certbot
+sudo apt-get install certbot python3-certbot-nginx
 
-```xml
-<!-- /etc/clickhouse-server/users.xml -->
-<duanxianxia>
-    <password>your_secure_password</password>
-    <networks>
-        <ip>::/0</ip>
-    </networks>
-    <profile>default</profile>
-    <quota>default</quota>
-    <allow_databases>
-        <database>duanxianxia</database>
-    </allow_databases>
-</duanxianxia>
-```
+# 获取 SSL 证书
+sudo certbot --nginx -d api.duanxianxia.com
 
-#### PostgreSQL
-
-```sql
--- /etc/postgresql/15/main/pg_hba.conf
-# 仅允许本地和特定IP连接
-host    duanxianxia    duanxianxia    127.0.0.1/32            scram-sha-256
-host    duanxianxia    duanxianxia    10.0.0.0/8             scram-sha-256
+# 自动续期
+sudo certbot renew --dry-run
 ```
 
 ---
 
-## 📦 生产环境检查清单
-
-### 部署前检查
-
-- [ ] 所有依赖服务已安装并运行（ClickHouse, PostgreSQL, Redis）
-- [ ] 数据库已初始化
-- [ ] 环境变量已配置
-- [ ] 防火墙规则已配置
-- [ ] 日志目录已创建并设置权限
-- [ ] systemd unit 文件已配置
-- [ ] 监控和告警已设置
-
-### 部署后验证
-
-- [ ] 所有服务正常启动
-- [ ] Health check 端点正常响应
-- [ ] 日志正常输出
-- [ ] 数据库连接正常
-- [ ] API 接口正常响应
-- [ ] WebSocket 连接正常
-
----
-
-## 📞 支持与联系
+## 📞 获取帮助
 
 如有问题，请联系：
 - 邮件: support@duanxianxia.com
