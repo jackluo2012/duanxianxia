@@ -293,6 +293,15 @@ impl Database {
                 open_times: row.open_times as i32,
                 consecutive_days: row.consecutive_days as i32,
                 sealed_amount: Some(row.sealed_amount),
+
+                // 新增字段 - 暂时设为None或默认值
+                limit_direction: None,
+                max_consecutive: 0,
+                interval_stats: None,
+                strength_score: if row.strength_score == 0.0 { None } else { Some(row.strength_score as f32) },
+                manual_reason: None,
+                reason_source: None,
+
                 last_consecutive: row.last_consecutive as i32,
                 is_new_high: row.is_new_high as i32,
                 industry,
@@ -301,7 +310,6 @@ impl Database {
                 remark,
                 limit_duration: if row.limit_duration == 0 { None } else { Some(row.limit_duration as i32) },
                 seal_period,
-                strength_score: if row.strength_score == 0.0 { None } else { Some(row.strength_score) },
                 volume: Some(row.volume as f64),
                 amount: Some(row.amount),
                 turnover_rate: Some(row.turnover_rate),

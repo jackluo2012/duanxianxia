@@ -117,6 +117,33 @@ impl LimitType {
     }
 }
 
+/// 涨停跌停方向
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum LimitDirection {
+    Up = 1,
+    Down = -1,
+    None = 0,
+}
+
+/// 涨停原因来源
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReasonSource {
+    Auto = 1,
+    Manual = 2,
+    Mixed = 3,
+}
+
+/// 区间连板统计
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntervalStats {
+    pub days_5_count: u8,
+    pub days_5_consecutive: u8,
+    pub days_10_count: u8,
+    pub days_10_consecutive: u8,
+    pub days_20_count: u8,
+    pub days_20_consecutive: u8,
+}
+
 /// 涨停复盘记录
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LimitUpReview {
@@ -130,15 +157,24 @@ pub struct LimitUpReview {
     pub open_times: i32,
     pub consecutive_days: i32,
     pub sealed_amount: Option<f64>,
+
+    // 新增字段
+    pub limit_direction: Option<LimitDirection>,  // 涨停/跌停方向
+    pub max_consecutive: i32,                      // 历史最大连板数
+    pub interval_stats: Option<IntervalStats>,     // 区间统计
+    pub strength_score: Option<f32>,               // 强度评分
+    pub limit_reason: Option<String>,              // 自动提取的涨停原因
+    pub manual_reason: Option<String>,             // 手动标注的原因
+    pub reason_source: Option<ReasonSource>,       // 原因来源
+
     pub last_consecutive: i32,
     pub is_new_high: i32,
     pub industry: Option<String>,
     pub concept: Option<String>,
-    pub limit_reason: Option<String>,
     pub remark: Option<String>,
     pub limit_duration: Option<i32>,
     pub seal_period: Option<String>,
-    pub strength_score: Option<f64>,
+
     // 测试需要的额外字段
     pub volume: Option<f64>,
     pub amount: Option<f64>,
