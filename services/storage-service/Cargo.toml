@@ -4,16 +4,37 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# Domain层
+storage-domain = { path = "domain" }
+
+# Web框架
 actix-web = { workspace = true }
 actix-cors = "0.7"
+
+# 异步运行时
 tokio = { workspace = true }
+
+# 序列化
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# 错误处理
 anyhow = { workspace = true }
+thiserror = "1.0"
+
+# 日志
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-time = { workspace = true }
+
+# 数据库和缓存
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 clickhouse = { version = "0.14.1", features = ["time"] }
+chrono = { workspace = true }
+
+# 共享代码
 shared = { path = "../../shared" }
+
+# 其他
 reqwest = { version = "0.12", features = ["json"] }
+async-trait = "0.1"
+dotenv = "0.15"

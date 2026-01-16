@@ -1,42 +1,26 @@
+//! Auction Storage Service - 六边形架构入口
+//!
+//! 竞价存储服务采用六边形架构设计,业务逻辑与技术实现完全分离。
+
 use actix_cors::Cors;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpServer};
 use anyhow::Result;
 use chrono::Local;
 use redis::aio::ConnectionManager;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
-mod alerts;
-mod api;
-mod cache;
-mod watchlist;
+mod domain;
+mod application;
+mod adapters;
 
-use alerts::AlertManager;
-use api::alerts as alerts_api;
-use api::details;
-use api::rankings;
-use watchlist::WatchlistManager;
+use domain::{AlertManager, WatchlistManager, AuctionQuote};
+use application::use_cases::{AlertManagementUseCase, WatchlistManagementUseCase};
+use adapters::primary::{AppState, configure_routes};
 
-/// 竞价数据结构（与 auction-service 一致）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AuctionQuote {
-    code: String,
-    name: String,
-    time: String,
-    price: f64,
-    pre_close: f64,
-    volume: u64,
-    amount: f64,
-    buy1_price: f64,
-    buy1_volume: u64,
-    sell1_price: f64,
-    sell1_volume: u64,
-    change_percent: f64,
-    sealed_amount_buy: f64,
-    sealed_amount_sell: f64,
-}
+/// 竞价数据结构（与Domain层保持一致）
+/// 注意：这个结构现在从domain::services::alert_manager::AuctionQuote重新导出
 
 /// 消费 Redis Stream 并批量写入 ClickHouse
 async fn consume_auction_stream(
@@ -179,11 +163,49 @@ async fn batch_write_clickhouse(
     }
 }
 
-async fn health_check() -> impl Responder {
-    HttpResponse::Ok().json(serde_json::json!({
-        "status": "ok",
-        "service": "auction-storage"
-    }))
+/// 为AuctionQuote添加serde反序列化支持
+/// 注意：这是为了与Domain层保持兼容
+impl<'de> serde::Deserialize<'de> for AuctionQuote {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(serde::Deserialize)]
+        struct AuctionQuoteHelper {
+            code: String,
+            name: String,
+            time: String,
+            price: f64,
+            pre_close: f64,
+            volume: u64,
+            amount: f64,
+            buy1_price: f64,
+            buy1_volume: u64,
+            sell1_price: f64,
+            sell1_volume: u64,
+            change_percent: f64,
+            sealed_amount_buy: f64,
+            sealed_amount_sell: f64,
+        }
+
+        let helper = AuctionQuoteHelper::deserialize(deserializer)?;
+        Ok(AuctionQuote {
+            code: helper.code,
+            name: helper.name,
+            time: helper.time,
+            price: helper.price,
+            pre_close: helper.pre_close,
+            volume: helper.volume,
+            amount: helper.amount,
+            buy1_price: helper.buy1_price,
+            buy1_volume: helper.buy1_volume,
+            sell1_price: helper.sell1_price,
+            sell1_volume: helper.sell1_volume,
+            change_percent: helper.change_percent,
+            sealed_amount_buy: helper.sealed_amount_buy,
+            sealed_amount_sell: helper.sealed_amount_sell,
+        })
+    }
 }
 
 #[tokio::main]
@@ -195,13 +217,13 @@ async fn main() -> Result<()> {
         .json()
         .init();
 
-    info!("竞价存储服务启动");
+    info!("🚀 启动 auction-storage (六边形架构)...");
 
     // 连接 Redis
     let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
     let redis_client = redis::Client::open(redis_url)?;
     let redis_conn = ConnectionManager::new(redis_client).await?;
-    info!("成功连接到 Redis");
+    info!("✅ 成功连接到 Redis");
 
     // ClickHouse URL
     let clickhouse_url =
@@ -210,16 +232,21 @@ async fn main() -> Result<()> {
     // HTTP 客户端
     let http_client = reqwest::Client::new();
 
-    // 创建告警管理器
+    // 创建Domain层服务
     let alert_manager = Arc::new(AlertManager::new());
-    let alert_manager_data = web::Data::new(alerts_api::AlertManagerData(alert_manager.clone()));
-
-    // 创建自选股管理器
     let watchlist_manager = Arc::new(WatchlistManager::new());
-    let watchlist_manager_data = web::Data::new(api::watchlist::WatchlistManagerData(
-        watchlist_manager.clone(),
-    ));
-    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await; // 等待默认池初始化
+    info!("✅ Domain服务创建成功");
+
+    // 创建Application层UseCases
+    let alert_use_case = Arc::new(AlertManagementUseCase::new(alert_manager.clone()));
+    let watchlist_use_case = Arc::new(WatchlistManagementUseCase::new(watchlist_manager.clone()));
+    info!("✅ Application用例创建成功");
+
+    // 创建服务状态
+    let app_state = AppState {
+        alert_use_case: alert_use_case.clone(),
+        watchlist_use_case: watchlist_use_case.clone(),
+    };
 
     // 启动后台任务：消费 Redis Stream
     let redis_conn_clone = redis_conn.clone();
@@ -232,7 +259,7 @@ async fn main() -> Result<()> {
 
     let bind_address = std::env::var("BIND_ADDRESS").unwrap_or("0.0.0.0:8084".to_string());
 
-    info!("HTTP 服务器启动在 {}", bind_address);
+    info!("🌐 HTTP 服务器启动在 http://{}", bind_address);
 
     // 启动 HTTP 服务器
     HttpServer::new(move || {
@@ -240,19 +267,8 @@ async fn main() -> Result<()> {
 
         App::new()
             .wrap(cors)
-            .app_data(alert_manager_data.clone())
-            .app_data(watchlist_manager_data.clone())
-            .route("/health", web::get().to(health_check))
-            .service(rankings)
-            .service(details::get_auction_details)
-            .service(alerts_api::create_alert)
-            .service(alerts_api::get_alerts)
-            .service(alerts_api::delete_alert)
-            .service(alerts_api::get_alert_history)
-            .service(api::watchlist::add_to_watchlist)
-            .service(api::watchlist::remove_from_watchlist)
-            .service(api::watchlist::get_watchlist)
-            .service(api::watchlist::check_is_watched)
+            .app_data(web::Data::new(app_state.clone()))
+            .configure(configure_routes)
     })
     .bind(&bind_address)?
     .run()

@@ -1,0 +1,13 @@
+[package]
+name = "storage-service-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+storage-domain = { path = "../domain" }
+serde_json = "1.0"
+criterion = "0.5"
+
+[[bin]]
+name = "benchmark"
+path = "benches/benchmark.rs"

@@ -1,13 +1,11 @@
-mod types;
-
 use anyhow::Result;
-use tracing::{info, Level};
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // 初始化日志
     tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
+        .with_max_level(tracing::Level::INFO)
         .with_target(false)
         .json()
         .init();

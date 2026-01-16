@@ -4,15 +4,8 @@ use anyhow::Result;
 use tracing::{info, Level};
 use tracing_subscriber;
 
-mod api_handlers_real; // 使用真实实现
 mod history_api;
-mod indicators;
-mod review; // 涨停复盘模块
-mod screener;
-mod screener_impl;
-mod sectors;
-mod sectors_impl;
-mod types; // 历史数据API模块
+mod review; // 涨停复盘模块（待迁移）
 
 async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({
@@ -58,7 +51,7 @@ async fn main() -> Result<()> {
     HttpServer::new(move || {
         let cors = Cors::permissive();
 
-        // 创建 ReviewService 实例
+        // 创建 ReviewService 实例（待迁移到六边形架构）
         let review_service = review::ReviewService::new(clickhouse_client.clone());
 
         App::new()
@@ -68,47 +61,47 @@ async fn main() -> Result<()> {
             .route("/health", web::get().to(health))
             .service(
                 web::scope("/api/screener")
-                    .route("/leaders", web::get().to(api_handlers_real::get_leaders))
+                    .route("/leaders", web::get().to(query_service::get_leaders))
                     .route(
                         "/consecutive",
-                        web::get().to(api_handlers_real::get_consecutive_boards),
+                        web::get().to(query_service::get_consecutive_boards),
                     )
-                    .route("/limit-up", web::get().to(api_handlers_real::get_limit_up))
+                    .route("/limit-up", web::get().to(query_service::get_limit_up))
                     .route(
                         "/limit-down",
-                        web::get().to(api_handlers_real::get_limit_down),
+                        web::get().to(query_service::get_limit_down),
                     ),
             )
             .service(
                 web::scope("/api/sectors")
-                    .route("/list", web::get().to(api_handlers_real::get_sectors))
+                    .route("/list", web::get().to(query_service::get_sectors))
                     .route(
                         "/{code}/stocks",
-                        web::get().to(api_handlers_real::get_sector_stocks),
+                        web::get().to(query_service::get_sector_stocks),
                     )
                     .route(
                         "/performance",
-                        web::get().to(api_handlers_real::get_sector_performance),
+                        web::get().to(query_service::get_sector_performance),
                     )
                     .route(
                         "/{code}/flow",
-                        web::get().to(api_handlers_real::get_sector_flow),
+                        web::get().to(query_service::get_sector_flow),
                     ),
             )
             .service(
                 web::scope("/api/indicators")
-                    .route("/{code}", web::get().to(api_handlers_real::get_indicators))
+                    .route("/{code}", web::get().to(query_service::get_indicators))
                     .route(
                         "/{code}/history",
-                        web::get().to(api_handlers_real::get_indicator_history),
+                        web::get().to(query_service::get_indicator_history),
                     )
-                    .route("/{code}/ma", web::get().to(api_handlers_real::get_ma))
-                    .route("/{code}/macd", web::get().to(api_handlers_real::get_macd))
-                    .route("/{code}/kdj", web::get().to(api_handlers_real::get_kdj))
-                    .route("/{code}/rsi", web::get().to(api_handlers_real::get_rsi))
+                    .route("/{code}/ma", web::get().to(query_service::get_ma))
+                    .route("/{code}/macd", web::get().to(query_service::get_macd))
+                    .route("/{code}/kdj", web::get().to(query_service::get_kdj))
+                    .route("/{code}/rsi", web::get().to(query_service::get_rsi))
                     .route(
                         "/calculate",
-                        web::post().to(api_handlers_real::calculate_indicators),
+                        web::post().to(query_service::calculate_indicators),
                     ),
             )
             .service(

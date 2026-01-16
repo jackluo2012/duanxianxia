@@ -1,6 +1,3 @@
-mod handlers;
-mod models;
-
 use actix_web::{web, App, HttpServer};
 use sqlx::PgPool;
 use std::time::Duration;
@@ -43,8 +40,8 @@ async fn main() -> anyhow::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
-            .route("/api/auth/register", web::post().to(handlers::register))
-            .route("/api/auth/login", web::post().to(handlers::login))
+            .route("/api/auth/register", web::post().to(auth_service::register))
+            .route("/api/auth/login", web::post().to(auth_service::login))
     })
     .bind("0.0.0.0:8082")?
     .run()

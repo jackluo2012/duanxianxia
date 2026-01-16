@@ -1,19 +1,13 @@
-pub mod config;
-pub mod models;
+//! Limit Review Service - 六边形架构
+//!
+//! 涨停复盘服务采用六边形架构设计
 
-pub use config::AppConfig;
+pub mod domain;
+pub mod application;
+pub mod adapters;
 
-// 核心模块
-pub mod limit_detector;
-pub mod consecutive_calculator;
+// 重新导出核心类型
+pub use domain::*;
 
-// 可选模块（暂时禁用）
-// pub mod data_loader;
-// pub mod review_generator;
-
-// 单元测试模块
-#[cfg(test)]
-mod limit_detector_tests;
-
-#[cfg(test)]
-mod consecutive_calculator_tests;
+// 导出HTTP处理器
+pub use adapters::primary::http::*;

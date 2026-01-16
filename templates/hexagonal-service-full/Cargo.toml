@@ -1,0 +1,42 @@
+[package]
+name = "{{service_name}}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Domain层
+{{service_name}}-domain = { path = "domain" }
+
+# Web框架
+actix-web = "4.0"
+actix-rt = "2.5"
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+
+# 数据库
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "uuid"] }
+
+# 配置
+config = "0.14"
+dotenv = "0.15"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# 错误处理
+thiserror = "1.0"
+anyhow = "1.0"
+
+# 工具
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

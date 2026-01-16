@@ -1,154 +1,65 @@
 use anyhow::Result;
-use chrono::{Datelike, Local, Timelike, Weekday};
-use redis::aio::ConnectionManager;
 use redis::Client;
-use rustdx_complete::tcp::stock::SecurityQuotes;
-use rustdx_complete::tcp::{Tcp, Tdx};
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info, warn};
 
 mod metrics;
 
-/// 竞价数据结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AuctionQuote {
-    code: String,
-    name: String,
-    time: String,
-    price: f64,
-    pre_close: f64,
-    volume: u64,
-    amount: f64,
-    buy1_price: f64,
-    buy1_volume: u64,
-    sell1_price: f64,
-    sell1_volume: u64,
-    change_percent: f64,
-    sealed_amount_buy: f64,
-    sealed_amount_sell: f64,
-}
-
-/// 检查当前是否在竞价时段（9:15-9:25）
-fn is_auction_time() -> bool {
-    let now = Local::now();
-
-    // 只在交易日运行（周一到周五）
-    if now.weekday() == Weekday::Sat || now.weekday() == Weekday::Sun {
-        return false;
-    }
-
-    let hour = now.hour();
-    let minute = now.minute();
-
-    // 竞价时段：9:15-9:25
-    (hour == 9 && minute >= 15 && minute < 25)
-}
-
-/// 获取自选股列表
-fn get_watchlist() -> Vec<(u16, String)> {
-    // TODO: Task 5.2 从 Redis 或配置文件读取自选股
-    // 当前使用硬编码的示例股票
-    vec![
-        (0, "000001".to_string()), // 平安银行
-        (0, "000002".to_string()), // 万科A
-        (1, "600000".to_string()), // 浦发银行
-        (1, "600036".to_string()), // 招商银行
-        (1, "600519".to_string()), // 贵州茅台
-    ]
-}
-
-/// 计算封单金额
-fn calculate_sealed_amount(
-    buy1_price: f64,
-    buy1_volume: u64,
-    sell1_price: f64,
-    sell1_volume: u64,
-) -> (f64, f64) {
-    let sealed_buy = buy1_price * buy1_volume as f64;
-    let sealed_sell = sell1_price * sell1_volume as f64;
-    (sealed_buy, sealed_sell)
-}
-
-/// 采集单只股票的竞价数据
-fn fetch_auction_quote(code: &str, name: &str, market: u16, tcp: &mut Tcp) -> Result<AuctionQuote> {
-    let mut quotes = SecurityQuotes::new(vec![(market, code)]);
-
-    quotes.recv_parsed(tcp)?;
-
-    if let Some(quote) = quotes.result().first() {
-        let (sealed_buy, sealed_sell) = calculate_sealed_amount(
-            quote.bid1,
-            quote.bid1_vol as u64,
-            quote.ask1,
-            quote.ask1_vol as u64,
-        );
-
-        Ok(AuctionQuote {
-            code: code.to_string(),
-            name: name.to_string(),
-            time: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            price: quote.price,
-            pre_close: quote.preclose,
-            volume: quote.vol as u64,
-            amount: quote.amount,
-            buy1_price: quote.bid1,
-            buy1_volume: quote.bid1_vol as u64,
-            sell1_price: quote.ask1,
-            sell1_volume: quote.ask1_vol as u64,
-            change_percent: quote.change_percent,
-            sealed_amount_buy: sealed_buy,
-            sealed_amount_sell: sealed_sell,
-        })
-    } else {
-        Err(anyhow::anyhow!("获取竞价数据失败: {}", code))
-    }
-}
-
-/// 推送竞价数据到 Redis Stream
-async fn publish_to_redis(conn: &mut ConnectionManager, quote: &AuctionQuote) -> Result<()> {
-    let data = serde_json::to_vec(quote)?;
-
-    let _: () = redis::cmd("XADD")
-        .arg("auction_quotes")
-        .arg("*")
-        .arg("data")
-        .arg(data)
-        .query_async(conn)
-        .await?;
-
-    Ok(())
-}
+use auction_service::domain::{AuctionQuote, AuctionTimeChecker, SealedAmountCalculator, WatchlistManager};
+use auction_service::application::AuctionCollectionUseCase;
+use auction_service::adapters::{TongdaxinDataSource, RedisStreamPublisher};
 
 /// 运行竞价采集主循环
-async fn run_auction_collector() -> Result<()> {
+async fn run_auction_collector(use_case: Arc<AuctionCollectionUseCase>) -> Result<()> {
+    // 初始化Redis连接
     let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
     let client = Client::open(redis_url)?;
-    let mut conn = ConnectionManager::new(client).await?;
+    let conn = redis::aio::ConnectionManager::new(client).await?;
+    let mut publisher = RedisStreamPublisher::new(conn);
     info!("成功连接到 Redis");
 
-    let mut tcp = Tcp::new()?;
+    // 初始化通达信连接
+    let mut tdx_source = TongdaxinDataSource::new()?;
     info!("成功连接到通达信服务器");
 
     loop {
         // 时序检查：只在竞价时段运行
-        if !is_auction_time() {
-            tokio::time::sleep(Duration::from_secs(60)).await;
+        if !use_case.is_auction_time() {
+            let wait_duration = use_case.get_wait_duration();
+            info!("不在竞价时段，等待 {:?}", wait_duration);
+            tokio::time::sleep(wait_duration).await;
             continue;
         }
 
-        let watchlist = get_watchlist();
+        let watchlist = use_case.get_watchlist();
         info!("开始采集竞价数据，股票数量: {}", watchlist.len());
 
         let mut success_count = 0;
         let mut failed_codes = Vec::new();
 
         for (market, code) in watchlist {
-            match fetch_auction_quote(&code, &code, market, &mut tcp) {
-                Ok(quote) => {
-                    if let Err(e) = publish_to_redis(&mut conn, &quote).await {
-                        error!("推送 Redis 失败 [{}]: {}", code, e);
-                        failed_codes.push(code.clone());
+            match tdx_source.fetch_auction_quote(&code, market as u16) {
+                Ok(mut quote) => {
+                    // 设置股票名称
+                    if let Some(name) = std::env::var("STOCK_NAMES").ok() {
+                        // TODO: 从环境变量或配置获取股票名称
+                    }
+
+                    // 计算封单金额（通过UseCase）
+                    let (sealed_buy, sealed_sell) = use_case.calculate_sealed_amount(
+                        quote.buy1_price,
+                        quote.buy1_volume,
+                        quote.sell1_price,
+                        quote.sell1_volume,
+                    );
+                    quote.sealed_amount_buy = sealed_buy;
+                    quote.sealed_amount_sell = sealed_sell;
+
+                    // 发布到Redis
+                    if let Err(e) = publisher.publish(&quote).await {
+                        error!("推送 Redis 失败 [{}]: {}", quote.code, e);
+                        failed_codes.push(quote.code.clone());
                     } else {
                         success_count += 1;
                         info!(
@@ -191,11 +102,20 @@ async fn main() -> Result<()> {
 
     info!("竞价采集服务启动");
 
-    // Task 2.1 实现竞价数据采集逻辑
-    // Task 2.2 实现指标计算算法（集成在主循环中）
-    // Task 2.3 实现 Redis Stream 集成
+    // 初始化Domain服务
+    let time_checker = Arc::new(AuctionTimeChecker::new());
+    let calculator = Arc::new(SealedAmountCalculator::new());
+    let watchlist_manager = Arc::new(WatchlistManager::new());
 
-    if let Err(e) = run_auction_collector().await {
+    // 初始化Application用例
+    let use_case = Arc::new(AuctionCollectionUseCase::new(
+        time_checker,
+        calculator,
+        watchlist_manager,
+    ));
+
+    // 运行采集服务
+    if let Err(e) = run_auction_collector(use_case).await {
         error!("竞价采集服务异常: {}", e);
         return Err(e);
     }

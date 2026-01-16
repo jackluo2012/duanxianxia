@@ -1,6 +1,6 @@
 use crate::types::{KlineData, KlinePeriod, StockInfo};
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveTime, Utc};
 use clickhouse::Client;
 use rustdx_complete::tcp::stock::Kline;
 use rustdx_complete::tcp::{Tcp, Tdx};
