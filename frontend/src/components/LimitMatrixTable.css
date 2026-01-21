@@ -1,0 +1,95 @@
+.limit-matrix-table {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.limit-matrix-table h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.limit-matrix-table .no-data {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 16px;
+}
+
+.limit-matrix-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.limit-matrix-table th,
+.limit-matrix-table td {
+  border: 1px solid #e0e0e0;
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.limit-matrix-table th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: bold;
+}
+
+.limit-matrix-table th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.limit-matrix-table th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.limit-matrix-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.limit-matrix-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.limit-matrix-table tbody tr:nth-child(even):hover {
+  background-color: #f0f0f0;
+}
+
+.limit-matrix-table .consecutive-level {
+  font-weight: bold;
+  color: #667eea;
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+.limit-matrix-table .row-total {
+  font-weight: bold;
+  color: #764ba2;
+  background-color: rgba(118, 75, 162, 0.1);
+}
+
+.limit-matrix-table .empty-cell {
+  color: #ccc;
+}
+
+.limit-matrix-table .stock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.limit-matrix-table .stock-name {
+  color: #333;
+  padding: 2px 6px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.limit-matrix-table .stock-count {
+  color: #667eea;
+  font-weight: bold;
+}
