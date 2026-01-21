@@ -36,6 +36,10 @@ async fn main() -> Result<()> {
             .route("/api/review/leader-detail", web::get().to(limit_review_service::get_leader_detail))
             // 参数路由放在最后
             .route("/api/review/{date}", web::get().to(limit_review_service::get_daily_review))
+            // 题材分析API路由
+            .route("/api/themes/{date}/hotness", web::get().to(limit_review_service::get_theme_hotness))
+            .route("/api/themes/{date}/{theme_name}", web::get().to(limit_review_service::get_theme_detail))
+            .route("/api/themes/relations", web::get().to(limit_review_service::get_theme_relations))
     })
     .bind(&bind_address)?
     .run()
