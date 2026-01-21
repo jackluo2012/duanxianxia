@@ -1,9 +1,10 @@
 use anyhow::Result;
 use clickhouse::Client;
-use clickhouse::sql::Identifier;
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 use crate::domain::entities::models::*;
+use crate::domain::entities::theme_models::*;
+use crate::adapters::primary::http::{MarketSentiment, IntervalStatsResponse, IntervalDistribution, DailyReviewResponse};
 
 /// 龙头排行榜查询结果行(简化版)
 #[derive(Row, Serialize, Deserialize)]
@@ -227,9 +228,9 @@ impl Database {
                 code,
                 name,
                 is_limit_up,
-                ifNull(empty(limit_type), '') as limit_type,
-                ifNull(isNull(first_limit_time), '') as first_limit_time,
-                ifNull(isNull(last_limit_time), '') as last_limit_time,
+                ifNull(limit_type, '') as limit_type,
+                ifNull(first_limit_time, '') as first_limit_time,
+                ifNull(last_limit_time, '') as last_limit_time,
                 open_times,
                 toFloat64(ifNull(limit_price, 0)) as limit_price,
                 toFloat64(ifNull(open_price, 0)) as open_price,
@@ -319,5 +320,122 @@ impl Database {
         }
 
         Ok(reviews)
+    }
+
+    /// 获取带区间统计的完整每日复盘数据
+    pub async fn get_daily_review_with_interval(&self, date: &str) -> Result<DailyReviewResponse> {
+        // 1. 获取所有复盘数据
+        let all_reviews = self.get_daily_review(date).await?;
+
+        // 2. 分离涨停和跌停股票
+        let limit_up_stocks: Vec<LimitUpReview> = all_reviews.iter()
+            .filter(|r| r.is_limit_up == 1)
+            .cloned()
+            .collect();
+
+        let limit_down_stocks: Vec<LimitUpReview> = all_reviews.iter()
+            .filter(|r| r.is_limit_up != 1)
+            .cloned()
+            .collect();
+
+        // 3. 计算市场情绪
+        let total_limit_up = limit_up_stocks.len() as i32;
+        let total_limit_down = limit_down_stocks.len() as i32;
+        let max_consecutive = limit_up_stocks.iter()
+            .map(|s| s.consecutive_days)
+            .max()
+            .unwrap_or(0);
+
+        // 简单的情绪指数计算 (涨停数 - 跌停数)
+        let sentiment_index = if (total_limit_up + total_limit_down) > 0 {
+            ((total_limit_up - total_limit_down) as f64 / (total_limit_up + total_limit_down) as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        let market_sentiment = MarketSentiment {
+            date: date.to_string(),
+            total_limit_up,
+            total_limit_down,
+            max_consecutive,
+            sentiment_index,
+        };
+
+        // 4. 计算区间统计
+        let interval_stats = self.calculate_interval_stats(&limit_up_stocks).await?;
+
+        Ok(DailyReviewResponse {
+            market_sentiment,
+            limit_up_stocks,
+            limit_down_stocks,
+            interval_stats,
+        })
+    }
+
+    /// 计算区间统计分布
+    async fn calculate_interval_stats(&self, stocks: &[LimitUpReview]) -> Result<IntervalStatsResponse> {
+        // 简化实现: 基于当前数据计算连板分布
+        // TODO: 实际应该从历史数据计算5/10/20天区间
+
+        let mut distribution = IntervalDistribution {
+            count_8: 0,
+            count_7: 0,
+            count_6: 0,
+            count_5: 0,
+            count_4: 0,
+            count_3: 0,
+            count_2: 0,
+            count_1: 0,
+        };
+
+        // 统计各连板级别的股票数量
+        for stock in stocks {
+            match stock.consecutive_days {
+                8 => distribution.count_8 += 1,
+                7 => distribution.count_7 += 1,
+                6 => distribution.count_6 += 1,
+                5 => distribution.count_5 += 1,
+                4 => distribution.count_4 += 1,
+                3 => distribution.count_3 += 1,
+                2 => distribution.count_2 += 1,
+                1 => distribution.count_1 += 1,
+                _ => {}
+            }
+        }
+
+        // 目前三个区间使用相同数据
+        // TODO: 实现真正的区间统计逻辑
+        Ok(IntervalStatsResponse {
+            days_5: distribution.clone(),
+            days_10: distribution.clone(),
+            days_20: distribution,
+        })
+    }
+
+    /// 获取题材热度榜
+    pub async fn get_theme_hotness(&self, date: &str, limit: usize) -> Result<Vec<ThemeHotness>> {
+        // TODO: 从ClickHouse的theme_hotness表查询
+        // 简化实现: 返回空数组
+        tracing::warn!("get_theme_hotness not fully implemented yet, returning empty list");
+        Ok(vec![])
+    }
+
+    /// 获取题材详情
+    pub async fn get_theme_detail(&self, date: &str, theme_name: &str) -> Result<serde_json::Value> {
+        // TODO: 从ClickHouse查询题材详情
+        // 简化实现: 返回基本信息
+        Ok(serde_json::json!({
+            "theme_name": theme_name,
+            "date": date,
+            "message": "TODO: 实现题材详情查询"
+        }))
+    }
+
+    /// 获取题材关联关系
+    pub async fn get_theme_relations(&self, date: &str, theme_name: &str) -> Result<Vec<ThemeRelation>> {
+        // TODO: 从ClickHouse的theme_relations表查询
+        // 简化实现: 返回空数组
+        tracing::warn!("get_theme_relations not fully implemented yet, returning empty list");
+        Ok(vec![])
     }
 }

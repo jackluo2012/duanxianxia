@@ -13,3 +13,7 @@ pub use models::*;
 
 // 导出HTTP处理器
 pub use adapters::primary::http::*;
+pub use adapters::primary::theme_api::*;
+
+#[cfg(test)]
+mod integration_tests;

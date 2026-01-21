@@ -53,6 +53,11 @@ impl StockQuote {
     pub fn limit_price(&self) -> f64 {
         self.pre_close * 1.1 // 简化：主板10%
     }
+
+    /// 计算跌停价（根据昨日收盘价）
+    pub fn limit_down_price(&self) -> f64 {
+        self.pre_close * 0.9 // 简化：主板-10%
+    }
 }
 
 /// Tick数据
@@ -181,6 +186,42 @@ pub struct LimitUpReview {
     pub turnover_rate: Option<f64>,
     pub sealed_volume: Option<i64>,
     pub buy1_to_buy5_vol: Option<i64>,
+}
+
+impl Default for LimitUpReview {
+    fn default() -> Self {
+        Self {
+            trade_date: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            code: String::new(),
+            name: String::new(),
+            is_limit_up: 0,
+            limit_type: None,
+            first_limit_time: None,
+            last_limit_time: None,
+            open_times: 0,
+            consecutive_days: 0,
+            sealed_amount: None,
+            limit_direction: None,
+            max_consecutive: 0,
+            interval_stats: None,
+            strength_score: None,
+            limit_reason: None,
+            manual_reason: None,
+            reason_source: None,
+            last_consecutive: 0,
+            is_new_high: 0,
+            industry: None,
+            concept: None,
+            remark: None,
+            limit_duration: None,
+            seal_period: None,
+            volume: None,
+            amount: None,
+            turnover_rate: None,
+            sealed_volume: None,
+            buy1_to_buy5_vol: None,
+        }
+    }
 }
 
 /// 市场情绪指数
