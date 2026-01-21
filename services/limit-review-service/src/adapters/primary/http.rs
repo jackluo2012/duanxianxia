@@ -2,6 +2,47 @@ use crate::domain::entities::models::*;
 use crate::adapters::secondary::Database;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
+
+/// 区间分布统计
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntervalDistribution {
+    pub count_8: usize,
+    pub count_7: usize,
+    pub count_6: usize,
+    pub count_5: usize,
+    pub count_4: usize,
+    pub count_3: usize,
+    pub count_2: usize,
+    pub count_1: usize,
+}
+
+/// 区间统计响应
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntervalStatsResponse {
+    pub days_5: IntervalDistribution,
+    pub days_10: IntervalDistribution,
+    pub days_20: IntervalDistribution,
+}
+
+/// 市场情绪统计
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarketSentiment {
+    pub date: String,
+    pub total_limit_up: i32,
+    pub total_limit_down: i32,
+    pub max_consecutive: i32,
+    pub sentiment_index: f64,
+}
+
+/// 每日复盘完整响应
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DailyReviewResponse {
+    pub market_sentiment: MarketSentiment,
+    pub limit_up_stocks: Vec<LimitUpReview>,
+    pub limit_down_stocks: Vec<LimitUpReview>,
+    pub interval_stats: IntervalStatsResponse,
+}
 
 pub async fn health() -> impl Responder {
     HttpResponse::Ok().json("OK")
@@ -14,8 +55,8 @@ pub async fn get_daily_review(
     let date = path.into_inner();
     tracing::info!("📊 获取{}涨停复盘", date);
 
-    match db.get_daily_review(&date).await {
-        Ok(reviews) => HttpResponse::Ok().json(reviews),
+    match db.get_daily_review_with_interval(&date).await {
+        Ok(response) => HttpResponse::Ok().json(response),
         Err(e) => {
             tracing::error!("查询失败: {}", e);
             HttpResponse::InternalServerError().json(format!("查询失败: {}", e))
