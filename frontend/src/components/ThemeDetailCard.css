@@ -1,0 +1,139 @@
+.theme-detail-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.theme-detail-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.theme-detail-card .theme-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.theme-detail-card .theme-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: bold;
+  color: #333;
+}
+
+.theme-detail-card .theme-stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.theme-detail-card .stat-item {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.theme-detail-card .stage-badge {
+  color: white !important;
+  font-weight: bold;
+}
+
+.theme-detail-card .no-stocks {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 16px;
+}
+
+.theme-detail-card .stock-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.theme-detail-card .stock-section {
+  background-color: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 12px;
+  transition: transform 0.2s ease;
+}
+
+.theme-detail-card .stock-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-detail-card .section-title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #555;
+}
+
+.theme-detail-card .leader-title {
+  color: #f5222d;
+}
+
+.theme-detail-card .mid-title {
+  color: #fa8c16;
+}
+
+.theme-detail-card .follower-title {
+  color: #1890ff;
+}
+
+.theme-detail-card .stock-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.theme-detail-card .stock-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  background-color: #fafafa;
+  transition: background-color 0.2s ease;
+}
+
+.theme-detail-card .stock-item:hover {
+  background-color: #f0f0f0;
+}
+
+.theme-detail-card .stock-item.leader {
+  border-left: 3px solid #f5222d;
+}
+
+.theme-detail-card .stock-item.mid {
+  border-left: 3px solid #fa8c16;
+}
+
+.theme-detail-card .stock-item.follower {
+  border-left: 3px solid #1890ff;
+}
+
+.theme-detail-card .stock-name {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.theme-detail-card .stock-code {
+  font-size: 12px;
+  color: #999;
+  font-family: 'Courier New', monospace;
+}
