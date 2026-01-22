@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = { workspace = true, features = ["serde"] }
+chrono-tz = { version = "0.10.4", features = ["serde"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
