@@ -2,15 +2,16 @@
 //!
 //! Implements the StockQuoteRepository trait using ClickHouse as the backend
 
-use async_trait::async_trait;
-use clickhouse::Client;
 use crate::types::StockQuote as LegacyStockQuote;
-use domain::ports::secondary::{RepositoryError, StockQuoteRepository};
+use async_trait::async_trait;
+use chrono::{DateTime, TimeZone, Utc};
+use clickhouse::Client;
+use common::from_utc;
 use domain::entities::StockQuote;
+use domain::ports::secondary::{RepositoryError, StockQuoteRepository};
 use domain::value_objects::{Market, Price, StockCode};
-use chrono::{DateTime, Utc};
-use tracing::{debug, warn};
 use std::collections::HashMap;
+use tracing::debug;
 
 /// ClickHouse Repository for Stock Quotes
 pub struct ClickHouseQuoteRepository {
@@ -23,7 +24,10 @@ impl ClickHouseQuoteRepository {
     }
 
     /// 从历史数据中获取昨收价和股票名称
-    async fn fetch_historical_data(&self, codes: &[String]) -> Result<HashMap<String, (String, f64)>, RepositoryError> {
+    async fn fetch_historical_data(
+        &self,
+        codes: &[String],
+    ) -> Result<HashMap<String, (String, f64)>, RepositoryError> {
         if codes.is_empty() {
             return Ok(HashMap::new());
         }
@@ -48,7 +52,8 @@ impl ClickHouseQuoteRepository {
             codes_str
         );
 
-        let rows = self.client
+        let rows = self
+            .client
             .query(&query)
             .fetch_all::<(String, String, f64)>()
             .await
@@ -66,7 +71,11 @@ impl ClickHouseQuoteRepository {
     }
 
     /// 增强单条行情数据（补充 preclose 和 name）
-    async fn enrich_quote(&self, quote: &mut StockQuote, historical_data: &HashMap<String, (String, f64)>) {
+    async fn enrich_quote(
+        &self,
+        quote: &mut StockQuote,
+        historical_data: &HashMap<String, (String, f64)>,
+    ) {
         let code = quote.code.as_str();
 
         // 如果 name 为空，尝试从历史数据获取
@@ -80,7 +89,7 @@ impl ClickHouseQuoteRepository {
         // 如果 preclose 为 0，尝试从历史数据获取（使用上一次的收盘价）
         if quote.preclose.value() == 0.0 {
             if let Some((_, close)) = historical_data.get(code) {
-                quote.preclose = Price::new(*close).unwrap_or_else(|_| quote.preclose);
+                quote.preclose = Price::new(*close).unwrap_or(quote.preclose);
                 debug!("补充股票 {} 的昨收价: {}", code, close);
             }
         }
@@ -88,15 +97,22 @@ impl ClickHouseQuoteRepository {
 
     /// Convert legacy StockQuote to domain StockQuote
     fn legacy_to_domain(&self, legacy: &LegacyStockQuote) -> Result<StockQuote, String> {
-        let timestamp = DateTime::from_timestamp(legacy.timestamp as i64, 0)
-            .unwrap_or_else(|| Utc::now());
+        // 从 UTC 时间戳转换为中国时间
+        let utc_timestamp =
+            DateTime::from_timestamp(legacy.timestamp as i64, 0).unwrap_or_else(Utc::now);
+        let timestamp = from_utc(&utc_timestamp);
+
         let code = StockCode::new(legacy.code.clone())?;
         let price = Price::new(legacy.price)?;
         let preclose = Price::new(legacy.preclose)?;
         let open = Price::new(legacy.open)?;
         let high = Price::new(legacy.high)?;
         let low = Price::new(legacy.low)?;
-        let _market = if legacy.market == 1 { Market::SH } else { Market::SZ };
+        let _market = if legacy.market == 1 {
+            Market::SH
+        } else {
+            Market::SZ
+        };
 
         StockQuote::new(
             timestamp,
@@ -138,21 +154,27 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
         let mut enriched_quote = quote.clone();
 
         // 尝试从历史数据补充缺失字段
-        let historical_data = self.fetch_historical_data(&[enriched_quote.code.as_str().to_string()]).await?;
-        self.enrich_quote(&mut enriched_quote, &historical_data).await;
+        let historical_data = self
+            .fetch_historical_data(&[enriched_quote.code.as_str().to_string()])
+            .await?;
+        self.enrich_quote(&mut enriched_quote, &historical_data)
+            .await;
 
         let legacy = self.domain_to_legacy(&enriched_quote);
 
-        let mut insert = self.client
+        let mut insert = self
+            .client
             .insert::<LegacyStockQuote>("stock_realtime_quotes")
             .await
             .map_err(|e| RepositoryError::Insert(format!("ClickHouse insert error: {:?}", e)))?;
 
-        insert.write(&legacy)
+        insert
+            .write(&legacy)
             .await
             .map_err(|e| RepositoryError::Insert(format!("ClickHouse write error: {:?}", e)))?;
 
-        insert.end()
+        insert
+            .end()
             .await
             .map_err(|e| RepositoryError::Insert(format!("ClickHouse end error: {:?}", e)))?;
 
@@ -165,9 +187,7 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
         }
 
         // 批量获取历史数据
-        let codes: Vec<String> = quotes.iter()
-            .map(|q| q.code.as_str().to_string())
-            .collect();
+        let codes: Vec<String> = quotes.iter().map(|q| q.code.as_str().to_string()).collect();
         let historical_data = self.fetch_historical_data(&codes).await?;
 
         // 增强每条行情数据
@@ -183,18 +203,21 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
             .map(|q| self.domain_to_legacy(q))
             .collect();
 
-        let mut insert = self.client
+        let mut insert = self
+            .client
             .insert::<LegacyStockQuote>("stock_realtime_quotes")
             .await
             .map_err(|e| RepositoryError::Insert(format!("ClickHouse insert error: {:?}", e)))?;
 
         for quote in &legacy_quotes {
-            insert.write(quote)
+            insert
+                .write(quote)
                 .await
                 .map_err(|e| RepositoryError::Insert(format!("ClickHouse write error: {:?}", e)))?;
         }
 
-        insert.end()
+        insert
+            .end()
             .await
             .map_err(|e| RepositoryError::Insert(format!("ClickHouse end error: {:?}", e)))?;
 
@@ -214,7 +237,8 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
             code, limit
         );
 
-        let legacy_quotes: Vec<LegacyStockQuote> = self.client
+        let legacy_quotes: Vec<LegacyStockQuote> = self
+            .client
             .query(&query)
             .fetch_all()
             .await
@@ -245,7 +269,8 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
             end.timestamp()
         );
 
-        let legacy_quotes: Vec<LegacyStockQuote> = self.client
+        let legacy_quotes: Vec<LegacyStockQuote> = self
+            .client
             .query(&query)
             .fetch_all()
             .await
@@ -268,7 +293,8 @@ impl StockQuoteRepository for ClickHouseQuoteRepository {
             code: String,
         }
 
-        let rows: Vec<CodeRow> = self.client
+        let rows: Vec<CodeRow> = self
+            .client
             .query(query)
             .fetch_all()
             .await

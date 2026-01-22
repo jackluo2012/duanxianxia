@@ -1,7 +1,7 @@
 use crate::types::StockQuote;
 use anyhow::Result;
-use clickhouse::Client;
 use clickhouse::insert::Insert;
+use clickhouse::Client;
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
@@ -66,7 +66,7 @@ impl ClickHouseWriter {
 
         for (i, batch) in batches.enumerate() {
             let batch_num = i + 1;
-            let total_batches = (total + self.batch_size - 1) / self.batch_size;
+            let total_batches = total.div_ceil(self.batch_size);
 
             debug!(
                 "正在写入第 {}/{} 批（{} 条记录）",

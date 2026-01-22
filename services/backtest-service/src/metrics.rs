@@ -121,7 +121,10 @@ pub fn update_memory_metrics() {
     if let Ok(mem_info) = sys_info::mem_info() {
         gauge!("system_memory_total_mb", mem_info.total as f64);
         gauge!("system_memory_free_mb", mem_info.free as f64);
-        gauge!("system_memory_used_mb", (mem_info.total - mem_info.free) as f64);
+        gauge!(
+            "system_memory_used_mb",
+            (mem_info.total - mem_info.free) as f64
+        );
     }
 }
 

@@ -1,7 +1,6 @@
 //! 存储服务主端口
 //!
 /// 定义应用层可以使用的存储操作
-
 use async_trait::async_trait;
 
 use crate::entities::DomainError;

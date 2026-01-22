@@ -3,10 +3,10 @@
 //! 回测服务的核心业务逻辑：回测引擎、策略、投资组合管理
 
 pub mod entities;
-pub mod value_objects;
 pub mod services;
+pub mod value_objects;
 
 // 重新导出常用类型
-pub use entities::{BacktestRequest, BacktestResult, BacktestError, Signal, DayData};
-pub use value_objects::{StrategyType, StrategyParams, BacktestPeriod, SignalAction};
-pub use services::{BacktestEngine, StrategyEngine, PortfolioManager, PerformanceCalculator};
+pub use entities::{BacktestError, BacktestRequest, BacktestResult, DayData, Signal};
+pub use services::{BacktestEngine, PerformanceCalculator, PortfolioManager, StrategyEngine};
+pub use value_objects::{BacktestPeriod, SignalAction, StrategyParams, StrategyType};

@@ -1,6 +1,6 @@
-use limit_review_service::models::{Theme, ThemeStats, ThemePeriod, ThemeCycleStage};
+use chrono::{DateTime, Duration, Utc};
 use limit_review_service::domain::services::theme_analyzer;
-use chrono::{DateTime, Utc, Duration};
+use limit_review_service::models::{Theme, ThemeCycleStage, ThemePeriod, ThemeStats};
 
 fn main() {
     println!("测试题材分析器功能");
@@ -56,7 +56,12 @@ fn main() {
     println!("\n题材分析器测试完成!");
 }
 
-fn create_test_theme(name: &str, limit_up_count: i32, limit_up_ratio: f64, sealed_amount: f64) -> Theme {
+fn create_test_theme(
+    name: &str,
+    limit_up_count: i32,
+    limit_up_ratio: f64,
+    sealed_amount: f64,
+) -> Theme {
     let period = ThemePeriod {
         start_date: Utc::now() - Duration::days(7),
         end_date: Utc::now(),

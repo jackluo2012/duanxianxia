@@ -2,27 +2,25 @@
 //!
 //! 存储服务采用六边形架构设计,业务逻辑与技术实现完全分离。
 
-use actix_web::{web, App, HttpServer};
 use actix_cors::Cors;
+use actix_web::{web, App, HttpServer};
 use anyhow::Result;
-use tracing::{info, Level};
 use std::sync::Arc;
+use tracing::{info, Level};
 
-mod config;
-mod application;
 mod adapters;
+mod application;
+mod config;
 
-use config::Config;
-use adapters::primary::{StorageServiceState, configure_routes};
+use adapters::primary::{configure_routes, StorageServiceState};
 use adapters::secondary::{ClickHouseAdapter, RedisAdapter};
-use application::use_cases::{StoreQuoteUseCase, QueryHistoryUseCase};
+use application::use_cases::{QueryHistoryUseCase, StoreQuoteUseCase};
+use config::Config;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
     // 初始化日志
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     info!("🚀 启动 storage-service (六边形架构)...");
 
@@ -33,16 +31,14 @@ async fn main() -> Result<()> {
     info!("📍 Redis: {}", config.redis_url);
 
     // 创建适配器
-    let clickhouse_adapter = ClickHouseAdapter::new(
-        config.clickhouse_url.clone(),
-        "duanxianxia".to_string()
-    ).await?;
+    let clickhouse_adapter =
+        ClickHouseAdapter::new(config.clickhouse_url.clone(), "duanxianxia".to_string()).await?;
     info!("✅ ClickHouse适配器创建成功");
 
     // 创建用例
-    let store_use_case = Arc::new(tokio::sync::Mutex::new(
-        StoreQuoteUseCase::new(clickhouse_adapter.clone())
-    ));
+    let store_use_case = Arc::new(tokio::sync::Mutex::new(StoreQuoteUseCase::new(
+        clickhouse_adapter.clone(),
+    )));
     let query_use_case = Arc::new(QueryHistoryUseCase::new(clickhouse_adapter));
     info!("✅ 用例创建成功");
 
@@ -63,17 +59,20 @@ async fn main() -> Result<()> {
                 info!("✅ Redis连接成功");
 
                 // 消费stock_quotes流
-                if let Err(e) = redis_adapter.consume_stream("stock_quotes", move |quote| {
-                    // 处理行情数据
-                    let use_case = store_use_case_clone.clone();
-                    tokio::spawn(async move {
-                        let mut uc = use_case.lock().await;
-                        if let Err(e) = uc.execute(quote).await {
-                            tracing::error!("存储行情失败: {}", e);
-                        }
-                    });
-                    Ok(())
-                }).await {
+                if let Err(e) = redis_adapter
+                    .consume_stream("stock_quotes", move |quote| {
+                        // 处理行情数据
+                        let use_case = store_use_case_clone.clone();
+                        tokio::spawn(async move {
+                            let mut uc = use_case.lock().await;
+                            if let Err(e) = uc.execute(quote).await {
+                                tracing::error!("存储行情失败: {}", e);
+                            }
+                        });
+                        Ok(())
+                    })
+                    .await
+                {
                     tracing::error!("Redis Stream消费失败: {}", e);
                 }
             }

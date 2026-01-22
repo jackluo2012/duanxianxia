@@ -307,8 +307,8 @@ impl ScreenerAlgorithmImpl {
         );
 
         let mut cursor = self.client.query(&query).fetch::<DailyBarRow>()?;
-        let mut consecutive_days = 0;
-        let mut last_was_limit_up = false;
+        let consecutive_days = 0;
+        let last_was_limit_up = false;
 
         // TODO: 实现连板天数计算逻辑
         // 1. 遍历历史数据

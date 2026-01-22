@@ -19,11 +19,7 @@ impl TongdaxinDataSource {
     }
 
     /// 采集单只股票的竞价数据
-    pub fn fetch_auction_quote(
-        &mut self,
-        code: &str,
-        market: u16,
-    ) -> Result<AuctionQuote> {
+    pub fn fetch_auction_quote(&mut self, code: &str, market: u16) -> Result<AuctionQuote> {
         let mut quotes = SecurityQuotes::new(vec![(market, code)]);
 
         quotes.recv_parsed(&mut self.tcp)?;

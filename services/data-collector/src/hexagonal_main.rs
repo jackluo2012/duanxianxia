@@ -12,9 +12,9 @@ use anyhow::Result;
 use clickhouse::Client;
 use hexagonal_service::{HexagonalCollectionService, HexagonalServiceConfig};
 use std::env;
-use tracing::{info, error};
-use tracing_subscriber::fmt::time::OffsetTime;
 use time::UtcOffset;
+use tracing::{error, info};
+use tracing_subscriber::fmt::time::OffsetTime;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -23,15 +23,18 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_target(false)
-        .with_timer(OffsetTime::new(offset, time::format_description::well_known::Rfc3339))
+        .with_timer(OffsetTime::new(
+            offset,
+            time::format_description::well_known::Rfc3339,
+        ))
         .json()
         .init();
 
     info!("🚀 Starting Hexagonal Architecture Data Collector");
 
     // Load configuration from environment variables
-    let clickhouse_url = env::var("CLICKHOUSE_URL")
-        .unwrap_or_else(|_| "http://localhost:8123".to_string());
+    let clickhouse_url =
+        env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
     let tdx_pool_size = env::var("TDX_POOL_SIZE")
         .unwrap_or_else(|_| "3".to_string())
         .parse::<usize>()
@@ -66,13 +69,16 @@ async fn main() -> Result<()> {
     // TODO: Load stock list from database or configuration
     // For now, use a small test list
     let stock_codes = vec![
-        "000001".to_string(),  // 平安银行
-        "000002".to_string(),  // 万科A
-        "600000".to_string(),  // 浦发银行
-        "600036".to_string(),  // 招商银行
+        "000001".to_string(), // 平安银行
+        "000002".to_string(), // 万科A
+        "600000".to_string(), // 浦发银行
+        "600036".to_string(), // 招商银行
     ];
 
-    info!("📊 Starting data collection for {} stocks", stock_codes.len());
+    info!(
+        "📊 Starting data collection for {} stocks",
+        stock_codes.len()
+    );
 
     // Start the collection service with orchestrator (this will run indefinitely)
     match service.start_with_orchestrator(stock_codes).await {

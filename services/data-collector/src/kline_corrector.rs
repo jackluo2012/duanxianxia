@@ -1,7 +1,8 @@
 use crate::types::{KlineData, KlinePeriod, StockInfo};
 use anyhow::Result;
-use chrono::{NaiveDate, NaiveTime, Utc};
+use chrono::{NaiveDate, NaiveTime};
 use clickhouse::Client;
+use common::from_utc;
 use rustdx_complete::tcp::stock::Kline;
 use rustdx_complete::tcp::{Tcp, Tdx};
 use tracing::{debug, info};
@@ -102,9 +103,10 @@ impl KlineCorrector {
                             )?,
                         );
                         let timestamp_utc = timestamp.and_utc();
+                        let timestamp_china = from_utc(&timestamp_utc);
 
                         Some(KlineData {
-                            timestamp: timestamp_utc,
+                            timestamp: timestamp_china,
                             code: stock.code.clone(),
                             name: stock.name.clone(),
                             period,

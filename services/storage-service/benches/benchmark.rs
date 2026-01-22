@@ -2,9 +2,9 @@
 //!
 //! 测试批量写入和查询性能
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use storage_domain::{DataBatch, BatchConfig};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
+use storage_domain::{BatchConfig, DataBatch};
 
 /// 批次写入性能测试
 fn bench_batch_add(c: &mut Criterion) {
@@ -25,18 +25,16 @@ fn bench_batch_add(c: &mut Criterion) {
     // 测试批量添加
     c.bench_function("batch_add_10_items", |b| {
         b.iter(|| {
-            let items: Vec<serde_json::Value> = (0..10)
-                .map(|i| serde_json::json!({"index": i}))
-                .collect();
+            let items: Vec<serde_json::Value> =
+                (0..10).map(|i| serde_json::json!({"index": i})).collect();
             batch.add_batch(items);
         });
     });
 
     c.bench_function("batch_add_100_items", |b| {
         b.iter(|| {
-            let items: Vec<serde_json::Value> = (0..100)
-                .map(|i| serde_json::json!({"index": i}))
-                .collect();
+            let items: Vec<serde_json::Value> =
+                (0..100).map(|i| serde_json::json!({"index": i})).collect();
             let mut batch = DataBatch::new(config);
             batch.add_batch(items);
         });

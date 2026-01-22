@@ -1,7 +1,7 @@
 use crate::types::StockInfo;
 use anyhow::Result;
-use clickhouse::Client;
 use clickhouse::insert::Insert;
+use clickhouse::Client;
 use rustdx_complete::tcp::stock::SecurityList;
 use rustdx_complete::tcp::{Tcp, Tdx};
 use tracing::{debug, info, warn};
@@ -68,15 +68,20 @@ impl StockListManager {
                             let is_valid_stock = match market {
                                 0 => {
                                     // 深市：000xxx(主板), 001xxx(主板), 002xxx(中小板), 003xxx(主板), 300xxx(创业板)
-                                    code.starts_with("000") || code.starts_with("001")
-                                        || code.starts_with("002") || code.starts_with("003")
+                                    code.starts_with("000")
+                                        || code.starts_with("001")
+                                        || code.starts_with("002")
+                                        || code.starts_with("003")
                                         || code.starts_with("300")
                                 }
                                 1 => {
                                     // 沪市：600xxx, 601xxx, 603xxx, 605xxx(主板), 688xxx, 689xxx(科创板)
-                                    code.starts_with("600") || code.starts_with("601")
-                                        || code.starts_with("603") || code.starts_with("605")
-                                        || code.starts_with("688") || code.starts_with("689")
+                                    code.starts_with("600")
+                                        || code.starts_with("601")
+                                        || code.starts_with("603")
+                                        || code.starts_with("605")
+                                        || code.starts_with("688")
+                                        || code.starts_with("689")
                                 }
                                 _ => false,
                             };
@@ -134,9 +139,7 @@ impl StockListManager {
         let mut total_written = 0usize;
 
         for (i, batch) in batches.enumerate() {
-            let mut insert: Insert<StockInfo> = self
-                .ch_client
-                .insert("stock_list").await?;
+            let mut insert: Insert<StockInfo> = self.ch_client.insert("stock_list").await?;
 
             for stock in batch {
                 insert.write(stock).await?;
@@ -148,7 +151,7 @@ impl StockListManager {
             info!(
                 "第 {}/{} 批写入成功：{} 只股票",
                 i + 1,
-                (stocks.len() + batch_size - 1) / batch_size,
+                stocks.len().div_ceil(batch_size),
                 batch.len()
             );
         }

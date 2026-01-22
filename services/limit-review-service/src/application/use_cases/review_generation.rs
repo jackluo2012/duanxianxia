@@ -1,8 +1,8 @@
 use anyhow::Result;
-use std::sync::Arc;
 use chrono::NaiveDate;
+use std::sync::Arc;
 
-use crate::domain::services::{ReviewTableGenerator, ConsecutiveCalculator};
+use crate::domain::services::{ConsecutiveCalculator, ReviewTableGenerator};
 
 /// 复盘生成用例
 pub struct ReviewGenerationUseCase {
@@ -27,7 +27,10 @@ impl ReviewGenerationUseCase {
     }
 
     /// 生成人工待标注列表
-    pub async fn generate_annotation_queue(&self, date: NaiveDate) -> Result<Vec<crate::domain::services::AnnotationItem>> {
+    pub async fn generate_annotation_queue(
+        &self,
+        date: NaiveDate,
+    ) -> Result<Vec<crate::domain::services::AnnotationItem>> {
         self.review_generator.generate_annotation_queue(date).await
     }
 }

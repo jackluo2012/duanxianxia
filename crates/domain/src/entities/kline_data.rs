@@ -1,7 +1,7 @@
 //! Kline Data Entity
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use crate::value_objects::{Price, StockCode};
+use common::{china_time_ser, ChinaTime};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum KlinePeriod {
@@ -31,7 +31,8 @@ impl KlinePeriod {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KlineData {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "china_time_ser")]
+    pub timestamp: ChinaTime,
     pub code: StockCode,
     pub name: String,
     pub period: KlinePeriod,
@@ -45,7 +46,7 @@ pub struct KlineData {
 
 impl KlineData {
     pub fn new(
-        timestamp: DateTime<Utc>,
+        timestamp: ChinaTime,
         code: StockCode,
         name: String,
         period: KlinePeriod,
@@ -100,6 +101,8 @@ impl KlineData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
+    use common::CHINA_TZ;
 
     #[test]
     fn test_kline_period_from_str() {
@@ -111,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_kline_validation() {
-        let ts = Utc::now();
+        let ts = CHINA_TZ.with_ymd_and_hms(2026, 1, 22, 9, 30, 0).unwrap();
         let code = StockCode::new("000001".to_string()).unwrap();
         let open = Price::new(10.0).unwrap();
         let high = Price::new(10.6).unwrap();
@@ -119,18 +122,32 @@ mod tests {
         let close = Price::new(10.5).unwrap();
 
         let result = KlineData::new(
-            ts, code.clone(), "Test".to_string(),
-            KlinePeriod::OneDay, open, high, low, close,
-            1000.0, 10000.0
+            ts,
+            code.clone(),
+            "Test".to_string(),
+            KlinePeriod::OneDay,
+            open,
+            high,
+            low,
+            close,
+            1000.0,
+            10000.0,
         );
         assert!(result.is_ok());
 
         // 测试高低价验证
         let invalid_high = Price::new(9.0).unwrap();
         let result = KlineData::new(
-            ts, code, "Test".to_string(),
-            KlinePeriod::OneDay, open, invalid_high, low, close,
-            1000.0, 10000.0
+            ts,
+            code,
+            "Test".to_string(),
+            KlinePeriod::OneDay,
+            open,
+            invalid_high,
+            low,
+            close,
+            1000.0,
+            10000.0,
         );
         assert!(result.is_err());
     }

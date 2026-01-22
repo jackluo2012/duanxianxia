@@ -1,7 +1,7 @@
 use crate::domain::entities::models::IntervalStats;
 use crate::domain::entities::models::LimitUpReview;
 use anyhow::Result;
-use chrono::{NaiveDate, Duration};
+use chrono::{Duration, NaiveDate};
 use trading_calendar::TradingCalendar;
 
 pub struct IntervalCalculator {
@@ -26,7 +26,9 @@ impl IntervalCalculator {
         let start_date = end_date - Duration::days(window_days as i64);
 
         // 2. 查询该股票在这个时间区间内的涨停记录
-        let limit_records = self.query_limit_records(stock_code, start_date, end_date).await?;
+        let limit_records = self
+            .query_limit_records(stock_code, start_date, end_date)
+            .await?;
 
         // 3. 统计涨停次数
         let count = limit_records.len() as u8;

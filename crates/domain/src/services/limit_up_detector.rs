@@ -2,11 +2,11 @@
 //!
 //! Detects limit up events in real-time stock quotes
 
-use async_trait::async_trait;
 use crate::entities::{LimitUpEvent, StockQuote};
 use crate::value_objects::{Market, Price};
-use std::fmt;
+use async_trait::async_trait;
 use std::error::Error;
+use std::fmt;
 
 /// Error type for limit up detection
 #[derive(Debug, Clone, PartialEq)]
@@ -53,6 +53,12 @@ pub trait LimitUpDetector: Send + Sync {
 /// Default implementation of LimitUpDetector
 pub struct DefaultLimitUpDetector;
 
+impl Default for DefaultLimitUpDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefaultLimitUpDetector {
     pub fn new() -> Self {
         Self
@@ -61,8 +67,8 @@ impl DefaultLimitUpDetector {
     /// Calculate limit up threshold based on market
     fn limit_threshold(&self, market: Market) -> f64 {
         match market {
-            Market::SZ => 0.10,  // Shenzhen 10%
-            Market::SH => 0.10,  // Shanghai 10%
+            Market::SZ => 0.10, // Shenzhen 10%
+            Market::SH => 0.10, // Shanghai 10%
         }
     }
 }
@@ -132,6 +138,8 @@ impl LimitUpDetector for DefaultLimitUpDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::value_objects::StockCode;
+    use common::now_china;
 
     #[tokio::test]
     async fn test_calculate_limit_price() {
@@ -157,7 +165,7 @@ mod tests {
 
         // Limit up quote
         let quote_limit = StockQuote::new(
-            Utc::now(),
+            now_china(),
             code.clone(),
             "Test".to_string(),
             limit_price,
@@ -167,14 +175,15 @@ mod tests {
             low,
             1000.0,
             10000.0,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(detector.is_limit_up(&quote_limit, preclose).await.unwrap());
 
         // Non-limit up quote
         let price_normal = Price::new(10.5).unwrap();
         let quote_normal = StockQuote::new(
-            Utc::now(),
+            now_china(),
             code,
             "Test".to_string(),
             price_normal,
@@ -184,7 +193,8 @@ mod tests {
             low,
             1000.0,
             10000.0,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(!detector.is_limit_up(&quote_normal, preclose).await.unwrap());
     }
@@ -201,7 +211,7 @@ mod tests {
         let low = Price::new(10.5).unwrap();
 
         let quote1 = StockQuote::new(
-            Utc::now(),
+            now_china(),
             code1,
             "Stock1".to_string(),
             limit_price,
@@ -211,11 +221,12 @@ mod tests {
             low,
             1000.0,
             10000.0,
-        ).unwrap();
+        )
+        .unwrap();
 
         let normal_price = Price::new(10.5).unwrap();
         let quote2 = StockQuote::new(
-            Utc::now(),
+            now_china(),
             code2,
             "Stock2".to_string(),
             normal_price,
@@ -225,7 +236,8 @@ mod tests {
             low,
             1000.0,
             10000.0,
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut previous_prices = std::collections::HashMap::new();
         previous_prices.insert("000001".to_string(), preclose);

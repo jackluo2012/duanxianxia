@@ -3,8 +3,8 @@
 //! Secondary Port - 依赖注入的数据仓库接口
 
 use async_trait::async_trait;
-use std::fmt;
 use std::error::Error;
+use std::fmt;
 
 use crate::entities::StockQuote;
 

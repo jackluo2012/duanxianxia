@@ -12,9 +12,10 @@ use crate::types::{
     SectorDailyStrength, SectorStats, StockQuote,
 };
 use anyhow::Result;
-use chrono::{Local, NaiveDate, Timelike, Utc};
-use clickhouse::Client;
+use chrono::{Local, NaiveDate, TimeZone, Timelike};
 use clickhouse::insert::Insert;
+use clickhouse::Client;
+use common::{now_china, CHINA_TZ};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -64,7 +65,7 @@ impl ReviewCollector {
         self.check_date_change().await?;
 
         let current_time = chrono::DateTime::from_timestamp(quote.timestamp as i64, 0)
-            .unwrap_or_else(|| chrono::Utc::now())
+            .unwrap_or_else(chrono::Utc::now)
             .with_timezone(&Local)
             .naive_local();
 
@@ -152,7 +153,7 @@ impl ReviewCollector {
         Ok(LimitUpEvent {
             code: quote.code.clone(),
             name: quote.name.clone(),
-            limit_time: limit_time.and_utc(),
+            limit_time: limit_time.and_utc().timestamp() as u64,
             limit_type,
             open_price: quote.open,
             limit_price,
@@ -184,17 +185,25 @@ impl ReviewCollector {
             // 已有记录，更新连板信息
             record.consecutive_days += 1;
             record.last_limit_date = current_date;
-            record.last_limit_time = event.limit_time;
+            let china_time = CHINA_TZ
+                .timestamp_opt(event.limit_time as i64, 0)
+                .single()
+                .unwrap_or_else(now_china);
+            record.last_limit_time = china_time;
             record.limit_events.push(event.clone());
         } else {
             // 新连板记录
+            let china_time = CHINA_TZ
+                .timestamp_opt(event.limit_time as i64, 0)
+                .single()
+                .unwrap_or_else(now_china);
             let record = ConsecutiveRecord {
                 code: event.code.clone(),
                 name: event.name.clone(),
                 consecutive_days: 1,
                 start_date: current_date,
                 last_limit_date: current_date,
-                last_limit_time: event.limit_time,
+                last_limit_time: china_time,
                 is_active: true,
                 limit_events: vec![event.clone()],
             };
@@ -277,7 +286,7 @@ impl ReviewCollector {
     /// 检查日期切换
     async fn check_date_change(&self) -> Result<()> {
         let today = Local::now().naive_local().date();
-        let mut current_date = self.current_date.lock().await;
+        let current_date = self.current_date.lock().await;
 
         if *current_date != today {
             info!(
@@ -356,11 +365,25 @@ impl ReviewCollector {
         let auction_limit = 0; // 竞价涨停（9:25之前）
         let morning_limit = limit_up_events
             .iter()
-            .filter(|e| e.limit_time.hour() >= 9 && e.limit_time.hour() < 13)
+            .filter(|e| {
+                let china_time = CHINA_TZ
+                    .timestamp_opt(e.limit_time as i64, 0)
+                    .single()
+                    .unwrap();
+                let hour = china_time.hour();
+                (9..13).contains(&hour)
+            })
             .count() as u32;
         let afternoon_limit = limit_up_events
             .iter()
-            .filter(|e| e.limit_time.hour() >= 13)
+            .filter(|e| {
+                let china_time = CHINA_TZ
+                    .timestamp_opt(e.limit_time as i64, 0)
+                    .single()
+                    .unwrap();
+                let hour = china_time.hour();
+                (13..15).contains(&hour)
+            })
             .count() as u32;
 
         // 统计涨停类型
@@ -530,7 +553,8 @@ impl ReviewCollector {
 
     /// 写入每日涨停汇总到ClickHouse
     async fn write_daily_summary(&self, summary: &DailyLimitUpSummary) -> Result<()> {
-        let mut insert: Insert<DailyLimitUpSummary> = self.ch_client.insert("daily_limit_up_summary").await?;
+        let mut insert: Insert<DailyLimitUpSummary> =
+            self.ch_client.insert("daily_limit_up_summary").await?;
 
         insert.write(summary).await?;
         insert.end().await?;
@@ -549,7 +573,8 @@ impl ReviewCollector {
             return Ok(());
         }
 
-        let mut insert: Insert<ConsecutiveBoardHistory> = self.ch_client.insert("consecutive_boards_history").await?;
+        let mut insert: Insert<ConsecutiveBoardHistory> =
+            self.ch_client.insert("consecutive_boards_history").await?;
 
         for item in history {
             insert.write(item).await?;
@@ -568,7 +593,8 @@ impl ReviewCollector {
             return Ok(());
         }
 
-        let mut insert: Insert<SectorDailyStrength> = self.ch_client.insert("sector_daily_strength").await?;
+        let mut insert: Insert<SectorDailyStrength> =
+            self.ch_client.insert("sector_daily_strength").await?;
 
         for item in strength {
             insert.write(item).await?;

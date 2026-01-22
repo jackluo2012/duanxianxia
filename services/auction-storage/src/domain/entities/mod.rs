@@ -5,5 +5,5 @@
 pub mod alerts;
 pub mod watchlist;
 
-pub use alerts::{AlertRule, AlertEvent, AlertSeverity, AlertRuleType};
-pub use watchlist::{WatchlistItem, UserWatchlist};
+pub use alerts::{AlertEvent, AlertRule, AlertRuleType, AlertSeverity};
+pub use watchlist::{UserWatchlist, WatchlistItem};

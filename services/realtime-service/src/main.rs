@@ -23,9 +23,10 @@ async fn main() -> anyhow::Result<()> {
     });
 
     HttpServer::new(move || {
-        App::new()
-            .app_data(web::Data::new(manager.clone()))
-            .route("/ws/realtime", web::get().to(realtime_service::websocket_handler))
+        App::new().app_data(web::Data::new(manager.clone())).route(
+            "/ws/realtime",
+            web::get().to(realtime_service::websocket_handler),
+        )
     })
     .bind("0.0.0.0:8080")?
     .run()

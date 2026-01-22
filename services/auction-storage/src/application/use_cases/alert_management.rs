@@ -5,8 +5,8 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use crate::domain::{AlertManager, AuctionQuote};
 use crate::domain::entities;
+use crate::domain::{AlertManager, AuctionQuote};
 
 /// 告警管理用例
 pub struct AlertManagementUseCase {
@@ -40,7 +40,10 @@ impl AlertManagementUseCase {
     }
 
     /// 检查竞价数据并触发告警
-    pub async fn check_and_trigger_alerts(&self, quote: &AuctionQuote) -> Result<Vec<entities::AlertEvent>> {
+    pub async fn check_and_trigger_alerts(
+        &self,
+        quote: &AuctionQuote,
+    ) -> Result<Vec<entities::AlertEvent>> {
         self.alert_manager.check_alerts(quote).await
     }
 }

@@ -1,9 +1,9 @@
 use crate::types::StockQuote;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use clickhouse::insert::Insert;
 use clickhouse::Client;
 use clickhouse::Row;
-use clickhouse::insert::Insert;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tracing::{debug, info, warn};
@@ -72,13 +72,17 @@ impl QualityMonitor {
 
     /// 检查数据完整性
     /// 对比预期股票数和实际采集到的股票数
-    pub async fn check_completeness(&self, collected_stocks: &[String]) -> Result<CompletenessReport> {
+    pub async fn check_completeness(
+        &self,
+        collected_stocks: &[String],
+    ) -> Result<CompletenessReport> {
         let expected_count = self.expected_stocks.len();
         let actual_count = collected_stocks.len();
         let collected_set: HashSet<_> = collected_stocks.iter().cloned().collect();
 
         // 找出缺失的股票
-        let missing_stocks: Vec<_> = self.expected_stocks
+        let missing_stocks: Vec<_> = self
+            .expected_stocks
             .difference(&collected_set)
             .cloned()
             .collect();
@@ -120,7 +124,8 @@ impl QualityMonitor {
         }
 
         // 插入到异常数据日志
-        let mut insert: Insert<AbnormalDataLog> = self.clickhouse.insert("abnormal_data_log").await?;
+        let mut insert: Insert<AbnormalDataLog> =
+            self.clickhouse.insert("abnormal_data_log").await?;
 
         for code in missing_stocks {
             let log = AbnormalDataLog {
@@ -146,7 +151,8 @@ impl QualityMonitor {
 
     /// 记录完整性指标到ClickHouse
     async fn record_completeness_metrics(&self, report: &CompletenessReport) -> Result<()> {
-        let mut insert: Insert<DataQualityMetric> = self.clickhouse.insert("data_quality_metrics").await?;
+        let mut insert: Insert<DataQualityMetric> =
+            self.clickhouse.insert("data_quality_metrics").await?;
 
         let timestamp = report.timestamp;
         let metric_type = "completeness";
@@ -191,9 +197,7 @@ impl QualityMonitor {
 
         debug!(
             "记录完整性指标: 预期={}, 实际={}, 完整性={:.2}%",
-            report.expected_count,
-            report.actual_count,
-            report.completeness_rate
+            report.expected_count, report.actual_count, report.completeness_rate
         );
 
         Ok(())
@@ -213,12 +217,9 @@ impl QualityMonitor {
 
         // 涨跌幅检查（-20%到+20%）
         let change_percent = (quote.price - quote.preclose) / quote.preclose * 100.0;
-        if change_percent < -20.0 || change_percent > 20.0 {
+        if !(-20.0..=20.0).contains(&change_percent) {
             // ST股票、新股可能超过20%，这里只记录不拒绝
-            debug!(
-                "股票 {} 涨跌幅异常: {:.2}%",
-                quote.code, change_percent
-            );
+            debug!("股票 {} 涨跌幅异常: {:.2}%", quote.code, change_percent);
         }
 
         // 成交量和成交额不能为负
@@ -230,7 +231,10 @@ impl QualityMonitor {
     }
 
     /// 过滤有效的行情数据
-    pub fn filter_valid_quotes(&self, quotes: Vec<StockQuote>) -> (Vec<StockQuote>, Vec<StockQuote>) {
+    pub fn filter_valid_quotes(
+        &self,
+        quotes: Vec<StockQuote>,
+    ) -> (Vec<StockQuote>, Vec<StockQuote>) {
         let mut valid_quotes = Vec::new();
         let mut invalid_quotes = Vec::new();
 
@@ -261,7 +265,8 @@ impl QualityMonitor {
             return Ok(());
         }
 
-        let mut insert: Insert<AbnormalDataLog> = self.clickhouse.insert("abnormal_data_log").await?;
+        let mut insert: Insert<AbnormalDataLog> =
+            self.clickhouse.insert("abnormal_data_log").await?;
 
         for quote in invalid_quotes {
             let log = AbnormalDataLog {

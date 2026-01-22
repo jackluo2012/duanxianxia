@@ -1,10 +1,10 @@
 use crate::domain::entities::models::*;
-use anyhow::Result;
 use anyhow::Context;
+use anyhow::Result;
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use clickhouse::Client;
-use clickhouse::Row as ChRow;  // 避免与其他Row冲突
-use chrono::{NaiveDate, DateTime, Utc, Datelike};
-use serde::{Serialize, Deserialize};
+use clickhouse::Row as ChRow; // 避免与其他Row冲突
+use serde::{Deserialize, Serialize};
 
 pub struct DataLoader {
     client: Client,
@@ -22,7 +22,8 @@ impl DataLoader {
     pub async fn load_day_quotes(&self, date: NaiveDate) -> Result<Vec<StockQuote>> {
         let mut cursor = self
             .client
-            .query("SELECT
+            .query(
+                "SELECT
                 argMax(code, timestamp) as code,
                 argMax(name, timestamp) as name,
                 argMax(open, timestamp) as open,
@@ -37,9 +38,10 @@ impl DataLoader {
             WHERE toDate(toDateTime(timestamp, 'Asia/Shanghai')) = ?
             GROUP BY code
             ORDER BY code
-        ")
-        .bind(date)
-        .fetch::<StockQuoteRow>()
+        ",
+            )
+            .bind(date)
+            .fetch::<StockQuoteRow>()
             .context("Failed to load day quotes")?;
 
         let mut quotes = Vec::new();
@@ -54,7 +56,8 @@ impl DataLoader {
     pub async fn load_tick_data(&self, code: &str, date: NaiveDate) -> Result<Vec<Tick>> {
         let mut cursor = self
             .client
-            .query("SELECT
+            .query(
+                "SELECT
                 timestamp,
                 price,
                 volume,
@@ -65,12 +68,13 @@ impl DataLoader {
               AND toDateTime(timestamp, 'Asia/Shanghai') >= toDateTime(?, 'Asia/Shanghai')
               AND toDateTime(timestamp, 'Asia/Shanghai') < toDateTime(?, 'Asia/Shanghai')
             ORDER BY timestamp
-        ")
-        .bind(code)
-        .bind(date)
-        .bind(format!("{} 09:30:00", date))
-        .bind(format!("{} 15:00:00", date))
-        .fetch::<TickRow>()
+        ",
+            )
+            .bind(code)
+            .bind(date)
+            .bind(format!("{} 09:30:00", date))
+            .bind(format!("{} 15:00:00", date))
+            .fetch::<TickRow>()
             .context("Failed to load tick data")?;
 
         let mut ticks = Vec::new();
@@ -92,15 +96,17 @@ impl DataLoader {
 
         let result = self
             .client
-            .query("SELECT argMax(preclose, timestamp) as close FROM stock_realtime_quotes
+            .query(
+                "SELECT argMax(preclose, timestamp) as close FROM stock_realtime_quotes
                     WHERE code = ?
                       AND toDate(toDateTime(timestamp, 'Asia/Shanghai')) = ?
                     LIMIT 1
-        ")
-        .bind(code)
-        .bind(prev_date)
-        .fetch_optional::<PrevCloseRow>()
-        .await
+        ",
+            )
+            .bind(code)
+            .bind(prev_date)
+            .fetch_optional::<PrevCloseRow>()
+            .await
             .context("Failed to get prev close")?;
 
         match result {
@@ -145,7 +151,8 @@ impl DataLoader {
     pub async fn get_60d_high(&self, code: &str, date: NaiveDate) -> Result<Option<f64>> {
         let result = self
             .client
-            .query("SELECT MAX(high) as max_high FROM (
+            .query(
+                "SELECT MAX(high) as max_high FROM (
                 SELECT argMax(high, timestamp) as high
                 FROM stock_realtime_quotes
                 WHERE code = ?
@@ -154,11 +161,12 @@ impl DataLoader {
                 ORDER BY toDate(toDateTime(timestamp, 'Asia/Shanghai')) DESC
                 LIMIT 60
             ) AS recent_60d
-        ")
-        .bind(code)
-        .bind(date)
-        .fetch_optional::<MaxHighRow>()
-        .await
+        ",
+            )
+            .bind(code)
+            .bind(date)
+            .fetch_optional::<MaxHighRow>()
+            .await
             .context("Failed to get 60d high")?;
 
         Ok(result.map(|r| r.max_high))

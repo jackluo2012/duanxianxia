@@ -2,9 +2,9 @@
 //!
 //! 涨停复盘服务采用六边形架构设计
 
-pub mod domain;
-pub mod application;
 pub mod adapters;
+pub mod application;
+pub mod domain;
 pub mod models;
 
 // 重新导出核心类型

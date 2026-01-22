@@ -32,7 +32,11 @@ fn main() {
     println!("{:=<60}", "");
 
     for (market, code) in test_codes {
-        println!("\n股票代码: {} (市场: {})", code, if market == 1 { "上海" } else { "深圳" });
+        println!(
+            "\n股票代码: {} (市场: {})",
+            code,
+            if market == 1 { "上海" } else { "深圳" }
+        );
 
         let mut quotes = SecurityQuotes::new(vec![(market, code)]);
         match quotes.recv_parsed(&mut tcp) {

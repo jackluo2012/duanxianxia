@@ -5,7 +5,7 @@
 use anyhow::Result;
 use serde_json::Value;
 
-use storage_domain::{BatchWriter, DataBatch, BatchConfig, QuoteRepository};
+use storage_domain::{BatchConfig, BatchWriter, DataBatch, QuoteRepository};
 
 /// 存储行情用例
 pub struct StoreQuoteUseCase<R>
@@ -35,7 +35,9 @@ where
     /// 执行用例: 存储单个行情
     pub async fn execute(&mut self, quote: Value) -> Result<()> {
         // 转换为JSON值
-        self.batch_writer.process_item(&mut self.batch, quote).await
+        self.batch_writer
+            .process_item(&mut self.batch, quote)
+            .await
             .map_err(|e| anyhow::anyhow!("存储行情失败: {}", e))?;
 
         Ok(())
@@ -43,7 +45,9 @@ where
 
     /// 执行用例: 批量存储行情
     pub async fn execute_batch(&mut self, quotes: Vec<Value>) -> Result<()> {
-        self.batch_writer.process_batch(&mut self.batch, quotes).await
+        self.batch_writer
+            .process_batch(&mut self.batch, quotes)
+            .await
             .map_err(|e| anyhow::anyhow!("批量存储失败: {}", e))?;
 
         Ok(())
@@ -51,7 +55,9 @@ where
 
     /// 强制刷新批次
     pub async fn flush(&mut self) -> Result<()> {
-        self.batch_writer.force_flush(&mut self.batch).await
+        self.batch_writer
+            .force_flush(&mut self.batch)
+            .await
             .map_err(|e| anyhow::anyhow!("刷新批次失败: {}", e))?;
 
         Ok(())

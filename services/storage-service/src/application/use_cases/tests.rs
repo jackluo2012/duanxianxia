@@ -2,10 +2,10 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::application::use_cases::{StoreQuoteUseCase, QueryHistoryUseCase};
-    use storage_domain::QuoteRepository;
-    use serde_json::json;
+    use crate::application::use_cases::{QueryHistoryUseCase, StoreQuoteUseCase};
     use async_trait::async_trait;
+    use serde_json::json;
+    use storage_domain::QuoteRepository;
 
     // Mock Repository
     struct MockRepository;
@@ -14,20 +14,26 @@ mod tests {
     impl QuoteRepository for MockRepository {
         type Item = serde_json::Value;
 
-        async fn save_batch(&self, _items: Vec<Self::Item>) -> Result<(), storage_domain::DomainError> {
+        async fn save_batch(
+            &self,
+            _items: Vec<Self::Item>,
+        ) -> Result<(), storage_domain::DomainError> {
             // 模拟保存成功
             Ok(())
         }
 
-        async fn find_by_code(&self, code: &str, _start: i64, _end: i64) -> Result<Vec<Self::Item>, storage_domain::DomainError> {
+        async fn find_by_code(
+            &self,
+            code: &str,
+            _start: i64,
+            _end: i64,
+        ) -> Result<Vec<Self::Item>, storage_domain::DomainError> {
             // 返回模拟数据
-            Ok(vec![
-                json!({
-                    "code": code,
-                    "price": 10.5,
-                    "datetime": "2026-01-15 09:30:00"
-                })
-            ])
+            Ok(vec![json!({
+                "code": code,
+                "price": 10.5,
+                "datetime": "2026-01-15 09:30:00"
+            })])
         }
     }
 
@@ -84,7 +90,9 @@ mod tests {
         let start = chrono::Utc::now();
         let end = start + chrono::Duration::hours(1);
 
-        let result = use_case.execute("000001".to_string(), start, end, "1m".to_string()).await;
+        let result = use_case
+            .execute("000001".to_string(), start, end, "1m".to_string())
+            .await;
 
         assert!(result.is_ok());
         let data = result.unwrap();

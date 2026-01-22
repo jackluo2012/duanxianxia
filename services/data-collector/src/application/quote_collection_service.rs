@@ -8,13 +8,13 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 
+use domain::entities::StockQuote;
 use domain::ports::primary::{QuoteService, ServiceError};
 use domain::ports::secondary::{QuoteDataSource, StockQuoteRepository};
-use domain::services::{CollectionError, DefaultQuoteCollector};
 use domain::services::quote_collector::QuoteCollector;
-use domain::entities::StockQuote;
+use domain::services::{CollectionError, DefaultQuoteCollector};
 use domain::value_objects::StockCode;
 
 /// Application Quote Collection Service
@@ -33,10 +33,7 @@ impl ApplicationQuoteCollectionService {
         data_source: Arc<dyn QuoteDataSource>,
         repository: Arc<dyn StockQuoteRepository>,
     ) -> Self {
-        let domain_collector = DefaultQuoteCollector::new(
-            data_source.clone(),
-            repository.clone(),
-        );
+        let domain_collector = DefaultQuoteCollector::new(data_source.clone(), repository.clone());
 
         Self {
             data_source,
@@ -52,7 +49,9 @@ impl ApplicationQuoteCollectionService {
 
     /// Collect and save quotes with automatic retry
     pub async fn collect_and_save(&self, codes: Vec<String>) -> Result<usize, ServiceError> {
-        let count = self.domain_collector.collect_quotes(codes.clone())
+        let count = self
+            .domain_collector
+            .collect_quotes(codes.clone())
             .await
             .map_err(|e| ServiceError::Internal(format!("Collection error: {:?}", e)))?;
 
@@ -96,15 +95,13 @@ impl QuoteService for ApplicationQuoteCollectionService {
         // This is a placeholder - actual implementation would fetch stock list
         // and start continuous collection
         Err(ServiceError::Internal(
-            "Use start_continuous_collection instead".to_string()
+            "Use start_continuous_collection instead".to_string(),
         ))
     }
 
     async fn stop_collection(&self) -> Result<(), ServiceError> {
         // This is a placeholder - would require cancellation token support
-        Err(ServiceError::Internal(
-            "Stop not implemented".to_string()
-        ))
+        Err(ServiceError::Internal("Stop not implemented".to_string()))
     }
 
     async fn get_quote(&self, code: &StockCode) -> Result<StockQuote, ServiceError> {

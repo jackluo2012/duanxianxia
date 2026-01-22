@@ -3,8 +3,8 @@
 //! Secondary Port - 依赖注入的数据源接口
 
 use async_trait::async_trait;
-use std::fmt;
 use std::error::Error;
+use std::fmt;
 
 use crate::entities::StockQuote;
 use crate::value_objects::StockCode;
@@ -46,10 +46,13 @@ pub trait QuoteDataSource: Send + Sync {
     async fn fetch_quotes(&self, codes: &[StockCode]) -> Result<Vec<StockQuote>, DataSourceError>;
 
     /// Fetch multiple quotes by string codes (convenience method)
-    async fn fetch_quotes_batch(&self, codes: &[String]) -> Result<Vec<StockQuote>, DataSourceError> {
+    async fn fetch_quotes_batch(
+        &self,
+        codes: &[String],
+    ) -> Result<Vec<StockQuote>, DataSourceError> {
         let stock_codes: Result<Vec<_>, _> = codes
             .iter()
-            .map(|c| StockCode::new(c.clone()).map_err(|e| DataSourceError::InvalidData(e)))
+            .map(|c| StockCode::new(c.clone()).map_err(DataSourceError::InvalidData))
             .collect();
         let stock_codes = stock_codes?;
         self.fetch_quotes(&stock_codes).await

@@ -2,10 +2,10 @@
 //!
 //! Coordinates the collection of stock quotes from data sources
 
-use async_trait::async_trait;
 use crate::ports::secondary::{QuoteDataSource, StockQuoteRepository};
-use std::fmt;
+use async_trait::async_trait;
 use std::error::Error;
+use std::fmt;
 use std::sync::Arc;
 
 /// Error type for quote collection
@@ -37,10 +37,7 @@ impl Error for CollectionError {}
 #[async_trait]
 pub trait QuoteCollector: Send + Sync {
     /// Collect quotes for a list of stock codes
-    async fn collect_quotes(
-        &self,
-        codes: Vec<String>,
-    ) -> Result<usize, CollectionError>;
+    async fn collect_quotes(&self, codes: Vec<String>) -> Result<usize, CollectionError>;
 
     /// Start continuous collection
     async fn start_collection(&self) -> Result<(), CollectionError>;
@@ -69,16 +66,14 @@ impl DefaultQuoteCollector {
 
 #[async_trait]
 impl QuoteCollector for DefaultQuoteCollector {
-    async fn collect_quotes(
-        &self,
-        codes: Vec<String>,
-    ) -> Result<usize, CollectionError> {
+    async fn collect_quotes(&self, codes: Vec<String>) -> Result<usize, CollectionError> {
         if codes.is_empty() {
             return Ok(0);
         }
 
         // Fetch quotes from data source
-        let quotes = self.data_source
+        let quotes = self
+            .data_source
             .fetch_quotes_batch(&codes)
             .await
             .map_err(|e| CollectionError::DataSource(format!("Failed to fetch quotes: {:?}", e)))?;
@@ -100,14 +95,14 @@ impl QuoteCollector for DefaultQuoteCollector {
         // This is a placeholder - continuous collection would be implemented
         // with a timer loop in the application layer
         Err(CollectionError::InvalidInput(
-            "Continuous collection not implemented in domain layer".to_string()
+            "Continuous collection not implemented in domain layer".to_string(),
         ))
     }
 
     async fn stop_collection(&self) -> Result<(), CollectionError> {
         // This is a placeholder
         Err(CollectionError::InvalidInput(
-            "Continuous collection not implemented in domain layer".to_string()
+            "Continuous collection not implemented in domain layer".to_string(),
         ))
     }
 }
@@ -115,9 +110,9 @@ impl QuoteCollector for DefaultQuoteCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::value_objects::{Market, Price, StockCode};
+    use crate::entities::StockQuote;
     use crate::ports::secondary::{DataSourceError, RepositoryError};
-    use chrono::Utc;
+    use crate::value_objects::{Market, Price, StockCode};
 
     // Mock implementation for testing
     struct MockDataSource;
@@ -128,11 +123,17 @@ mod tests {
             unimplemented!()
         }
 
-        async fn fetch_quotes(&self, _codes: &[StockCode]) -> Result<Vec<StockQuote>, DataSourceError> {
+        async fn fetch_quotes(
+            &self,
+            _codes: &[StockCode],
+        ) -> Result<Vec<StockQuote>, DataSourceError> {
             Ok(vec![])
         }
 
-        async fn fetch_quotes_batch(&self, _codes: &[String]) -> Result<Vec<StockQuote>, DataSourceError> {
+        async fn fetch_quotes_batch(
+            &self,
+            _codes: &[String],
+        ) -> Result<Vec<StockQuote>, DataSourceError> {
             Ok(vec![])
         }
 
@@ -153,7 +154,11 @@ mod tests {
             Ok(())
         }
 
-        async fn find_latest(&self, _code: &str, _limit: usize) -> Result<Vec<StockQuote>, RepositoryError> {
+        async fn find_latest(
+            &self,
+            _code: &str,
+            _limit: usize,
+        ) -> Result<Vec<StockQuote>, RepositoryError> {
             Ok(vec![])
         }
 

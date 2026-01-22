@@ -1,27 +1,29 @@
 //! Limit Up Event Entity
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use crate::value_objects::{Price, StockCode};
+use common::{china_time_ser, ChinaTime};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LimitUpEvent {
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "china_time_ser")]
+    pub timestamp: ChinaTime,
     pub code: StockCode,
     pub name: String,
     pub limit_price: Price,
     pub preclose: Price,
-    pub limit_time: DateTime<Utc>,
+    #[serde(with = "china_time_ser")]
+    pub limit_time: ChinaTime,
     pub sealed_amount: f64,
 }
 
 impl LimitUpEvent {
     pub fn new(
-        timestamp: DateTime<Utc>,
+        timestamp: ChinaTime,
         code: StockCode,
         name: String,
         limit_price: Price,
         preclose: Price,
-        limit_time: DateTime<Utc>,
+        limit_time: ChinaTime,
         sealed_amount: f64,
     ) -> Result<Self, String> {
         if sealed_amount < 0.0 {
@@ -55,19 +57,25 @@ impl LimitUpEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{Duration, TimeZone};
+    use common::CHINA_TZ;
 
     #[test]
     fn test_limit_up_validation() {
-        let ts = Utc::now();
+        let ts = CHINA_TZ.with_ymd_and_hms(2026, 1, 22, 9, 30, 0).unwrap();
         let code = StockCode::new("000001".to_string()).unwrap();
         let limit_price = Price::new(11.0).unwrap();
         let preclose = Price::new(10.0).unwrap();
-        let limit_time = ts + chrono::Duration::minutes(30);
+        let limit_time = ts + Duration::minutes(30);
 
         let result = LimitUpEvent::new(
-            ts, code, "Test".to_string(),
-            limit_price, preclose, limit_time,
-            1000000.0
+            ts,
+            code,
+            "Test".to_string(),
+            limit_price,
+            preclose,
+            limit_time,
+            1000000.0,
         );
         assert!(result.is_ok());
 

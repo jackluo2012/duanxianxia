@@ -4,8 +4,8 @@
 
 use async_trait::async_trait;
 use serde::Serialize;
-use std::fmt;
 use std::error::Error;
+use std::fmt;
 
 /// Publish Error
 #[derive(Debug, Clone, PartialEq)]

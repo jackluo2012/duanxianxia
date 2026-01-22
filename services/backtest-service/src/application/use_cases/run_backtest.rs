@@ -17,6 +17,9 @@ impl RunBacktestUseCase {
 
     pub async fn execute(&self, request: BacktestRequest) -> Result<BacktestResult> {
         let mut engine = self.backtest_engine.lock().await;
-        engine.run(request).await.map_err(|e| anyhow::anyhow!(e.to_string()))
+        engine
+            .run(request)
+            .await
+            .map_err(|e| anyhow::anyhow!(e.to_string()))
     }
 }

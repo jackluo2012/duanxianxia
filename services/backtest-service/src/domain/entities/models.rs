@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -176,24 +176,26 @@ impl BacktestRequest {
         // 验证日期范围
         if self.backtest_period.start_date > self.backtest_period.end_date {
             return Err(BacktestError::InvalidPeriod(
-                "开始日期不能晚于结束日期".to_string()
+                "开始日期不能晚于结束日期".to_string(),
             ));
         }
 
         // 验证日期跨度 (不超过3个月)
-        let days = self.backtest_period.end_date
+        let days = self
+            .backtest_period
+            .end_date
             .signed_duration_since(self.backtest_period.start_date)
             .num_days();
         if days > 90 {
             return Err(BacktestError::InvalidPeriod(
-                "回测周期不能超过3个月".to_string()
+                "回测周期不能超过3个月".to_string(),
             ));
         }
 
         // 验证初始资金
         if self.initial_capital < 10000.0 {
             return Err(BacktestError::InvalidCapital(
-                "初始资金不能少于10000元".to_string()
+                "初始资金不能少于10000元".to_string(),
             ));
         }
 
@@ -209,7 +211,7 @@ impl StrategyParams {
         if let Some(score) = self.min_strength_score {
             if !(0..=100).contains(&score) {
                 return Err(BacktestError::InvalidParam(
-                    "强度评分必须在0-100之间".to_string()
+                    "强度评分必须在0-100之间".to_string(),
                 ));
             }
         }
@@ -217,7 +219,7 @@ impl StrategyParams {
         if let Some(amount) = self.min_buy_seal_amount {
             if !(100.0..=10000.0).contains(&amount) {
                 return Err(BacktestError::InvalidParam(
-                    "买封金额必须在100-10000万之间".to_string()
+                    "买封金额必须在100-10000万之间".to_string(),
                 ));
             }
         }
@@ -225,7 +227,7 @@ impl StrategyParams {
         if let Some(holding) = self.holding_days {
             if !(1..=10).contains(&holding) {
                 return Err(BacktestError::InvalidParam(
-                    "持仓天数必须在1-10天之间".to_string()
+                    "持仓天数必须在1-10天之间".to_string(),
                 ));
             }
         }

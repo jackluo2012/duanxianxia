@@ -2,15 +2,11 @@
 // 连接到真实的算法实现
 
 use crate::domain::services::indicators::IndicatorManager;
-use crate::domain::services::screener::{ConsecutiveBoardItem, LeaderItem, LimitItem, ScreenerAlgorithmImpl};
-use crate::domain::services::sectors::{
-    Sector, SectorAlgorithmImpl, SectorFlow, SectorPerformance, SectorStock,
-};
-use crate::domain::entities::models::StockIndicators;
+use crate::domain::services::screener::ScreenerAlgorithmImpl;
+use crate::domain::services::sectors::SectorAlgorithmImpl;
 use actix_web::{web, HttpRequest, HttpResponse};
-use anyhow::Result;
 use clickhouse::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 // ============================================
 // 个股挖掘 API Handlers

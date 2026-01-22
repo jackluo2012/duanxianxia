@@ -2,6 +2,7 @@ use crate::types::{KlineData, KlinePeriod, StockInfo};
 use anyhow::Result;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use clickhouse::Client;
+use common::from_utc;
 use rustdx_complete::tcp::stock::Kline;
 use rustdx_complete::tcp::{Tcp, Tdx};
 use std::sync::Arc;
@@ -65,7 +66,7 @@ impl KlineBackfill {
                 }
             }
 
-            current_date = current_date + Duration::days(1);
+            current_date += Duration::days(1);
         }
 
         if failed_days > 0 {
@@ -157,9 +158,10 @@ impl KlineBackfill {
                             )?,
                         );
                         let timestamp_utc = timestamp.and_utc();
+                        let timestamp_china = from_utc(&timestamp_utc);
 
                         Some(KlineData {
-                            timestamp: timestamp_utc,
+                            timestamp: timestamp_china,
                             code: stock.code.clone(),
                             name: stock.name.clone(),
                             period,

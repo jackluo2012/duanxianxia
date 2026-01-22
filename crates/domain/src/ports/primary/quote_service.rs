@@ -2,11 +2,11 @@
 //!
 //! Primary Port - Service interface exposed to application layer
 
-use async_trait::async_trait;
 use crate::entities::StockQuote;
 use crate::value_objects::StockCode;
-use std::fmt;
+use async_trait::async_trait;
 use std::error::Error;
+use std::fmt;
 
 /// Service Error
 #[derive(Debug, Clone, PartialEq)]

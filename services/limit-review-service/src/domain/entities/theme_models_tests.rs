@@ -1,5 +1,5 @@
-use chrono::{Utc, NaiveDate};
 use crate::domain::entities::theme_models::*;
+use chrono::{NaiveDate, Utc};
 
 #[test]
 fn test_theme_hotness_ranking() {

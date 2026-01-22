@@ -106,7 +106,10 @@ impl DateTimeExt for DateTime<Utc> {
     fn elapsed_since(&self) -> Duration {
         let now = Utc::now();
         let duration = now.signed_duration_since(*self);
-        std::cmp::max(Duration::ZERO, Duration::from_secs(duration.num_seconds().max(0) as u64))
+        std::cmp::max(
+            Duration::ZERO,
+            Duration::from_secs(duration.num_seconds().max(0) as u64),
+        )
     }
 }
 

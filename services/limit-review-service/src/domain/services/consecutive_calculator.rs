@@ -4,9 +4,9 @@
 
 use crate::domain::entities::models::*;
 use anyhow::Result;
-use trading_calendar::TradingCalendar;
 use chrono::{Datelike, NaiveDate};
 use std::collections::HashMap;
+use trading_calendar::TradingCalendar;
 
 /// 连板历史记录
 #[derive(Debug, Clone)]
@@ -69,11 +69,7 @@ impl ConsecutiveCalculator {
     /// # 注意
     /// 此版本为简化实现,不使用数据库
     /// 实际使用时需要传入历史数据或从ClickHouse查询
-    pub async fn calculate_consecutive(
-        &self,
-        _code: &str,
-        _current_date: NaiveDate,
-    ) -> Result<u8> {
+    pub async fn calculate_consecutive(&self, _code: &str, _current_date: NaiveDate) -> Result<u8> {
         // TODO: 实现从ClickHouse查询历史涨停记录
         // 目前返回0
         Ok(0)
@@ -87,7 +83,8 @@ impl ConsecutiveCalculator {
         history: &[LimitUpReview],
     ) -> Result<u8> {
         // 1. 检查今日是否涨停
-        let today_limit = history.iter()
+        let today_limit = history
+            .iter()
             .find(|r| r.code == code && r.trade_date == current_date);
 
         if today_limit.is_none() || today_limit.unwrap().is_limit_up == 0 {
@@ -99,7 +96,8 @@ impl ConsecutiveCalculator {
         let mut check_date = self.prev_trading_day(current_date).await?;
 
         loop {
-            let prev_limit = history.iter()
+            let prev_limit = history
+                .iter()
                 .find(|r| r.code == code && r.trade_date == check_date);
 
             match prev_limit {
@@ -157,23 +155,14 @@ impl ConsecutiveCalculator {
     ///
     /// # 查询逻辑
     /// 查询前60个交易日的最高价,与当日最高价比较
-    pub async fn is_new_high(
-        &self,
-        _code: &str,
-        _date: NaiveDate,
-        _high: f64,
-    ) -> Result<bool> {
+    pub async fn is_new_high(&self, _code: &str, _date: NaiveDate, _high: f64) -> Result<bool> {
         // TODO: 实现从ClickHouse查询60日最高价
         // 目前返回false
         Ok(false)
     }
 
     /// 从历史记录判断是否新高
-    pub fn is_new_high_from_history(
-        &self,
-        high: f64,
-        history_60d_high: Option<f64>,
-    ) -> bool {
+    pub fn is_new_high_from_history(&self, high: f64, history_60d_high: Option<f64>) -> bool {
         match history_60d_high {
             Some(max) => high >= max - 0.01,
             None => false,

@@ -2,12 +2,12 @@
 //!
 //! Aggregates stock quotes into Kline data for different periods
 
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use crate::entities::{KlineData, KlinePeriod, StockQuote};
 use crate::value_objects::StockCode;
-use std::fmt;
+use async_trait::async_trait;
+use common::ChinaTime;
 use std::error::Error;
+use std::fmt;
 
 /// Error type for Kline aggregation
 #[derive(Debug, Clone, PartialEq)]
@@ -52,14 +52,25 @@ pub trait KlineAggregator: Send + Sync {
 /// Default implementation of KlineAggregator
 pub struct DefaultKlineAggregator;
 
+impl Default for DefaultKlineAggregator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefaultKlineAggregator {
     pub fn new() -> Self {
         Self
     }
 
     /// Group quotes by time bucket based on period
-    fn group_by_time_bucket<'a>(&self, quotes: &'a [StockQuote], period: KlinePeriod) -> Vec<Vec<&'a StockQuote>> {
-        let mut buckets: std::collections::HashMap<i64, Vec<&'a StockQuote>> = std::collections::HashMap::new();
+    fn group_by_time_bucket<'a>(
+        &self,
+        quotes: &'a [StockQuote],
+        period: KlinePeriod,
+    ) -> Vec<Vec<&'a StockQuote>> {
+        let mut buckets: std::collections::HashMap<i64, Vec<&'a StockQuote>> =
+            std::collections::HashMap::new();
 
         for quote in quotes {
             let bucket = self.time_bucket(quote.timestamp, period);
@@ -72,17 +83,14 @@ impl DefaultKlineAggregator {
     }
 
     /// Calculate time bucket timestamp based on period
-    fn time_bucket(&self, timestamp: DateTime<Utc>, period: KlinePeriod) -> i64 {
+    fn time_bucket(&self, timestamp: ChinaTime, period: KlinePeriod) -> i64 {
         let secs = timestamp.timestamp();
         match period {
             KlinePeriod::OneMinute => (secs / 60) * 60,
             KlinePeriod::FiveMinutes => (secs / 300) * 300,
             KlinePeriod::OneDay => {
                 let date = timestamp.date_naive();
-                date.and_hms_opt(0, 0, 0)
-                    .unwrap()
-                    .and_utc()
-                    .timestamp()
+                date.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp()
             }
         }
     }
@@ -122,9 +130,9 @@ impl DefaultKlineAggregator {
         let name = first.name.clone();
 
         KlineData::new(
-            timestamp, code, name, period,
-            open, high, low, close, volume, amount,
-        ).map_err(|e| AggregationError::InvalidInput(e))
+            timestamp, code, name, period, open, high, low, close, volume, amount,
+        )
+        .map_err(AggregationError::InvalidInput)
     }
 }
 
@@ -158,10 +166,7 @@ impl KlineAggregator for DefaultKlineAggregator {
         quotes: Vec<StockQuote>,
         period: KlinePeriod,
     ) -> Result<Option<KlineData>, AggregationError> {
-        let filtered: Vec<StockQuote> = quotes
-            .into_iter()
-            .filter(|q| q.code == code)
-            .collect();
+        let filtered: Vec<StockQuote> = quotes.into_iter().filter(|q| q.code == code).collect();
 
         if filtered.is_empty() {
             return Ok(None);
@@ -181,13 +186,10 @@ impl KlineAggregator for DefaultKlineAggregator {
 mod tests {
     use super::*;
     use crate::value_objects::{Market, Price};
+    use chrono::{TimeZone, Utc};
+    use chrono_tz::Asia::Shanghai;
 
-    fn create_test_quote(
-        code: &str,
-        price: f64,
-        volume: f64,
-        timestamp: DateTime<Utc>,
-    ) -> StockQuote {
+    fn create_test_quote(code: &str, price: f64, volume: f64, timestamp: ChinaTime) -> StockQuote {
         let code = StockCode::new(code.to_string()).unwrap();
         let price = Price::new(price).unwrap();
         let preclose = Price::new(10.0).unwrap();
@@ -197,10 +199,18 @@ mod tests {
         let amount = price.value() * volume;
 
         StockQuote::new(
-            timestamp, code, "Test".to_string(),
-            price, preclose, open, high, low,
-            volume, amount,
-        ).unwrap()
+            timestamp,
+            code,
+            "Test".to_string(),
+            price,
+            preclose,
+            open,
+            high,
+            low,
+            volume,
+            amount,
+        )
+        .unwrap()
     }
 
     #[tokio::test]
@@ -208,12 +218,26 @@ mod tests {
         let aggregator = DefaultKlineAggregator::new();
         // Use a fixed timestamp aligned to minute boundary
         // 1700000000 = 2023-11-14 22:13:20 UTC, so we use 1700000100 = 22:15:00 UTC
-        let base_time = DateTime::from_timestamp(1700000100, 0).unwrap(); // 2023-11-14 22:15:00 UTC
+        let base_time = Utc
+            .timestamp_opt(1700000100, 0)
+            .single()
+            .unwrap()
+            .with_timezone(&Shanghai); // 2023-11-14 22:15:00 UTC → 2023-11-15 06:15:00 Shanghai
 
         let quotes = vec![
             create_test_quote("000001", 10.0, 1000.0, base_time),
-            create_test_quote("000001", 10.5, 1500.0, base_time + chrono::Duration::seconds(30)),
-            create_test_quote("000001", 10.3, 1200.0, base_time + chrono::Duration::seconds(50)),
+            create_test_quote(
+                "000001",
+                10.5,
+                1500.0,
+                base_time + chrono::Duration::seconds(30),
+            ),
+            create_test_quote(
+                "000001",
+                10.3,
+                1200.0,
+                base_time + chrono::Duration::seconds(50),
+            ),
         ];
 
         let result = aggregator.aggregate(quotes, KlinePeriod::OneMinute).await;

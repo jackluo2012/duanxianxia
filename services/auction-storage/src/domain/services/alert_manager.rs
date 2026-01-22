@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::domain::entities::{AlertRule, AlertEvent, AlertSeverity, AlertRuleType};
+use crate::domain::entities::{AlertEvent, AlertRule, AlertRuleType, AlertSeverity};
 
 /// 竞价数据结构（需要跨层使用）
 #[derive(Debug, Clone)]

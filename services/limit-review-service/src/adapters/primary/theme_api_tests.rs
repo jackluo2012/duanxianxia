@@ -1,17 +1,17 @@
-use actix_web::{web, test, App};
 use crate::adapters::primary::theme_api::*;
 use crate::adapters::secondary::Database;
+use actix_web::{test, web, App};
 use serde_json::Value;
 
 #[actix_web::test]
 async fn test_get_theme_hotness() {
     let db = Database::new("http://localhost:8123");
 
-    let app = test::init_service(
-        App::new()
-            .app_data(web::Data::new(db))
-            .route("/api/themes/{date}/hotness", web::get().to(get_theme_hotness))
-    ).await;
+    let app = test::init_service(App::new().app_data(web::Data::new(db)).route(
+        "/api/themes/{date}/hotness",
+        web::get().to(get_theme_hotness),
+    ))
+    .await;
 
     let req = test::TestRequest::get()
         .uri("/api/themes/2025-01-16/hotness?limit=20")

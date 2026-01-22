@@ -1,5 +1,6 @@
 use anyhow::Result;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::Timelike;
+use common::{now_china, ChinaTime};
 use std::time::Duration;
 use tracing::{debug, info};
 use trading_calendar::{TradingCalendar, TradingSession};
@@ -71,16 +72,16 @@ impl TradingScheduler {
     }
 
     /// 检查当前状态和下次检查时间
-    pub async fn check_status(&self) -> Result<(SchedulerState, DateTime<Utc>, Duration)> {
+    pub async fn check_status(&self) -> Result<(SchedulerState, ChinaTime, Duration)> {
         // 强制模式：始终返回Active状态
         if self.config.force_mode {
             info!("FORCE_MODE enabled - scheduler always active");
-            let next_check = Utc::now() + chrono::Duration::seconds(60);
+            let next_check = now_china() + chrono::Duration::seconds(60);
             return Ok((SchedulerState::Active, next_check, Duration::from_secs(60)));
         }
 
         let status = self.calendar.get_current_status().await;
-        let now = Utc::now();
+        let now = now_china();
 
         debug!(
             "Current trading status: is_trading_day={}, session={:?}",
@@ -131,10 +132,9 @@ impl TradingScheduler {
     }
 
     /// 判断市场状态（盘前/盘后/非活跃）
-    fn determine_market_state(&self, now: &DateTime<Utc>) -> SchedulerState {
-        // 简单的时间判断逻辑
-        // 注意：这里使用UTC时间，需要根据实际情况调整时区
-        let hour = now.hour() + 8; // 转换为北京时间（UTC+8）
+    fn determine_market_state(&self, now: &ChinaTime) -> SchedulerState {
+        // 直接使用中国时间，无需手动时区转换
+        let hour = now.hour();
         let minute = now.minute();
         let time_in_minutes = hour * 60 + minute;
 
@@ -164,8 +164,8 @@ impl TradingScheduler {
     }
 
     /// 获取下次检查时间（用于主循环）
-    pub fn get_next_check_time(&self, next_check: DateTime<Utc>) -> Duration {
-        let now = Utc::now();
+    pub fn get_next_check_time(&self, next_check: ChinaTime) -> Duration {
+        let now = now_china();
         if next_check > now {
             let duration = next_check - now;
             Duration::from_secs(duration.num_seconds().max(0) as u64)
@@ -217,7 +217,7 @@ mod tests {
         ));
 
         // 验证下次检查时间在未来
-        assert!(next_check > Utc::now());
+        assert!(next_check > now_china());
 
         // 验证间隔合理性
         assert!(interval.as_secs() > 0);

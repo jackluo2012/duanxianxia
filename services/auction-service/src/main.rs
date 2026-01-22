@@ -6,9 +6,11 @@ use tracing::{error, info, warn};
 
 mod metrics;
 
-use auction_service::domain::{AuctionQuote, AuctionTimeChecker, SealedAmountCalculator, WatchlistManager};
+use auction_service::adapters::{RedisStreamPublisher, TongdaxinDataSource};
 use auction_service::application::AuctionCollectionUseCase;
-use auction_service::adapters::{TongdaxinDataSource, RedisStreamPublisher};
+use auction_service::domain::{
+    AuctionQuote, AuctionTimeChecker, SealedAmountCalculator, WatchlistManager,
+};
 
 /// 运行竞价采集主循环
 async fn run_auction_collector(use_case: Arc<AuctionCollectionUseCase>) -> Result<()> {

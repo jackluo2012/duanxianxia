@@ -29,8 +29,9 @@ time = { workspace = true }
 rustdx-complete = { workspace = true }
 redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
 clickhouse = { version = "0.14.1", features = ["time"] }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true, features = ["serde"] }
 async-trait = { workspace = true }
 shared = { path = "../../shared" }
+common = { path = "../../shared/common" }
 trading-calendar = { path = "../../shared/trading-calendar" }
 domain = { path = "../../crates/domain" }

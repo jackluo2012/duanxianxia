@@ -1,6 +1,6 @@
-use actix_web::{web, test, App, HttpResponse};
 use crate::adapters::primary::http::*;
 use crate::adapters::secondary::Database;
+use actix_web::{test, web, App, HttpResponse};
 use serde_json::Value;
 
 #[actix_web::test]
@@ -11,8 +11,9 @@ async fn test_get_review_with_interval_stats() {
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(db))
-            .route("/api/review/{date}", web::get().to(get_daily_review))
-    ).await;
+            .route("/api/review/{date}", web::get().to(get_daily_review)),
+    )
+    .await;
 
     let req = test::TestRequest::get()
         .uri("/api/review/2025-01-16")

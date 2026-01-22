@@ -1,9 +1,9 @@
 use anyhow::Result;
-use std::sync::Arc;
 use clickhouse::Client;
+use std::sync::Arc;
 
+use crate::domain::entities::models::StockIndicators;
 use crate::domain::services::indicators::IndicatorManager;
-use crate::domain::entities::models::{StockIndicators, IndicatorResult};
 
 /// 技术指标计算用例
 pub struct IndicatorCalculationUseCase {
@@ -29,7 +29,9 @@ impl IndicatorCalculationUseCase {
         end_date: &str,
     ) -> Result<Vec<StockIndicators>> {
         let manager = IndicatorManager::new((*self.client).clone());
-        manager.get_indicator_history(code, start_date, end_date).await
+        manager
+            .get_indicator_history(code, start_date, end_date)
+            .await
     }
 
     /// 计算所有股票的指标（批量任务）

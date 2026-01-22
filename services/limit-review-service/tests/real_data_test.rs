@@ -41,7 +41,8 @@ mod real_data_tests {
 
         // 获取最新的一条数据，计算涨停价
         let result = client
-            .query("
+            .query(
+                "
                 SELECT
                     code,
                     price,
@@ -52,7 +53,8 @@ mod real_data_tests {
                 WHERE preclose > 0
                 ORDER BY timestamp DESC
                 LIMIT 10
-            ")
+            ",
+            )
             .fetch_all::<(String, f64, f64, f64, i8)>()
             .await;
 
@@ -61,8 +63,10 @@ mod real_data_tests {
                 println!("✅ 获取到 {} 条股票数据", rows.len());
 
                 for (code, price, preclose, limit_price, is_limit_up) in rows {
-                    println!("  {} - 价格:{:.2}, 昨收:{:.2}, 涨停价:{:.2}, 是否涨停:{}",
-                        code, price, preclose, limit_price, is_limit_up);
+                    println!(
+                        "  {} - 价格:{:.2}, 昨收:{:.2}, 涨停价:{:.2}, 是否涨停:{}",
+                        code, price, preclose, limit_price, is_limit_up
+                    );
                 }
             }
             Err(e) => {
@@ -113,13 +117,15 @@ mod real_data_tests {
             .with_database("duanxianxia");
 
         let result = client
-            .query("
+            .query(
+                "
                 SELECT
                     toDateTime(min(timestamp)) as earliest,
                     toDateTime(max(timestamp)) as latest,
                     count() as total_records
                 FROM stock_realtime_quotes
-            ")
+            ",
+            )
             .fetch_one::<(String, String, u64)>()
             .await;
 

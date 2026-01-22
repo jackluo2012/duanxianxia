@@ -17,6 +17,10 @@ impl Price {
     }
 
     pub fn change_percent(&self, base: Price) -> f64 {
-        if base.0 == 0.0 { 0.0 } else { ((self.0 - base.0) / base.0) * 100.0 }
+        if base.0 == 0.0 {
+            0.0
+        } else {
+            ((self.0 - base.0) / base.0) * 100.0
+        }
     }
 }

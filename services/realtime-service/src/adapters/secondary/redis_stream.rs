@@ -18,8 +18,7 @@ impl RedisStreamSubscriber {
 
     /// 启动Redis订阅和广播任务
     pub async fn run(&self) {
-        let redis_url = std::env::var("REDIS_URL")
-            .unwrap_or("redis://127.0.0.1:6379".to_string());
+        let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
         let redis_client = redis::Client::open(redis_url);
 
         if let Err(e) = redis_client {
@@ -70,15 +69,16 @@ impl RedisStreamSubscriber {
                                             if let redis::Value::Data(field_name) = field {
                                                 if field_name == b"data" {
                                                     if let Some(redis::Value::Data(json_data)) =
-                                                            data_fields.get(i + 1)
+                                                        data_fields.get(i + 1)
                                                     {
-                                                        let json_str = String::from_utf8_lossy(json_data);
+                                                        let json_str =
+                                                            String::from_utf8_lossy(json_data);
 
-                                                        if let Ok(quote) =
-                                                            serde_json::from_str::<shared::StockQuote>(
-                                                                &json_str,
-                                                            )
-                                                        {
+                                                        if let Ok(quote) = serde_json::from_str::<
+                                                            shared::StockQuote,
+                                                        >(
+                                                            &json_str
+                                                        ) {
                                                             self.manager.broadcast_quote(&quote);
                                                         }
                                                     }

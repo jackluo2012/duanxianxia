@@ -3,12 +3,12 @@
 //! 负责用户自选股的管理
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::domain::entities::{WatchlistItem, UserWatchlist};
+use crate::domain::entities::{UserWatchlist, WatchlistItem};
 
 /// 自选股管理器
 pub struct WatchlistManager {

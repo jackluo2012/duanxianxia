@@ -1,4 +1,4 @@
-use crate::domain::entities::models::{PerformanceMetrics, Trade, EquityPoint};
+use crate::domain::entities::models::{EquityPoint, PerformanceMetrics, Trade};
 use crate::domain::services::portfolio::PortfolioManager;
 
 pub struct PerformanceCalculator;
@@ -31,8 +31,8 @@ impl PerformanceCalculator {
         }
 
         // 收益指标
-        let total_return = (portfolio.equity - portfolio.initial_capital)
-            / portfolio.initial_capital;
+        let total_return =
+            (portfolio.equity - portfolio.initial_capital) / portfolio.initial_capital;
 
         let annualized_return = if total_return > 0.0 {
             // 假设3个月回测期
@@ -41,13 +41,9 @@ impl PerformanceCalculator {
             total_return * 4.0
         };
 
-        let winning_trades: Vec<&Trade> = trades.iter()
-            .filter(|t| t.profit > 0.0)
-            .collect();
+        let winning_trades: Vec<&Trade> = trades.iter().filter(|t| t.profit > 0.0).collect();
 
-        let losing_trades: Vec<&Trade> = trades.iter()
-            .filter(|t| t.profit <= 0.0)
-            .collect();
+        let losing_trades: Vec<&Trade> = trades.iter().filter(|t| t.profit <= 0.0).collect();
 
         let win_rate = winning_trades.len() as f64 / trades.len() as f64;
 
@@ -70,9 +66,8 @@ impl PerformanceCalculator {
         };
 
         // 交易效率
-        let avg_holding_days = trades.iter()
-            .map(|t| t.holding_days as f64)
-            .sum::<f64>() / trades.len() as f64;
+        let avg_holding_days =
+            trades.iter().map(|t| t.holding_days as f64).sum::<f64>() / trades.len() as f64;
 
         let trade_count = trades.len();
 
@@ -142,16 +137,15 @@ impl PerformanceCalculator {
         // 计算日收益率
         let mut returns = Vec::new();
         for i in 1..equity_curve.len() {
-            let daily_return = (equity_curve[i].equity - equity_curve[i-1].equity)
-                / equity_curve[i-1].equity;
+            let daily_return =
+                (equity_curve[i].equity - equity_curve[i - 1].equity) / equity_curve[i - 1].equity;
             returns.push(daily_return);
         }
 
         // 计算标准差
         let mean = returns.iter().sum::<f64>() / returns.len() as f64;
-        let variance = returns.iter()
-            .map(|r| (r - mean).powi(2))
-            .sum::<f64>() / returns.len() as f64;
+        let variance =
+            returns.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / returns.len() as f64;
 
         variance.sqrt() * (returns.len() as f64).sqrt() // 年化波动率
     }

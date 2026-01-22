@@ -1,7 +1,7 @@
 //! 配置管理
 
-use serde::{Deserialize, Serialize};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 /// 服务配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,18 +22,17 @@ impl Config {
         // 尝试加载.env文件
         dotenv::dotenv().ok();
 
-        let host = std::env::var("STORAGE_HOST")
-            .unwrap_or_else(|_| "0.0.0.0".to_string());
+        let host = std::env::var("STORAGE_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
         let port = std::env::var("STORAGE_PORT")
             .unwrap_or_else(|_| "8083".to_string())
             .parse()
             .unwrap_or(8083);
 
-        let clickhouse_url = std::env::var("CLICKHOUSE_URL")
-            .unwrap_or_else(|_| "http://localhost:8123".to_string());
+        let clickhouse_url =
+            std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
 
-        let redis_url = std::env::var("REDIS_URL")
-            .unwrap_or_else(|_| "redis://localhost:6379".to_string());
+        let redis_url =
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
 
         Ok(Self {
             host,

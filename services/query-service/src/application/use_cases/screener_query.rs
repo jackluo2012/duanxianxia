@@ -1,8 +1,10 @@
 use anyhow::Result;
-use std::sync::Arc;
 use clickhouse::Client;
+use std::sync::Arc;
 
-use crate::domain::services::screener::{ScreenerAlgorithmImpl, LeaderItem, ConsecutiveBoardItem, LimitItem};
+use crate::domain::services::screener::{
+    ConsecutiveBoardItem, LeaderItem, LimitItem, ScreenerAlgorithmImpl,
+};
 
 /// 竞价筛选查询用例
 pub struct ScreenerQueryUseCase {
@@ -21,7 +23,10 @@ impl ScreenerQueryUseCase {
     }
 
     /// 查询连续涨停
-    pub async fn get_consecutive_boards(&self, date: Option<String>) -> Result<Vec<ConsecutiveBoardItem>> {
+    pub async fn get_consecutive_boards(
+        &self,
+        date: Option<String>,
+    ) -> Result<Vec<ConsecutiveBoardItem>> {
         let algo = ScreenerAlgorithmImpl::new((*self.client).clone());
         let date_str = date.unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
         algo.get_consecutive_boards(2, &date_str, 100).await

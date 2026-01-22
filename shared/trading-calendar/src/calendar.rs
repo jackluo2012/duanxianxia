@@ -1,6 +1,7 @@
 use crate::types::{TradingSession, TradingStatus};
 use anyhow::Result;
-use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, TimeZone, Weekday};
+use chrono::{Datelike, Duration, NaiveDate, NaiveTime, TimeZone, Weekday};
+use common::{now_china, CHINA_TZ};
 use std::collections::{HashMap, HashSet};
 
 /// 交易日历管理器
@@ -45,7 +46,7 @@ impl TradingCalendar {
 
     /// 判断当前是否在交易时段内
     pub async fn is_in_trading_hours(&self) -> bool {
-        let now = Local::now();
+        let now = now_china(); // 直接获取中国时间
         let current_time = now.time();
         let date = now.date_naive();
 
@@ -54,7 +55,7 @@ impl TradingCalendar {
             return false;
         }
 
-        // 2. 检查是否在交易时段内
+        // 2. 检查是否在交易时段内（使用中国时间，无需手动 +8）
         let auction_start = NaiveTime::from_hms_opt(
             Self::AUCTION_START.0,
             Self::AUCTION_START.1,
@@ -99,7 +100,7 @@ impl TradingCalendar {
 
     /// 获取当前交易状态
     pub async fn get_current_status(&self) -> TradingStatus {
-        let now = Local::now();
+        let now = now_china(); // 中国时间
         let current_time = now.time();
         let date = now.date_naive();
         let is_trading_day = self.is_trading_day(date).await;
@@ -156,8 +157,9 @@ impl TradingCalendar {
         };
 
         // 计算下次开盘时间（简化版，返回明天的9:15）
+        // 使用中国时间
         let next_datetime = now + Duration::days(1);
-        let next_open_time = Local
+        let next_open_time = CHINA_TZ
             .with_ymd_and_hms(
                 next_datetime.year(),
                 next_datetime.month(),

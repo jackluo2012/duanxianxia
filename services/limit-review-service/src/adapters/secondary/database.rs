@@ -1,10 +1,12 @@
+use crate::adapters::primary::http::{
+    DailyReviewResponse, IntervalDistribution, IntervalStatsResponse, MarketSentiment,
+};
+use crate::domain::entities::models::*;
+use crate::domain::entities::theme_models::*;
 use anyhow::Result;
 use clickhouse::Client;
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
-use crate::domain::entities::models::*;
-use crate::domain::entities::theme_models::*;
-use crate::adapters::primary::http::{MarketSentiment, IntervalStatsResponse, IntervalDistribution, DailyReviewResponse};
 
 /// 龙头排行榜查询结果行(简化版)
 #[derive(Row, Serialize, Deserialize)]
@@ -14,7 +16,7 @@ struct LeaderBoardRow {
     price: f64,
     change_percent: f64,
     sector: String,
-    consecutive_limit_up: u16,  // 修复: UInt16而不是UInt8
+    consecutive_limit_up: u16, // 修复: UInt16而不是UInt8
     sealed_amount: f64,
 }
 
@@ -27,7 +29,7 @@ struct LatestLimitRow {
     change_percent: f64,
     market_cap: f64,
     sector: String,
-    consecutive_limit_up: u16,  // 修复: UInt16
+    consecutive_limit_up: u16, // 修复: UInt16
     history_max: u8,
     sealed_amount: f64,
     trade_date: String,
@@ -87,8 +89,7 @@ pub struct Database {
 impl Database {
     /// 创建新的数据库连接
     pub fn new(url: &str) -> Self {
-        let client = Client::default()
-            .with_url(url);
+        let client = Client::default().with_url(url);
 
         Self { client }
     }
@@ -121,7 +122,7 @@ impl Database {
                 market_cap: 0.0, // TODO: 从其他表获取市值
                 sector: row.sector,
                 consecutive_limit_up: row.consecutive_limit_up as i32,
-                history_max: 0, // TODO: 计算历史最高连板
+                history_max: 0,           // TODO: 计算历史最高连板
                 recent_limit_ups: vec![], // TODO: 查询历史涨停日期
                 sealed_amount: row.sealed_amount,
             });
@@ -131,7 +132,11 @@ impl Database {
     }
 
     /// 获取股票详情(包含历史涨停记录)
-    pub async fn get_leader_detail(&self, code: &str, limit_days: u32) -> Result<Option<LeaderDetail>> {
+    pub async fn get_leader_detail(
+        &self,
+        code: &str,
+        limit_days: u32,
+    ) -> Result<Option<LeaderDetail>> {
         // 查询最新涨停记录
         let mut cursor = self.client
             .query("SELECT
@@ -222,8 +227,10 @@ impl Database {
 
     /// 获取指定日期的涨停复盘数据
     pub async fn get_daily_review(&self, date: &str) -> Result<Vec<LimitUpReview>> {
-        let mut cursor = self.client
-            .query("SELECT
+        let mut cursor = self
+            .client
+            .query(
+                "SELECT
                 toString(trade_date) as trade_date,
                 code,
                 name,
@@ -254,34 +261,89 @@ impl Database {
                 ifNull(seal_period, '') as seal_period,
                 toFloat64(ifNull(strength_score, 0)) as strength_score
             FROM duanxianxia.limit_up_review
-            WHERE trade_date = ?")
+            WHERE trade_date = ?",
+            )
             .bind(date)
             .fetch::<ReviewRow>()?;
 
         let mut reviews = Vec::new();
         while let Some(row) = cursor.next().await? {
             // 转换字符串到Option类型
-            let limit_type = if row.limit_type.is_empty() { None } else { Some(row.limit_type) };
-            let first_limit_time = if row.first_limit_time.is_empty() { None } else { Some(row.first_limit_time) };
-            let last_limit_time = if row.last_limit_time.is_empty() { None } else { Some(row.last_limit_time) };
-            let industry = if row.industry.is_empty() { None } else { Some(row.industry) };
-            let concept = if row.concept.is_empty() { None } else { Some(row.concept) };
-            let limit_reason = if row.limit_reason.is_empty() { None } else { Some(row.limit_reason) };
-            let remark = if row.remark.is_empty() { None } else { Some(row.remark) };
-            let seal_period = if row.seal_period.is_empty() { None } else { Some(row.seal_period) };
+            let limit_type = if row.limit_type.is_empty() {
+                None
+            } else {
+                Some(row.limit_type)
+            };
+            let first_limit_time = if row.first_limit_time.is_empty() {
+                None
+            } else {
+                Some(row.first_limit_time)
+            };
+            let last_limit_time = if row.last_limit_time.is_empty() {
+                None
+            } else {
+                Some(row.last_limit_time)
+            };
+            let industry = if row.industry.is_empty() {
+                None
+            } else {
+                Some(row.industry)
+            };
+            let concept = if row.concept.is_empty() {
+                None
+            } else {
+                Some(row.concept)
+            };
+            let limit_reason = if row.limit_reason.is_empty() {
+                None
+            } else {
+                Some(row.limit_reason)
+            };
+            let remark = if row.remark.is_empty() {
+                None
+            } else {
+                Some(row.remark)
+            };
+            let seal_period = if row.seal_period.is_empty() {
+                None
+            } else {
+                Some(row.seal_period)
+            };
 
             // 转换DateTime字符串
-            let first_limit_dt = first_limit_time.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+            let first_limit_dt = first_limit_time
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
                 .map(|dt| dt.with_timezone(&chrono::Utc));
-            let last_limit_dt = last_limit_time.and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+            let last_limit_dt = last_limit_time
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
                 .map(|dt| dt.with_timezone(&chrono::Utc));
 
             // 转换价格字段到Option类型
-            let limit_price = if row.limit_price == 0.0 { None } else { Some(row.limit_price) };
-            let open_price = if row.open_price == 0.0 { None } else { Some(row.open_price) };
-            let close_price = if row.close_price == 0.0 { None } else { Some(row.close_price) };
-            let high_price = if row.high_price == 0.0 { None } else { Some(row.high_price) };
-            let low_price = if row.low_price == 0.0 { None } else { Some(row.low_price) };
+            let limit_price = if row.limit_price == 0.0 {
+                None
+            } else {
+                Some(row.limit_price)
+            };
+            let open_price = if row.open_price == 0.0 {
+                None
+            } else {
+                Some(row.open_price)
+            };
+            let close_price = if row.close_price == 0.0 {
+                None
+            } else {
+                Some(row.close_price)
+            };
+            let high_price = if row.high_price == 0.0 {
+                None
+            } else {
+                Some(row.high_price)
+            };
+            let low_price = if row.low_price == 0.0 {
+                None
+            } else {
+                Some(row.low_price)
+            };
 
             reviews.push(LimitUpReview {
                 trade_date: chrono::NaiveDate::parse_from_str(&row.trade_date, "%Y-%m-%d")?,
@@ -299,7 +361,11 @@ impl Database {
                 limit_direction: None,
                 max_consecutive: 0,
                 interval_stats: None,
-                strength_score: if row.strength_score == 0.0 { None } else { Some(row.strength_score as f32) },
+                strength_score: if row.strength_score == 0.0 {
+                    None
+                } else {
+                    Some(row.strength_score as f32)
+                },
                 manual_reason: None,
                 reason_source: None,
 
@@ -309,7 +375,11 @@ impl Database {
                 concept,
                 limit_reason,
                 remark,
-                limit_duration: if row.limit_duration == 0 { None } else { Some(row.limit_duration as i32) },
+                limit_duration: if row.limit_duration == 0 {
+                    None
+                } else {
+                    Some(row.limit_duration as i32)
+                },
                 seal_period,
                 volume: Some(row.volume as f64),
                 amount: Some(row.amount),
@@ -328,12 +398,14 @@ impl Database {
         let all_reviews = self.get_daily_review(date).await?;
 
         // 2. 分离涨停和跌停股票
-        let limit_up_stocks: Vec<LimitUpReview> = all_reviews.iter()
+        let limit_up_stocks: Vec<LimitUpReview> = all_reviews
+            .iter()
             .filter(|r| r.is_limit_up == 1)
             .cloned()
             .collect();
 
-        let limit_down_stocks: Vec<LimitUpReview> = all_reviews.iter()
+        let limit_down_stocks: Vec<LimitUpReview> = all_reviews
+            .iter()
             .filter(|r| r.is_limit_up != 1)
             .cloned()
             .collect();
@@ -341,14 +413,17 @@ impl Database {
         // 3. 计算市场情绪
         let total_limit_up = limit_up_stocks.len() as i32;
         let total_limit_down = limit_down_stocks.len() as i32;
-        let max_consecutive = limit_up_stocks.iter()
+        let max_consecutive = limit_up_stocks
+            .iter()
             .map(|s| s.consecutive_days)
             .max()
             .unwrap_or(0);
 
         // 简单的情绪指数计算 (涨停数 - 跌停数)
         let sentiment_index = if (total_limit_up + total_limit_down) > 0 {
-            ((total_limit_up - total_limit_down) as f64 / (total_limit_up + total_limit_down) as f64) * 100.0
+            ((total_limit_up - total_limit_down) as f64
+                / (total_limit_up + total_limit_down) as f64)
+                * 100.0
         } else {
             0.0
         };
@@ -373,7 +448,10 @@ impl Database {
     }
 
     /// 计算区间统计分布
-    async fn calculate_interval_stats(&self, stocks: &[LimitUpReview]) -> Result<IntervalStatsResponse> {
+    async fn calculate_interval_stats(
+        &self,
+        stocks: &[LimitUpReview],
+    ) -> Result<IntervalStatsResponse> {
         // 简化实现: 基于当前数据计算连板分布
         // TODO: 实际应该从历史数据计算5/10/20天区间
 
@@ -421,7 +499,11 @@ impl Database {
     }
 
     /// 获取题材详情
-    pub async fn get_theme_detail(&self, date: &str, theme_name: &str) -> Result<serde_json::Value> {
+    pub async fn get_theme_detail(
+        &self,
+        date: &str,
+        theme_name: &str,
+    ) -> Result<serde_json::Value> {
         // TODO: 从ClickHouse查询题材详情
         // 简化实现: 返回基本信息
         Ok(serde_json::json!({
@@ -432,7 +514,11 @@ impl Database {
     }
 
     /// 获取题材关联关系
-    pub async fn get_theme_relations(&self, date: &str, theme_name: &str) -> Result<Vec<ThemeRelation>> {
+    pub async fn get_theme_relations(
+        &self,
+        date: &str,
+        theme_name: &str,
+    ) -> Result<Vec<ThemeRelation>> {
         // TODO: 从ClickHouse的theme_relations表查询
         // 简化实现: 返回空数组
         tracing::warn!("get_theme_relations not fully implemented yet, returning empty list");

@@ -1,9 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::domain::{
-    AuctionQuote, AuctionTimeChecker, SealedAmountCalculator, WatchlistManager,
-};
+use crate::domain::{AuctionQuote, AuctionTimeChecker, SealedAmountCalculator, WatchlistManager};
 
 /// 竞价采集用例
 ///
@@ -54,7 +52,8 @@ impl AuctionCollectionUseCase {
         sell1_price: f64,
         sell1_volume: u64,
     ) -> (f64, f64) {
-        self.calculator.calculate(buy1_price, buy1_volume, sell1_price, sell1_volume)
+        self.calculator
+            .calculate(buy1_price, buy1_volume, sell1_price, sell1_volume)
     }
 
     /// 创建竞价报价
@@ -72,12 +71,8 @@ impl AuctionCollectionUseCase {
         sell1_volume: u64,
         change_percent: f64,
     ) -> AuctionQuote {
-        let (sealed_buy, sealed_sell) = self.calculate_sealed_amount(
-            buy1_price,
-            buy1_volume,
-            sell1_price,
-            sell1_volume,
-        );
+        let (sealed_buy, sealed_sell) =
+            self.calculate_sealed_amount(buy1_price, buy1_volume, sell1_price, sell1_volume);
 
         AuctionQuote {
             code,
@@ -108,11 +103,7 @@ mod tests {
         let calculator = Arc::new(SealedAmountCalculator::new());
         let watchlist_manager = Arc::new(WatchlistManager::new());
 
-        let use_case = AuctionCollectionUseCase::new(
-            time_checker,
-            calculator,
-            watchlist_manager,
-        );
+        let use_case = AuctionCollectionUseCase::new(time_checker, calculator, watchlist_manager);
 
         // 验证用例创建成功
     }
@@ -123,11 +114,7 @@ mod tests {
         let calculator = Arc::new(SealedAmountCalculator::new());
         let watchlist_manager = Arc::new(WatchlistManager::new());
 
-        let use_case = AuctionCollectionUseCase::new(
-            time_checker,
-            calculator,
-            watchlist_manager,
-        );
+        let use_case = AuctionCollectionUseCase::new(time_checker, calculator, watchlist_manager);
 
         let watchlist = use_case.get_watchlist();
         assert!(!watchlist.is_empty());
@@ -139,18 +126,10 @@ mod tests {
         let calculator = Arc::new(SealedAmountCalculator::new());
         let watchlist_manager = Arc::new(WatchlistManager::new());
 
-        let use_case = AuctionCollectionUseCase::new(
-            time_checker,
-            calculator,
-            watchlist_manager,
-        );
+        let use_case = AuctionCollectionUseCase::new(time_checker, calculator, watchlist_manager);
 
-        let (sealed_buy, sealed_sell) = use_case.calculate_sealed_amount(
-            10.50,
-            100000,
-            10.52,
-            50000,
-        );
+        let (sealed_buy, sealed_sell) =
+            use_case.calculate_sealed_amount(10.50, 100000, 10.52, 50000);
 
         assert_eq!(sealed_buy, 1050000.0);
         assert_eq!(sealed_sell, 526000.0);
@@ -162,11 +141,7 @@ mod tests {
         let calculator = Arc::new(SealedAmountCalculator::new());
         let watchlist_manager = Arc::new(WatchlistManager::new());
 
-        let use_case = AuctionCollectionUseCase::new(
-            time_checker,
-            calculator,
-            watchlist_manager,
-        );
+        let use_case = AuctionCollectionUseCase::new(time_checker, calculator, watchlist_manager);
 
         let quote = use_case.create_quote(
             "000001".to_string(),

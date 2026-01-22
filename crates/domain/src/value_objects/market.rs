@@ -9,6 +9,10 @@ pub enum Market {
 
 impl Market {
     pub fn from_code(code: &str) -> Self {
-        if code.starts_with('6') { Market::SH } else { Market::SZ }
+        if code.starts_with('6') {
+            Market::SH
+        } else {
+            Market::SZ
+        }
     }
 }

@@ -1,9 +1,11 @@
 use anyhow::Result;
-use std::sync::Arc;
 use clickhouse::Client;
+use std::sync::Arc;
 
 // 直接使用 sectors 模块的类型，避免类型冲突
-use crate::domain::services::sectors::{SectorAlgorithmImpl, Sector, SectorStock, SectorPerformance, SectorFlow};
+use crate::domain::services::sectors::{
+    Sector, SectorAlgorithmImpl, SectorFlow, SectorPerformance, SectorStock,
+};
 
 /// 板块查询用例
 pub struct SectorQueryUseCase {
@@ -30,14 +32,21 @@ impl SectorQueryUseCase {
     }
 
     /// 获取板块表现
-    pub async fn get_sector_performance(&self, date: Option<String>) -> Result<Vec<SectorPerformance>> {
+    pub async fn get_sector_performance(
+        &self,
+        date: Option<String>,
+    ) -> Result<Vec<SectorPerformance>> {
         let algo = SectorAlgorithmImpl::new((*self.client).clone());
         let date_str = date.unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
         algo.get_sector_performance(&date_str, 100).await
     }
 
     /// 获取板块资金流
-    pub async fn get_sector_flow(&self, sector_code: &str, date: Option<String>) -> Result<SectorFlow> {
+    pub async fn get_sector_flow(
+        &self,
+        sector_code: &str,
+        date: Option<String>,
+    ) -> Result<SectorFlow> {
         let algo = SectorAlgorithmImpl::new((*self.client).clone());
         let date_str = date.unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
         algo.get_sector_flow(sector_code, &date_str).await

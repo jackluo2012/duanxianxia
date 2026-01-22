@@ -2,7 +2,6 @@
 //!
 //! 负责批量数据的处理和写入协调
 
-use async_trait::async_trait;
 use crate::entities::{DataBatch, DomainError};
 use crate::ports::secondary::QuoteRepository;
 
@@ -43,7 +42,11 @@ where
     }
 
     /// 处理批量数据
-    pub async fn process_batch(&self, batch: &mut DataBatch<T>, items: Vec<T>) -> Result<(), DomainError> {
+    pub async fn process_batch(
+        &self,
+        batch: &mut DataBatch<T>,
+        items: Vec<T>,
+    ) -> Result<(), DomainError> {
         batch.add_batch(items);
 
         if batch.size() >= batch.config.max_size {
@@ -100,7 +103,12 @@ mod tests {
             Ok(())
         }
 
-        async fn find_by_code(&self, _code: &str, _start: i64, _end: i64) -> Result<Vec<Self::Item>, DomainError> {
+        async fn find_by_code(
+            &self,
+            _code: &str,
+            _start: i64,
+            _end: i64,
+        ) -> Result<Vec<Self::Item>, DomainError> {
             unimplemented!()
         }
     }
@@ -115,11 +123,17 @@ mod tests {
         let mut batch = DataBatch::new(config);
 
         // 添加第一个项目
-        writer.process_item(&mut batch, "item1".to_string()).await.unwrap();
+        writer
+            .process_item(&mut batch, "item1".to_string())
+            .await
+            .unwrap();
         assert_eq!(batch.size(), 1);
 
         // 添加第二个项目 - 应触发写入
-        writer.process_item(&mut batch, "item2".to_string()).await.unwrap();
+        writer
+            .process_item(&mut batch, "item2".to_string())
+            .await
+            .unwrap();
         assert!(batch.is_empty());
     }
 }

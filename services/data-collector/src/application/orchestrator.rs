@@ -82,9 +82,7 @@ impl QuoteCollectionOrchestrator {
             if attempt > 0 {
                 warn!(
                     "Retry attempt {}/{} for {} stocks",
-                    attempt,
-                    self.max_retries,
-                    total_requested
+                    attempt, self.max_retries, total_requested
                 );
                 sleep(self.retry_delay * attempt as u32).await;
             }
@@ -118,12 +116,12 @@ impl QuoteCollectionOrchestrator {
 
         // All retries exhausted
         let duration = start.elapsed();
-        error!(
-            "❌ All retries exhausted after {}ms",
-            duration.as_millis()
-        );
+        error!("❌ All retries exhausted after {}ms", duration.as_millis());
 
-        Err(anyhow::anyhow!("All retries exhausted: {:?}", last_error.unwrap()))
+        Err(anyhow::anyhow!(
+            "All retries exhausted: {:?}",
+            last_error.unwrap()
+        ))
     }
 
     /// Collect quotes for all stocks in the database
@@ -131,7 +129,10 @@ impl QuoteCollectionOrchestrator {
         info!("📊 Starting collection for all stocks in database");
 
         // Fetch all stock codes from repository
-        let stock_codes = self.repository.find_all_stock_codes().await
+        let stock_codes = self
+            .repository
+            .find_all_stock_codes()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to fetch stock codes: {:?}", e))?;
 
         info!("Found {} unique stocks in database", stock_codes.len());

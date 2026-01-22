@@ -164,13 +164,13 @@ pub struct LimitUpReview {
     pub sealed_amount: Option<f64>,
 
     // 新增字段
-    pub limit_direction: Option<LimitDirection>,  // 涨停/跌停方向
-    pub max_consecutive: i32,                      // 历史最大连板数
-    pub interval_stats: Option<IntervalStats>,     // 区间统计
-    pub strength_score: Option<f32>,               // 强度评分
-    pub limit_reason: Option<String>,              // 自动提取的涨停原因
-    pub manual_reason: Option<String>,             // 手动标注的原因
-    pub reason_source: Option<ReasonSource>,       // 原因来源
+    pub limit_direction: Option<LimitDirection>, // 涨停/跌停方向
+    pub max_consecutive: i32,                    // 历史最大连板数
+    pub interval_stats: Option<IntervalStats>,   // 区间统计
+    pub strength_score: Option<f32>,             // 强度评分
+    pub limit_reason: Option<String>,            // 自动提取的涨停原因
+    pub manual_reason: Option<String>,           // 手动标注的原因
+    pub reason_source: Option<ReasonSource>,     // 原因来源
 
     pub last_consecutive: i32,
     pub is_new_high: i32,

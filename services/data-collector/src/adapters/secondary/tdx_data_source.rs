@@ -3,15 +3,15 @@
 //! Implements the QuoteDataSource trait using TDX (rustdx) as the data provider
 
 use async_trait::async_trait;
+use common::now_china;
+use domain::entities::StockQuote;
+use domain::ports::secondary::{DataSourceError, QuoteDataSource};
+use domain::value_objects::{Price, StockCode};
 use rustdx_complete::tcp::stock::SecurityQuotes;
 use rustdx_complete::tcp::{Tcp, Tdx};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tokio::task::JoinHandle;
-use domain::ports::secondary::{DataSourceError, QuoteDataSource};
-use domain::entities::StockQuote;
-use domain::value_objects::{Price, StockCode};
-use chrono::Utc;
 use tracing::{debug, warn};
 
 /// TDX Data Source for Stock Quotes
@@ -41,7 +41,8 @@ impl TdxQuoteDataSource {
                     // At least one connection is required
                     if tcp_pool.is_empty() {
                         return Err(DataSourceError::Connection(format!(
-                            "Failed to create any TCP connection: {}", e
+                            "Failed to create any TCP connection: {}",
+                            e
                         )));
                     }
                 }
@@ -50,7 +51,7 @@ impl TdxQuoteDataSource {
 
         if tcp_pool.is_empty() {
             return Err(DataSourceError::Connection(
-                "Unable to create any TCP connections".to_string()
+                "Unable to create any TCP connections".to_string(),
             ));
         }
 
@@ -84,7 +85,7 @@ impl TdxQuoteDataSource {
         volume: f64,
         amount: f64,
     ) -> Result<StockQuote, String> {
-        let timestamp = Utc::now();
+        let timestamp = now_china();
         let stock_code = StockCode::new(code.to_string())?;
         let price_obj = Price::new(price)?;
         let preclose_obj = Price::new(preclose)?;
@@ -139,30 +140,43 @@ impl QuoteDataSource for TdxQuoteDataSource {
 
         // Spawn blocking task for TDX I/O
         let tcp = self.get_connection();
-        let handle: JoinHandle<Result<Vec<(String, String, f64, f64, f64, f64, f64, f64, f64)>, anyhow::Error>> =
-            tokio::task::spawn_blocking(move || {
-                // Convert to references inside the closure
-                let stock_codes: Vec<(u16, &str)> = stock_codes_owned
-                    .iter()
-                    .map(|(m, c)| (*m, c.as_str()))
-                    .collect();
+        let handle: JoinHandle<
+            Result<Vec<(String, String, f64, f64, f64, f64, f64, f64, f64)>, anyhow::Error>,
+        > = tokio::task::spawn_blocking(move || {
+            // Convert to references inside the closure
+            let stock_codes: Vec<(u16, &str)> = stock_codes_owned
+                .iter()
+                .map(|(m, c)| (*m, c.as_str()))
+                .collect();
 
-                let mut tcp_guard = tcp.lock().map_err(|e| {
-                    anyhow::anyhow!("Failed to lock TCP connection: {}", e)
-                })?;
+            let mut tcp_guard = tcp
+                .lock()
+                .map_err(|e| anyhow::anyhow!("Failed to lock TCP connection: {}", e))?;
 
-                let mut quotes = SecurityQuotes::new(stock_codes);
-                quotes.recv_parsed(&mut tcp_guard)?;
+            let mut quotes = SecurityQuotes::new(stock_codes);
+            quotes.recv_parsed(&mut tcp_guard)?;
 
-                // Extract quote data as tuples to avoid borrowing issues
-                let result: Vec<(String, String, f64, f64, f64, f64, f64, f64, f64)> =
-                    quotes.result().iter().map(|q| {
-                        (q.code.clone(), q.name.clone(), q.price, q.preclose,
-                         q.open, q.high, q.low, q.vol as f64, q.amount)
-                    }).collect();
+            // Extract quote data as tuples to avoid borrowing issues
+            let result: Vec<(String, String, f64, f64, f64, f64, f64, f64, f64)> = quotes
+                .result()
+                .iter()
+                .map(|q| {
+                    (
+                        q.code.clone(),
+                        q.name.clone(),
+                        q.price,
+                        q.preclose,
+                        q.open,
+                        q.high,
+                        q.low,
+                        q.vol,
+                        q.amount,
+                    )
+                })
+                .collect();
 
-                Ok(result)
-            });
+            Ok(result)
+        });
 
         // Wait for the blocking task to complete
         let tdx_quotes = handle
@@ -173,14 +187,12 @@ impl QuoteDataSource for TdxQuoteDataSource {
         // Convert TDX quotes to domain entities
         let mut result = Vec::new();
         for (code_str, name_str, price, preclose, open, high, low, volume, amount) in tdx_quotes {
-            match self.tdx_to_domain(&code_str, &name_str, price, preclose, open, high, low, volume, amount) {
+            match self.tdx_to_domain(
+                &code_str, &name_str, price, preclose, open, high, low, volume, amount,
+            ) {
                 Ok(quote) => result.push(quote),
                 Err(e) => {
-                    warn!(
-                        "Failed to convert TDX quote for {}: {}",
-                        code_str,
-                        e
-                    );
+                    warn!("Failed to convert TDX quote for {}: {}", code_str, e);
                 }
             }
         }

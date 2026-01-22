@@ -1,7 +1,6 @@
 //! 行情仓储次端口
 //!
 /// 定义领域层需要的数据访问接口
-
 use async_trait::async_trait;
 
 use crate::entities::DomainError;

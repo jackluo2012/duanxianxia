@@ -5,7 +5,7 @@
 use anyhow::Result;
 use std::sync::Arc;
 
-use crate::domain::{WatchlistManager, UserWatchlist};
+use crate::domain::{UserWatchlist, WatchlistManager};
 
 /// 自选股管理用例
 pub struct WatchlistManagementUseCase {

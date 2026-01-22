@@ -67,10 +67,7 @@ async fn main() -> Result<()> {
                         web::get().to(query_service::get_consecutive_boards),
                     )
                     .route("/limit-up", web::get().to(query_service::get_limit_up))
-                    .route(
-                        "/limit-down",
-                        web::get().to(query_service::get_limit_down),
-                    ),
+                    .route("/limit-down", web::get().to(query_service::get_limit_down)),
             )
             .service(
                 web::scope("/api/sectors")

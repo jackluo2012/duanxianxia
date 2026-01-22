@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpServer, HttpResponse, Responder, middleware};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
 use log::info;
 use std::env;
 
@@ -24,8 +24,8 @@ async fn main() -> std::io::Result<()> {
     // 初始化指标系统
     backtest_service::metrics::init_metrics();
 
-    let clickhouse_url = env::var("CLICKHOUSE_URL")
-        .unwrap_or_else(|_| "http://localhost:8123".to_string());
+    let clickhouse_url =
+        env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
     let task_manager = backtest_service::adapters::primary::http::TaskManager::new(&clickhouse_url);
 
     info!("🚀 Starting Backtest Service on port 8086");
@@ -38,10 +38,22 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(task_manager.clone()))
             .route("/health", web::get().to(health))
             .route("/metrics", web::get().to(metrics))
-            .route("/api/backtest/run", web::post().to(backtest_service::adapters::primary::http::start_backtest))
-            .route("/api/backtest/{backtest_id}", web::get().to(backtest_service::adapters::primary::http::get_backtest_result))
-            .route("/api/backtest/strategies", web::get().to(backtest_service::adapters::primary::http::get_strategies))
-            .route("/api/backtest/history", web::get().to(backtest_service::adapters::primary::http::get_backtest_history))
+            .route(
+                "/api/backtest/run",
+                web::post().to(backtest_service::adapters::primary::http::start_backtest),
+            )
+            .route(
+                "/api/backtest/{backtest_id}",
+                web::get().to(backtest_service::adapters::primary::http::get_backtest_result),
+            )
+            .route(
+                "/api/backtest/strategies",
+                web::get().to(backtest_service::adapters::primary::http::get_strategies),
+            )
+            .route(
+                "/api/backtest/history",
+                web::get().to(backtest_service::adapters::primary::http::get_backtest_history),
+            )
     })
     .bind(("0.0.0.0", 8086))?
     .run()

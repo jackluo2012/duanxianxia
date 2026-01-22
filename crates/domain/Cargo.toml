@@ -6,10 +6,14 @@ edition = "2021"
 [dependencies]
 # 日期时间
 chrono = { workspace = true, features = ["serde"] }
+chrono-tz = { workspace = true }
 
 # 序列化
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# 共享类型
+common = { path = "../../shared/common" }
 
 # 异步
 tokio = { workspace = true }

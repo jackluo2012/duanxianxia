@@ -1,4 +1,4 @@
-use crate::models::{Theme, ThemeStats, ThemeCycleStage, ThemeRelation};
+use crate::models::{Theme, ThemeCycleStage, ThemeRelation, ThemeStats};
 
 /// 计算题材热度评分
 ///
@@ -69,10 +69,14 @@ pub fn find_theme_relations(themes: &[&Theme]) -> Vec<ThemeRelation> {
             }
 
             // 获取热度评分
-            let score1 = theme1.stats.as_ref()
+            let score1 = theme1
+                .stats
+                .as_ref()
                 .map(|s| calculate_hotness_score(s))
                 .unwrap_or(0.0);
-            let score2 = theme2.stats.as_ref()
+            let score2 = theme2
+                .stats
+                .as_ref()
                 .map(|s| calculate_hotness_score(s))
                 .unwrap_or(0.0);
 
@@ -97,31 +101,42 @@ pub fn find_theme_relations(themes: &[&Theme]) -> Vec<ThemeRelation> {
 /// 对题材进行热度排序
 pub fn sort_themes_by_hotness(themes: &mut [Theme]) {
     themes.sort_by(|a, b| {
-        let hotness_a = a.stats.as_ref()
+        let hotness_a = a
+            .stats
+            .as_ref()
             .map(|s| calculate_hotness_score(s))
             .unwrap_or(0.0);
-        let hotness_b = b.stats.as_ref()
+        let hotness_b = b
+            .stats
+            .as_ref()
             .map(|s| calculate_hotness_score(s))
             .unwrap_or(0.0);
 
-        hotness_b.partial_cmp(&hotness_a).unwrap_or(std::cmp::Ordering::Equal)
+        hotness_b
+            .partial_cmp(&hotness_a)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 }
 
 /// 获取特定周期的题材
 pub fn get_themes_by_cycle_stage(themes: &[Theme], stage: ThemeCycleStage) -> Vec<&Theme> {
-    themes.iter()
+    themes
+        .iter()
         .filter(|theme| theme.cycle_stage == stage)
         .collect()
 }
 
 /// 获取热门题材（热度评分高于阈值）
 pub fn get_hot_themes(themes: &[Theme], threshold: f64) -> Vec<&Theme> {
-    themes.iter()
+    themes
+        .iter()
         .filter(|theme| {
-            theme.stats.as_ref()
+            theme
+                .stats
+                .as_ref()
                 .map(|s| calculate_hotness_score(s))
-                .unwrap_or(0.0) > threshold
+                .unwrap_or(0.0)
+                > threshold
         })
         .collect()
 }

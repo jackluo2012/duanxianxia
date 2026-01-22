@@ -1,5 +1,5 @@
-use crate::domain::entities::models::*;
 use crate::adapters::secondary::Database;
+use crate::domain::entities::models::*;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -48,10 +48,7 @@ pub async fn health() -> impl Responder {
     HttpResponse::Ok().json("OK")
 }
 
-pub async fn get_daily_review(
-    path: web::Path<String>,
-    db: web::Data<Database>,
-) -> impl Responder {
+pub async fn get_daily_review(path: web::Path<String>, db: web::Data<Database>) -> impl Responder {
     let date = path.into_inner();
     tracing::info!("📊 获取{}涨停复盘", date);
 
@@ -65,10 +62,7 @@ pub async fn get_daily_review(
 }
 
 /// 获取龙头高度排行榜
-pub async fn get_leader_board(
-    _req: HttpRequest,
-    db: web::Data<Database>,
-) -> impl Responder {
+pub async fn get_leader_board(_req: HttpRequest, db: web::Data<Database>) -> impl Responder {
     tracing::info!("📊 获取龙头高度排行榜");
 
     // 获取今天的日期

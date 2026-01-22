@@ -33,9 +33,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let pool = pool.ok_or_else(|| {
-        anyhow::anyhow!("无法连接到 PostgreSQL，已重试 5 次")
-    })?;
+    let pool = pool.ok_or_else(|| anyhow::anyhow!("无法连接到 PostgreSQL，已重试 5 次"))?;
 
     HttpServer::new(move || {
         App::new()

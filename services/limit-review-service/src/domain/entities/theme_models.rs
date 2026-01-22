@@ -11,11 +11,11 @@ pub enum ThemeType {
 /// 题材周期阶段
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CycleStage {
-    Init = 1,           // 启动期
-    Fermentation = 2,   // 发酵期
-    Climax = 3,         // 高潮期
-    Differentiation = 4,// 分化期
-    Recession = 5,      // 衰退期
+    Init = 1,            // 启动期
+    Fermentation = 2,    // 发酵期
+    Climax = 3,          // 高潮期
+    Differentiation = 4, // 分化期
+    Recession = 5,       // 衰退期
 }
 
 /// 题材热度统计
@@ -60,9 +60,9 @@ pub struct ThemeHotness {
 /// 关联类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RelationType {
-    Upstream = 1,      // 上游
-    Downstream = 2,    // 下游
-    Related = 3,       // 相关
+    Upstream = 1,   // 上游
+    Downstream = 2, // 下游
+    Related = 3,    // 相关
 }
 
 /// 题材关联关系

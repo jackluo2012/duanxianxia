@@ -9,13 +9,13 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{info, error, debug};
+use tracing::{debug, error, info};
 
 // Import hexagonal architecture components
 use crate::adapters::secondary::{ClickHouseQuoteRepository, TdxQuoteDataSource};
 use crate::application::{ApplicationQuoteCollectionService, QuoteCollectionOrchestrator};
-use domain::value_objects::StockCode;
 use domain::ports::secondary::{QuoteDataSource, StockQuoteRepository};
+use domain::value_objects::StockCode;
 
 /// Hexagonal Service Configuration
 pub struct HexagonalServiceConfig {
@@ -37,7 +37,7 @@ impl Default for HexagonalServiceConfig {
 /// This service uses the new hexagonal architecture to collect stock quotes
 pub struct HexagonalCollectionService {
     app_service: Arc<ApplicationQuoteCollectionService>,
-    data_source: Arc<TdxQuoteDataSource>,  // Keep reference for direct access
+    data_source: Arc<TdxQuoteDataSource>, // Keep reference for direct access
     config: HexagonalServiceConfig,
 }
 
@@ -52,15 +52,16 @@ impl HexagonalCollectionService {
         // Create secondary adapters
         let tdx_source = Arc::new(
             TdxQuoteDataSource::new(config.tdx_pool_size)
-                .map_err(|e| anyhow::anyhow!("Failed to create TDX source: {:?}", e))?
+                .map_err(|e| anyhow::anyhow!("Failed to create TDX source: {:?}", e))?,
         );
 
         let ch_repository = Arc::new(ClickHouseQuoteRepository::new(clickhouse_client));
 
         // Create application service
-        let app_service = Arc::new(
-            ApplicationQuoteCollectionService::new(tdx_source.clone(), ch_repository)
-        );
+        let app_service = Arc::new(ApplicationQuoteCollectionService::new(
+            tdx_source.clone(),
+            ch_repository,
+        ));
 
         info!("Hexagonal architecture service initialized successfully");
 
@@ -73,10 +74,7 @@ impl HexagonalCollectionService {
 
     /// Start the collection service
     pub async fn start(&self, stock_codes: Vec<String>) -> Result<()> {
-        info!(
-            "Starting collection for {} stocks",
-            stock_codes.len()
-        );
+        info!("Starting collection for {} stocks", stock_codes.len());
 
         let mut timer = interval(Duration::from_secs(self.config.collection_interval_secs));
         let codes = stock_codes;
@@ -107,12 +105,16 @@ impl HexagonalCollectionService {
     }
 
     /// Get a quote for a single stock
-    pub async fn get_quote(&self, code: &str) -> Result<domain::entities::StockQuote, anyhow::Error> {
+    pub async fn get_quote(
+        &self,
+        code: &str,
+    ) -> Result<domain::entities::StockQuote, anyhow::Error> {
         let stock_code = StockCode::new(code.to_string())
             .map_err(|e| anyhow::anyhow!("Invalid stock code: {}", e))?;
 
         // Use the data source directly
-        let quotes = self.data_source
+        let quotes = self
+            .data_source
             .fetch_quotes(&[stock_code.clone()])
             .await
             .map_err(|e| anyhow::anyhow!("Failed to get quote: {:?}", e))?;
@@ -132,7 +134,7 @@ impl HexagonalCollectionService {
         );
 
         let repository = Arc::new(ClickHouseQuoteRepository::new(
-            clickhouse::Client::default().with_url("http://localhost:8123")
+            clickhouse::Client::default().with_url("http://localhost:8123"),
         )) as Arc<dyn StockQuoteRepository>;
 
         let orchestrator = QuoteCollectionOrchestrator::new(self.app_service.clone(), repository)

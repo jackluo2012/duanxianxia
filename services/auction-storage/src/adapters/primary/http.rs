@@ -179,10 +179,7 @@ pub async fn get_alerts(state: web::Data<AppState>) -> impl Responder {
 
 /// DELETE /api/auction/alerts/{id} - 删除告警规则
 #[delete("/api/auction/alerts/{id}")]
-pub async fn delete_alert(
-    state: web::Data<AppState>,
-    path: web::Path<String>,
-) -> impl Responder {
+pub async fn delete_alert(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
     let id = path.into_inner();
 
     match state.alert_use_case.delete_alert_rule(&id).await {
@@ -323,7 +320,10 @@ pub async fn check_is_watched(
         .user_id
         .clone()
         .unwrap_or_else(|| "default".to_string());
-    let watched = state.watchlist_use_case.is_stock_watched(&user_id, &code).await;
+    let watched = state
+        .watchlist_use_case
+        .is_stock_watched(&user_id, &code)
+        .await;
     HttpResponse::Ok().json(IsWatchedResponse { watched })
 }
 
@@ -354,6 +354,6 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(add_to_watchlist)
             .service(remove_from_watchlist)
             .service(get_watchlist)
-            .service(check_is_watched)
+            .service(check_is_watched),
     );
 }

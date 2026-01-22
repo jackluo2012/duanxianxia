@@ -1,8 +1,5 @@
-use actix_web::{web, test, App};
-use crate::{
-    get_daily_review, get_theme_hotness,
-    adapters::secondary::Database,
-};
+use crate::{adapters::secondary::Database, get_daily_review, get_theme_hotness};
+use actix_web::{test, web, App};
 
 /// 测试API响应结构一致性
 #[tokio::test]
@@ -14,8 +11,9 @@ async fn test_api_response_structure() {
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(db))
-            .route("/api/review/{date}", web::get().to(get_daily_review))
-    ).await;
+            .route("/api/review/{date}", web::get().to(get_daily_review)),
+    )
+    .await;
 
     let req = test::TestRequest::get()
         .uri("/api/review/2025-01-16")
@@ -25,7 +23,10 @@ async fn test_api_response_structure() {
 
     // 如果返回的是错误消息（字符串），测试通过
     if resp.is_string() {
-        println!("⚠️  API返回错误消息（可能是数据库未连接）: {}", resp.as_str().unwrap_or(""));
+        println!(
+            "⚠️  API返回错误消息（可能是数据库未连接）: {}",
+            resp.as_str().unwrap_or("")
+        );
         return;
     }
 
@@ -60,8 +61,9 @@ async fn test_error_handling() {
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(db))
-            .route("/api/review/{date}", web::get().to(get_daily_review))
-    ).await;
+            .route("/api/review/{date}", web::get().to(get_daily_review)),
+    )
+    .await;
 
     // 测试无效日期格式（应该返回数据或错误消息）
     let req = test::TestRequest::get()
@@ -71,5 +73,9 @@ async fn test_error_handling() {
     let resp = test::call_service(&app, req).await;
 
     // 应该返回某种响应（成功或失败）
-    assert!(resp.status().is_client_error() || resp.status().is_server_error() || resp.status().is_success());
+    assert!(
+        resp.status().is_client_error()
+            || resp.status().is_server_error()
+            || resp.status().is_success()
+    );
 }

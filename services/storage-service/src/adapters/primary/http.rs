@@ -2,13 +2,13 @@
 //!
 //! 主适配器: 处理HTTP请求并调用应用层
 
-use actix_web::{get, web, HttpResponse, Responder};
-use serde::{Deserialize, Serialize};
+use actix_web::{web, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::application::use_cases::{StoreQuoteUseCase, QueryHistoryUseCase};
 use crate::adapters::secondary::ClickHouseAdapter;
+use crate::application::use_cases::{QueryHistoryUseCase, StoreQuoteUseCase};
 
 /// 类型别名,简化泛型使用
 pub type StorageUseCase = StoreQuoteUseCase<ClickHouseAdapter>;
@@ -57,7 +57,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
             .route("/health", web::get().to(health_check))
-            .route("/quotes/{code}/history", web::get().to(get_history))
+            .route("/quotes/{code}/history", web::get().to(get_history)),
     );
 }
 
@@ -76,7 +76,12 @@ async fn get_history(
     query: web::Query<HistoryQuery>,
 ) -> impl Responder {
     let code = path.into_inner();
-    let period = query.period.as_ref().map(|p| p.as_str()).unwrap_or("1m").to_string();
+    let period = query
+        .period
+        .as_ref()
+        .map(|p| p.as_str())
+        .unwrap_or("1m")
+        .to_string();
     let date_str = query.date.as_ref().map(|d| d.as_str());
 
     // 默认查询今天的数据
@@ -98,7 +103,11 @@ async fn get_history(
     };
 
     // 执行查询
-    match service.query_use_case.execute(code.clone(), start, end, period.clone()).await {
+    match service
+        .query_use_case
+        .execute(code.clone(), start, end, period.clone())
+        .await
+    {
         Ok(data) => {
             // 转换为响应格式
             let points: Vec<HistoryPoint> = data

@@ -108,7 +108,7 @@ pub fn calculate_macd(bars: &[PriceBar]) -> (Option<f64>, Option<f64>, Option<f6
     };
 
     // 计算 DIF = EMA12 - EMA26
-    let mut dif_values: Vec<f64> = ema12
+    let dif_values: Vec<f64> = ema12
         .iter()
         .zip(ema26.iter())
         .map(|(e12, e26)| e12 - e26)

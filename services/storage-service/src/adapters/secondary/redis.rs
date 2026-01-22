@@ -53,7 +53,8 @@ impl RedisAdapter {
                                         }
 
                                         // 解析数据
-                                        if let Some(redis::Value::Bulk(data_fields)) = fields.get(1) {
+                                        if let Some(redis::Value::Bulk(data_fields)) = fields.get(1)
+                                        {
                                             for (i, field) in data_fields.iter().enumerate() {
                                                 if let redis::Value::Data(field_name) = field {
                                                     if field_name == b"data" {
@@ -64,10 +65,15 @@ impl RedisAdapter {
                                                                 String::from_utf8_lossy(json_data);
 
                                                             if let Ok(value) =
-                                                                serde_json::from_str::<Value>(&json_str)
+                                                                serde_json::from_str::<Value>(
+                                                                    &json_str,
+                                                                )
                                                             {
                                                                 if let Err(e) = handler(value) {
-                                                                    tracing::error!("处理消息失败: {}", e);
+                                                                    tracing::error!(
+                                                                        "处理消息失败: {}",
+                                                                        e
+                                                                    );
                                                                 }
                                                             }
                                                         }

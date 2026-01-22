@@ -1,6 +1,7 @@
 use crate::types::{KlineData, KlinePeriod, KlineWindow, StockQuote};
 use anyhow::Result;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{TimeZone, Timelike, Utc};
+use common::{from_utc, now_china, ChinaTime};
 use redis::aio::ConnectionManager;
 use redis::{streams::StreamReadOptions, AsyncCommands, Client as RedisClient, Value};
 use serde_json::from_str;
@@ -134,9 +135,10 @@ impl KlineAggregator {
 
     /// 更新或创建窗口
     async fn update_window(&self, quote: &StockQuote, period: KlinePeriod) -> Option<KlineData> {
-        // 从 u64 timestamp 转换为 DateTime<Utc>
-        let current_time = chrono::DateTime::from_timestamp(quote.timestamp as i64, 0)
-            .unwrap_or_else(|| chrono::Utc::now());
+        // 从 u64 timestamp 转换为 ChinaTime
+        let utc_time =
+            chrono::DateTime::from_timestamp(quote.timestamp as i64, 0).unwrap_or_else(Utc::now);
+        let current_time = from_utc(&utc_time);
         let window_key = Self::make_window_key(&quote.code, period, &current_time);
 
         let mut windows = self.windows.lock().await;
@@ -164,13 +166,13 @@ impl KlineAggregator {
     }
 
     /// 生成窗口Key
-    fn make_window_key(code: &str, period: KlinePeriod, time: &DateTime<Utc>) -> String {
+    fn make_window_key(code: &str, period: KlinePeriod, time: &ChinaTime) -> String {
         let date_str = time.format("%Y-%m-%d").to_string();
         format!("{}:{}:{}", code, period.as_str(), date_str)
     }
 
     /// 计算窗口开始时间
-    fn calculate_window_start(time: DateTime<Utc>, period: KlinePeriod) -> DateTime<Utc> {
+    fn calculate_window_start(time: ChinaTime, period: KlinePeriod) -> ChinaTime {
         match period {
             KlinePeriod::OneMinute => {
                 // 1分钟窗口：对齐到分钟
@@ -202,7 +204,7 @@ impl KlineAggregator {
 
     /// 清理过期窗口（内部实现）
     async fn cleanup_expired_windows_inner(windows: Arc<Mutex<HashMap<String, KlineWindow>>>) {
-        let current_time = Utc::now();
+        let current_time = now_china();
         let mut windows = windows.lock().await;
         let initial_count = windows.len();
 

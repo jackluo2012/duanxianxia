@@ -1,8 +1,8 @@
-use crate::domain::entities::models::{BacktestRequest, BacktestResult, BacktestError};
-use crate::domain::services::portfolio::PortfolioManager;
-use crate::domain::services::performance::PerformanceCalculator;
-use crate::domain::services::strategy::StrategyEngine;
 use crate::adapters::secondary::clickhouse::ClickHouseDataSource;
+use crate::domain::entities::models::{BacktestError, BacktestRequest, BacktestResult};
+use crate::domain::services::performance::PerformanceCalculator;
+use crate::domain::services::portfolio::PortfolioManager;
+use crate::domain::services::strategy::StrategyEngine;
 use chrono::Utc;
 
 pub struct BacktestEngine {
@@ -25,7 +25,10 @@ impl BacktestEngine {
         request.validate()?;
 
         // 加载历史数据
-        let data = self.data_source.load_backtest_data(&request.backtest_period).await?;
+        let data = self
+            .data_source
+            .load_backtest_data(&request.backtest_period)
+            .await?;
 
         if data.is_empty() {
             return Err(BacktestError::NoData("指定时间范围内无数据".to_string()));
@@ -53,7 +56,8 @@ impl BacktestEngine {
             portfolio.check_exit_signals(day_data.date, holding_days, &day_data.stock_prices);
 
             // 更新市值 (使用竞价收盘价作为当日价格)
-            let price_map: std::collections::HashMap<String, f64> = day_data.auction_data
+            let price_map: std::collections::HashMap<String, f64> = day_data
+                .auction_data
                 .iter()
                 .map(|a| (a.code.clone(), a.price))
                 .collect();

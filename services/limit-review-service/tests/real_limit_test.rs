@@ -17,7 +17,8 @@ mod real_limit_detector_tests {
 
         // 获取最新的数据，包括真实的preclose
         let rows = client
-            .query("
+            .query(
+                "
                 SELECT
                     code,
                     argMax(name, timestamp) as name,
@@ -30,7 +31,8 @@ mod real_limit_detector_tests {
                     max(amount) as amount
                 FROM stock_realtime_quotes
                 GROUP BY code
-            ")
+            ",
+            )
             .fetch_all::<(String, String, f64, f64, f64, f64, f64, f64, f64)>()
             .await;
 
@@ -39,54 +41,59 @@ mod real_limit_detector_tests {
                 println!("📊 加载了 {} 只股票的真实行情数据", quotes.len());
 
                 // 转换为StockQuote（使用真实的preclose和change_percent）
-                quotes.into_iter().map(|(code, name, price, preclose, open, high, low, volume, amount)| {
-                    // 计算涨跌幅
-                    let change_percent = if preclose > 0.0 {
-                        ((price - preclose) / preclose) * 100.0
-                    } else {
-                        0.0
-                    };
+                quotes
+                    .into_iter()
+                    .map(
+                        |(code, name, price, preclose, open, high, low, volume, amount)| {
+                            // 计算涨跌幅
+                            let change_percent = if preclose > 0.0 {
+                                ((price - preclose) / preclose) * 100.0
+                            } else {
+                                0.0
+                            };
 
-                    // 计算涨停价（主板10%）
-                    let limit_price = preclose * 1.1;
-                    let is_limit_up = price >= limit_price - 0.01;
+                            // 计算涨停价（主板10%）
+                            let limit_price = preclose * 1.1;
+                            let is_limit_up = price >= limit_price - 0.01;
 
-                    StockQuote {
-                        code,
-                        name,
-                        date: chrono::Utc::now().date_naive(),
-                        datetime: chrono::Utc::now(),
-                        open,
-                        high,
-                        low,
-                        close: price,
-                        pre_close: preclose,
-                        volume,
-                        amount,
-                        turnover_rate: 0.0,
-                        change_percent,
-                        buy1_price: 0.0,
-                        buy1_vol: 0,
-                        buy2_price: 0.0,
-                        buy2_vol: 0,
-                        buy3_price: 0.0,
-                        buy3_vol: 0,
-                        buy4_price: 0.0,
-                        buy4_vol: 0,
-                        buy5_price: 0.0,
-                        buy5_vol: 0,
-                        sell1_price: 0.0,
-                        sell1_vol: 0,
-                        sell2_price: 0.0,
-                        sell2_vol: 0,
-                        sell3_price: 0.0,
-                        sell3_vol: 0,
-                        sell4_price: 0.0,
-                        sell4_vol: 0,
-                        sell5_price: 0.0,
-                        sell5_vol: 0,
-                    }
-                }).collect()
+                            StockQuote {
+                                code,
+                                name,
+                                date: chrono::Utc::now().date_naive(),
+                                datetime: chrono::Utc::now(),
+                                open,
+                                high,
+                                low,
+                                close: price,
+                                pre_close: preclose,
+                                volume,
+                                amount,
+                                turnover_rate: 0.0,
+                                change_percent,
+                                buy1_price: 0.0,
+                                buy1_vol: 0,
+                                buy2_price: 0.0,
+                                buy2_vol: 0,
+                                buy3_price: 0.0,
+                                buy3_vol: 0,
+                                buy4_price: 0.0,
+                                buy4_vol: 0,
+                                buy5_price: 0.0,
+                                buy5_vol: 0,
+                                sell1_price: 0.0,
+                                sell1_vol: 0,
+                                sell2_price: 0.0,
+                                sell2_vol: 0,
+                                sell3_price: 0.0,
+                                sell3_vol: 0,
+                                sell4_price: 0.0,
+                                sell4_vol: 0,
+                                sell5_price: 0.0,
+                                sell5_vol: 0,
+                            }
+                        },
+                    )
+                    .collect()
             }
             Err(e) => {
                 println!("⚠️  加载数据失败: {}", e);
@@ -120,15 +127,23 @@ mod real_limit_detector_tests {
 
             if is_limit {
                 limit_up_count += 1;
-                println!("  ✅ {} {} - 价格:{:.2}, 昨收:{:.2}, 涨幅:{:.2}%, 涨停价:{:.2}",
-                    quote.code, quote.name, quote.close, quote.pre_close, change_pct, limit_price);
+                println!(
+                    "  ✅ {} {} - 价格:{:.2}, 昨收:{:.2}, 涨幅:{:.2}%, 涨停价:{:.2}",
+                    quote.code, quote.name, quote.close, quote.pre_close, change_pct, limit_price
+                );
             } else {
-                println!("  ❌ {} {} - 价格:{:.2}, 昨收:{:.2}, 涨幅:{:.2}%, 涨停价:{:.2}",
-                    quote.code, quote.name, quote.close, quote.pre_close, change_pct, limit_price);
+                println!(
+                    "  ❌ {} {} - 价格:{:.2}, 昨收:{:.2}, 涨幅:{:.2}%, 涨停价:{:.2}",
+                    quote.code, quote.name, quote.close, quote.pre_close, change_pct, limit_price
+                );
             }
         }
 
-        println!("\n📊 统计: 总共 {} 只股票，其中 {} 只涨停", quotes.len(), limit_up_count);
+        println!(
+            "\n📊 统计: 总共 {} 只股票，其中 {} 只涨停",
+            quotes.len(),
+            limit_up_count
+        );
         assert!(limit_up_count >= 0, "涨停识别应该正常工作");
     }
 
@@ -150,8 +165,10 @@ mod real_limit_detector_tests {
             let limit_price = quote.limit_price();
             let limit_rate = ((limit_price - quote.pre_close) / quote.pre_close) * 100.0;
 
-            println!("  {} - 昨收:{:.2}, 涨停价:{:.2} (涨{}%)",
-                quote.code, quote.pre_close, limit_price, limit_rate);
+            println!(
+                "  {} - 昨收:{:.2}, 涨停价:{:.2} (涨{}%)",
+                quote.code, quote.pre_close, limit_price, limit_rate
+            );
         }
     }
 }

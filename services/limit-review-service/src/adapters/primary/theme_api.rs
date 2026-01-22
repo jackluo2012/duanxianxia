@@ -1,6 +1,5 @@
-use actix_web::{web, HttpResponse, Responder};
 use crate::adapters::secondary::Database;
-use crate::domain::entities::theme_models::*;
+use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 
 /// 获取题材热度榜

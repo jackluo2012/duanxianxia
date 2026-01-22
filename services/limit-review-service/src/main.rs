@@ -14,11 +14,14 @@ async fn main() -> Result<()> {
     // 加载配置
     let app_config = config::Config::from_env()?;
     info!("📋 配置加载成功");
-    info!("🌐 服务地址: http://{}:{}", app_config.host, app_config.port);
+    info!(
+        "🌐 服务地址: http://{}:{}",
+        app_config.host, app_config.port
+    );
 
     // 初始化数据库连接
-    let clickhouse_url = std::env::var("CLICKHOUSE_URL")
-        .unwrap_or_else(|_| "http://localhost:8123".to_string());
+    let clickhouse_url =
+        std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
     let db = limit_review_service::adapters::secondary::Database::new(&clickhouse_url);
     info!("🗄️  ClickHouse连接: {}", clickhouse_url);
 
@@ -32,14 +35,32 @@ async fn main() -> Result<()> {
             .wrap(middleware::Compress::default())
             .route("/health", web::get().to(limit_review_service::health))
             // 具体路由必须在参数路由之前
-            .route("/api/review/leader-board", web::get().to(limit_review_service::get_leader_board))
-            .route("/api/review/leader-detail", web::get().to(limit_review_service::get_leader_detail))
+            .route(
+                "/api/review/leader-board",
+                web::get().to(limit_review_service::get_leader_board),
+            )
+            .route(
+                "/api/review/leader-detail",
+                web::get().to(limit_review_service::get_leader_detail),
+            )
             // 参数路由放在最后
-            .route("/api/review/{date}", web::get().to(limit_review_service::get_daily_review))
+            .route(
+                "/api/review/{date}",
+                web::get().to(limit_review_service::get_daily_review),
+            )
             // 题材分析API路由
-            .route("/api/themes/{date}/hotness", web::get().to(limit_review_service::get_theme_hotness))
-            .route("/api/themes/{date}/{theme_name}", web::get().to(limit_review_service::get_theme_detail))
-            .route("/api/themes/relations", web::get().to(limit_review_service::get_theme_relations))
+            .route(
+                "/api/themes/{date}/hotness",
+                web::get().to(limit_review_service::get_theme_hotness),
+            )
+            .route(
+                "/api/themes/{date}/{theme_name}",
+                web::get().to(limit_review_service::get_theme_detail),
+            )
+            .route(
+                "/api/themes/relations",
+                web::get().to(limit_review_service::get_theme_relations),
+            )
     })
     .bind(&bind_address)?
     .run()

@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use crate::domain::entities::models::{EquityPoint, Signal, Trade};
 use chrono::NaiveDate;
-use crate::domain::entities::models::{Signal, Trade, EquityPoint};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Position {
@@ -52,19 +52,26 @@ impl PortfolioManager {
             return; // 资金不足
         }
 
-        self.positions.insert(signal.code.clone(), Position {
-            code: signal.code,
-            buy_price: signal.price,
-            quantity,
-            buy_date: signal.date,
-        });
+        self.positions.insert(
+            signal.code.clone(),
+            Position {
+                code: signal.code,
+                buy_price: signal.price,
+                quantity,
+                buy_date: signal.date,
+            },
+        );
 
         self.capital -= cost;
     }
 
     /// 检查并执行卖出信号
-    pub fn check_exit_signals(&mut self, current_date: NaiveDate, holding_days: i32,
-                               prices: &HashMap<String, f64>) {
+    pub fn check_exit_signals(
+        &mut self,
+        current_date: NaiveDate,
+        holding_days: i32,
+        prices: &HashMap<String, f64>,
+    ) {
         let mut to_sell = Vec::new();
 
         for (code, position) in self.positions.iter() {
@@ -108,9 +115,12 @@ impl PortfolioManager {
 
     /// 更新持仓市值
     pub fn update_market_value(&mut self, prices: &HashMap<String, f64>) {
-        let positions_value: f64 = self.positions.values()
+        let positions_value: f64 = self
+            .positions
+            .values()
             .map(|pos| {
-                prices.get(&pos.code)
+                prices
+                    .get(&pos.code)
                     .map(|&price| pos.quantity as f64 * price)
                     .unwrap_or(0.0)
             })
@@ -121,7 +131,9 @@ impl PortfolioManager {
 
     /// 记录净值
     pub fn record_equity(&mut self, date: NaiveDate) {
-        let max_equity = self.equity_curve.iter()
+        let max_equity = self
+            .equity_curve
+            .iter()
             .map(|p| p.equity)
             .fold(self.initial_capital, f64::max);
 
@@ -195,8 +207,12 @@ mod tests {
 
         portfolio.execute_buy(buy_signal, 0.0003);
 
-        portfolio.sell_position("000001", 11.0,
-            NaiveDate::from_ymd_opt(2025, 10, 2).unwrap(), "测试");
+        portfolio.sell_position(
+            "000001",
+            11.0,
+            NaiveDate::from_ymd_opt(2025, 10, 2).unwrap(),
+            "测试",
+        );
 
         assert_eq!(portfolio.positions.len(), 0);
         assert_eq!(portfolio.closed_trades.len(), 1);

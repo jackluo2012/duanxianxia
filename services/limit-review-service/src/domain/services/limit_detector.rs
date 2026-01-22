@@ -4,7 +4,7 @@
 
 use crate::domain::entities::models::*;
 use anyhow::Result;
-use chrono::{DateTime, Utc, NaiveDate};
+use chrono::{DateTime, NaiveDate, Utc};
 
 pub struct LimitDetector;
 
@@ -67,7 +67,9 @@ impl LimitDetector {
 
     /// 判断是否开过板
     fn has_opened_board(ticks: &[Tick], limit_price: f64, tolerance: f64) -> bool {
-        ticks.iter().any(|tick| tick.price < limit_price - tolerance)
+        ticks
+            .iter()
+            .any(|tick| tick.price < limit_price - tolerance)
     }
 
     /// 计算开板次数
@@ -88,10 +90,7 @@ impl LimitDetector {
 
         // 过滤最后5分钟数据(防止尾盘抖动)
         let cutoff_time = ticks.last().unwrap().datetime - chrono::Duration::minutes(5);
-        let valid_ticks: Vec<_> = ticks
-            .iter()
-            .filter(|t| t.datetime < cutoff_time)
-            .collect();
+        let valid_ticks: Vec<_> = ticks.iter().filter(|t| t.datetime < cutoff_time).collect();
 
         for tick in valid_ticks {
             let at_limit = tick.price >= limit_price - tolerance;
@@ -170,11 +169,8 @@ impl LimitDetector {
     /// 封单金额 = Σ(买一到买五量) × 涨停价
     pub fn calculate_sealed_amount(quote: &StockQuote) -> f64 {
         let limit_price = quote.limit_price();
-        let buy_vol_total = quote.buy1_vol
-            + quote.buy2_vol
-            + quote.buy3_vol
-            + quote.buy4_vol
-            + quote.buy5_vol;
+        let buy_vol_total =
+            quote.buy1_vol + quote.buy2_vol + quote.buy3_vol + quote.buy4_vol + quote.buy5_vol;
 
         (buy_vol_total as f64 * limit_price * 100.0).round() / 100.0 // 手→股
     }
@@ -204,13 +200,8 @@ impl LimitDetector {
         }
 
         // 2. 分类板类型
-        let limit_type = Self::classify_limit_type(
-            quote.open,
-            quote.close,
-            quote.low,
-            limit_price,
-            ticks,
-        );
+        let limit_type =
+            Self::classify_limit_type(quote.open, quote.close, quote.low, limit_price, ticks);
 
         // 3. 计算开板次数
         let open_times = Self::count_open_times(ticks, limit_price);
@@ -238,16 +229,9 @@ impl LimitDetector {
 
         let results = stream::iter(quotes)
             .map(|quote| async move {
-                let ticks = ticks_map.get(&quote.code)
-                    .cloned()
-                    .unwrap_or_default();
+                let ticks = ticks_map.get(&quote.code).cloned().unwrap_or_default();
 
-                let result = Self::analyze_stock(
-                    &quote.code,
-                    quote.date,
-                    &quote,
-                    &ticks,
-                ).await?;
+                let result = Self::analyze_stock(&quote.code, quote.date, &quote, &ticks).await?;
 
                 Ok::<(String, LimitAnalysisResult), anyhow::Error>((quote.code.clone(), result))
             })
@@ -320,10 +304,10 @@ mod tests {
         let ticks = vec![]; // 无开板tick
 
         let limit_type = LimitDetector::classify_limit_type(
-            11.0,  // open = 涨停价
-            11.0,  // close = 涨停价
-            11.0,  // low = 涨停价(未开板)
-            11.0,  // limit_price
+            11.0, // open = 涨停价
+            11.0, // close = 涨停价
+            11.0, // low = 涨停价(未开板)
+            11.0, // limit_price
             &ticks,
         );
 

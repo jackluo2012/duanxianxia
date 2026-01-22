@@ -70,12 +70,7 @@ mod tests {
     fn test_calculate_with_large_volume() {
         let calculator = SealedAmountCalculator::new();
 
-        let (sealed_buy, sealed_sell) = calculator.calculate(
-            100.0,
-            1_000_000,
-            100.0,
-            500_000,
-        );
+        let (sealed_buy, sealed_sell) = calculator.calculate(100.0, 1_000_000, 100.0, 500_000);
 
         assert_eq!(sealed_buy, 100_000_000.0);
         assert_eq!(sealed_sell, 50_000_000.0);

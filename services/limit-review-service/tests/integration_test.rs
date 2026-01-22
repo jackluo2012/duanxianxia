@@ -2,8 +2,8 @@
 // 涨停复盘系统集成测试
 // ===================================================================
 
-use clickhouse::Client;
 use anyhow::Result;
+use clickhouse::Client;
 
 // 注意: 集成测试需要ClickHouse运行
 // 运行测试前确保 ClickHouse 已启动并初始化

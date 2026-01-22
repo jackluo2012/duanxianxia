@@ -40,7 +40,12 @@ impl AuctionTimeChecker {
 
         // 9:15之前
         if hour < 9 || (hour == 9 && minute < 15) {
-            let target = now.date_naive().and_hms_opt(9, 15, 0).unwrap().and_local_timezone(Local).unwrap();
+            let target = now
+                .date_naive()
+                .and_hms_opt(9, 15, 0)
+                .unwrap()
+                .and_local_timezone(Local)
+                .unwrap();
             let duration = target - now;
             return Some(duration.num_seconds().max(0) as u64);
         }

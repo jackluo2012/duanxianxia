@@ -7,6 +7,6 @@ pub mod limit_up_event;
 pub mod stock_quote;
 
 // 重新导出实体类型
-pub use stock_quote::StockQuote;
 pub use kline_data::{KlineData, KlinePeriod};
 pub use limit_up_event::LimitUpEvent;
+pub use stock_quote::StockQuote;

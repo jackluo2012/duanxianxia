@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use common::ChinaTime;
 use serde::{Deserialize, Serialize};
 
 /// 交易时段
@@ -15,7 +15,7 @@ pub enum TradingSession {
 pub struct TradingStatus {
     pub is_trading_day: bool,
     pub current_session: TradingSession,
-    pub next_open_time: DateTime<Local>,
+    pub next_open_time: ChinaTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

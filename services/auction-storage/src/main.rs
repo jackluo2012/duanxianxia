@@ -11,13 +11,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{error, info};
 
-mod domain;
-mod application;
 mod adapters;
+mod application;
+mod domain;
 
-use domain::{AlertManager, WatchlistManager, AuctionQuote};
+use adapters::primary::{configure_routes, AppState};
 use application::use_cases::{AlertManagementUseCase, WatchlistManagementUseCase};
-use adapters::primary::{AppState, configure_routes};
+use domain::{AlertManager, AuctionQuote, WatchlistManager};
 
 /// 竞价数据结构（与Domain层保持一致）
 /// 注意：这个结构现在从domain::services::alert_manager::AuctionQuote重新导出

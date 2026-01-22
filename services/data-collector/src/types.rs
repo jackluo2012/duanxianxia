@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use chrono::{DateTime, Utc};
 use clickhouse::Row;
+use common::ChinaTime;
 use serde::{Deserialize, Serialize};
 
 /// 股票基本信息
@@ -68,7 +68,7 @@ impl KlinePeriod {
 /// K线数据 (内存中,使用枚举类型)
 #[derive(Debug, Clone)]
 pub struct KlineData {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: ChinaTime,
     pub code: String,
     pub name: String,
     pub period: KlinePeriod,
@@ -82,10 +82,10 @@ pub struct KlineData {
     pub source: String,
 }
 
-/// K线数据 (ClickHouse存储用,使用String类型)
+/// K线数据 (ClickHouse存储用,使用u64时间戳)
 #[derive(Debug, Clone, Serialize, Deserialize, Row)]
 pub struct KlineDataCH {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: u64, // Unix时间戳（秒）
     pub code: String,
     pub name: String,
     pub period: String, // "1m" 或 "5m"
@@ -102,7 +102,7 @@ pub struct KlineDataCH {
 impl From<KlineData> for KlineDataCH {
     fn from(data: KlineData) -> Self {
         Self {
-            timestamp: data.timestamp,
+            timestamp: data.timestamp.timestamp() as u64,
             code: data.code,
             name: data.name,
             period: data.period.as_str().to_string(),
@@ -131,13 +131,13 @@ pub struct KlineWindow {
     pub volume: f64,
     pub amount: f64,
     pub trade_count: u32,
-    pub start_time: DateTime<Utc>,
-    pub last_update: DateTime<Utc>,
+    pub start_time: ChinaTime,
+    pub last_update: ChinaTime,
 }
 
 impl KlineWindow {
     /// 创建新窗口
-    pub fn new(code: String, name: String, period: KlinePeriod, start_time: DateTime<Utc>) -> Self {
+    pub fn new(code: String, name: String, period: KlinePeriod, start_time: ChinaTime) -> Self {
         Self {
             code,
             name,
@@ -173,17 +173,20 @@ impl KlineWindow {
         self.amount += quote.amount;
         self.trade_count += 1;
 
-        // 更新最后更新时间（从 u64 timestamp 转换为 DateTime<Utc>）
-        self.last_update = chrono::DateTime::from_timestamp(quote.timestamp as i64, 0)
-            .unwrap_or_else(|| chrono::Utc::now());
+        // 更新最后更新时间（从 u64 timestamp 转换为 ChinaTime）
+        use chrono::TimeZone;
+        self.last_update = common::CHINA_TZ
+            .timestamp_opt(quote.timestamp as i64, 0)
+            .single()
+            .unwrap_or_else(common::now_china);
     }
 
     /// 判断窗口是否应该关闭（时间窗口结束）
-    pub fn should_close(&self, current_time: DateTime<Utc>) -> bool {
+    pub fn should_close(&self, current_time: ChinaTime) -> bool {
         let elapsed = current_time
             .signed_duration_since(self.start_time)
             .num_seconds()
-            .abs() as u64;
+            .unsigned_abs();
         elapsed >= self.period.minutes() * 60
     }
 
@@ -254,8 +257,8 @@ pub struct LimitUpEvent {
     pub code: String,
     /// 股票名称
     pub name: String,
-    /// 涨停时间
-    pub limit_time: DateTime<Utc>,
+    /// 涨停时间（u64 时间戳，秒）
+    pub limit_time: u64,
     /// 涨停类型
     pub limit_type: LimitType,
     /// 开盘价
@@ -296,7 +299,7 @@ pub struct ConsecutiveRecord {
     /// 最后涨停日期
     pub last_limit_date: chrono::NaiveDate,
     /// 最后涨停时间
-    pub last_limit_time: DateTime<Utc>,
+    pub last_limit_time: ChinaTime,
     /// 是否活跃（仍在连板中）
     pub is_active: bool,
     /// 历史涨停事件列表
@@ -359,7 +362,7 @@ pub struct ConsecutiveBoardHistory {
     pub start_date: chrono::NaiveDate,
     pub end_date: Option<chrono::NaiveDate>,
     pub is_active: u8,
-    pub limit_time: DateTime<Utc>,
+    pub limit_time: u64, // 时间戳（秒）
     pub limit_type: String,
     pub open_price: f64,
     pub limit_price: f64,

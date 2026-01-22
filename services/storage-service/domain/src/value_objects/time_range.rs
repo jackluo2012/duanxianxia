@@ -27,7 +27,7 @@ impl TimeRange {
     pub fn new(start: DateTime<Utc>, end: DateTime<Utc>) -> Result<Self, ValidationError> {
         if end < start {
             return Err(ValidationError::InvalidTimeRange(
-                "结束时间不能早于开始时间".to_string()
+                "结束时间不能早于开始时间".to_string(),
             ));
         }
 
@@ -37,9 +37,7 @@ impl TimeRange {
     /// 创建今天的时间范围
     pub fn today() -> Self {
         let now = Utc::now();
-        let start = now.date_naive().and_hms_opt(0, 0, 0)
-            .unwrap()
-            .and_utc();
+        let start = now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc();
         let end = start + chrono::Duration::days(1);
         Self { start, end }
     }

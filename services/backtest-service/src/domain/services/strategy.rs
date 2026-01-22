@@ -1,4 +1,6 @@
-use crate::domain::entities::models::{Signal, StrategyType, StrategyParams, DayData, SignalAction};
+use crate::domain::entities::models::{
+    DayData, Signal, SignalAction, StrategyParams, StrategyType,
+};
 
 pub struct StrategyEngine;
 
@@ -7,31 +9,31 @@ impl StrategyEngine {
         Self
     }
 
-    pub fn generate_signals(&self, day_data: &DayData, strategy_type: &StrategyType,
-                           params: &StrategyParams) -> Vec<Signal> {
+    pub fn generate_signals(
+        &self,
+        day_data: &DayData,
+        strategy_type: &StrategyType,
+        params: &StrategyParams,
+    ) -> Vec<Signal> {
         match strategy_type {
-            StrategyType::AuctionLeader => {
-                self.auction_leader_signals(day_data, params)
-            },
-            StrategyType::AuctionSeal => {
-                self.auction_seal_signals(day_data, params)
-            },
+            StrategyType::AuctionLeader => self.auction_leader_signals(day_data, params),
+            StrategyType::AuctionSeal => self.auction_seal_signals(day_data, params),
             StrategyType::IntradayBreakout => {
                 // TODO: 盘中策略需要实时行情数据
                 Vec::new()
-            },
+            }
         }
     }
 
     /// 竞价龙头策略信号
-    fn auction_leader_signals(&self, day_data: &DayData, params: &StrategyParams)
-        -> Vec<Signal> {
-
+    fn auction_leader_signals(&self, day_data: &DayData, params: &StrategyParams) -> Vec<Signal> {
         let min_score = params.min_strength_score.unwrap_or(80);
         let min_amount = params.min_buy_seal_amount.unwrap_or(1000.0);
         let max_change = params.max_change_percent.unwrap_or(8.0);
 
-        day_data.auction_data.iter()
+        day_data
+            .auction_data
+            .iter()
             .filter(|auction| {
                 auction.strength_score >= min_score
                     && auction.buy_seal_amount >= min_amount
@@ -47,23 +49,18 @@ impl StrategyEngine {
     }
 
     /// 竞价封单策略信号
-    fn auction_seal_signals(&self, day_data: &DayData, params: &StrategyParams)
-        -> Vec<Signal> {
-
+    fn auction_seal_signals(&self, day_data: &DayData, params: &StrategyParams) -> Vec<Signal> {
         let top_n = params.top_n.unwrap_or(10);
         let max_change = params.max_change_percent.unwrap_or(5.0);
 
         // 按买封金额排序,取前 N 个
         let mut sorted_auctions = day_data.auction_data.clone();
-        sorted_auctions.sort_by(|a, b| {
-            b.buy_seal_amount.partial_cmp(&a.buy_seal_amount).unwrap()
-        });
+        sorted_auctions.sort_by(|a, b| b.buy_seal_amount.partial_cmp(&a.buy_seal_amount).unwrap());
 
-        sorted_auctions.into_iter()
+        sorted_auctions
+            .into_iter()
             .take(top_n as usize)
-            .filter(|auction| {
-                auction.change_percent <= max_change
-            })
+            .filter(|auction| auction.change_percent <= max_change)
             .map(|auction| Signal {
                 code: auction.code.clone(),
                 action: SignalAction::Buy,
@@ -83,8 +80,8 @@ impl Default for StrategyEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::NaiveDate;
     use crate::domain::entities::models::AuctionData;
+    use chrono::NaiveDate;
 
     fn create_test_day_data() -> DayData {
         let auction_data = vec![

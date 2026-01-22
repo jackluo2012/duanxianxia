@@ -2,10 +2,10 @@
 //!
 //! 次适配器: 实现QuoteRepository接口,使用ClickHouse存储
 
-use async_trait::async_trait;
 use anyhow::Result;
-use serde_json::Value;
+use async_trait::async_trait;
 use clickhouse::Client;
+use serde_json::Value;
 
 use storage_domain::DomainError;
 
@@ -19,12 +19,13 @@ pub struct ClickHouseAdapter {
 impl ClickHouseAdapter {
     /// 创建新的ClickHouse适配器
     pub async fn new(url: String, database: String) -> Result<Self> {
-        let client = Client::default()
-            .with_url(&url)
-            .with_database(&database);
+        let client = Client::default().with_url(&url).with_database(&database);
 
         // 测试连接 - 执行简单查询验证连接
-        client.query("SELECT 1").execute().await
+        client
+            .query("SELECT 1")
+            .execute()
+            .await
             .map_err(|e| anyhow::anyhow!("ClickHouse连接失败: {}", e))?;
 
         tracing::info!("✅ ClickHouse连接成功: {}", url);
@@ -63,7 +64,10 @@ impl ClickHouseAdapter {
         }
 
         // 执行插入
-        self.client.query(&query).execute().await
+        self.client
+            .query(&query)
+            .execute()
+            .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
 
         tracing::debug!("批量写入成功: {} 条记录", count);
@@ -78,7 +82,9 @@ impl ClickHouseAdapter {
         // 在SQL中添加FORMAT JSON
         let json_sql = format!("{} FORMAT JSON", sql);
 
-        let json_str = self.client.query(&json_sql)
+        let json_str = self
+            .client
+            .query(&json_sql)
             .fetch_one::<String>()
             .await
             .map_err(|e| DomainError::Storage(e.to_string()))?;
@@ -104,7 +110,12 @@ impl storage_domain::QuoteRepository for ClickHouseAdapter {
         self.execute_insert("stock_realtime_quotes", items).await
     }
 
-    async fn find_by_code(&self, code: &str, start: i64, end: i64) -> Result<Vec<Self::Item>, DomainError> {
+    async fn find_by_code(
+        &self,
+        code: &str,
+        start: i64,
+        end: i64,
+    ) -> Result<Vec<Self::Item>, DomainError> {
         let query = format!(
             "SELECT * FROM stock_realtime_quotes \
              WHERE code = '{}' AND datetime >= FROM_UNIXTIME({}) AND datetime < FROM_UNIXTIME({}) \

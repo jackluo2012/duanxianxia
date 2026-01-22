@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{NaiveDate, Utc, Duration};
+use chrono::{Duration, NaiveDate};
 use std::collections::HashMap;
 
 /// 历史数据回溯器
@@ -33,7 +33,11 @@ impl HistoryBackfill {
         while current_date <= end_date {
             // 跳过周末（简单实现）
             // 周日=7, 周一=1, ..., 周六=6
-            let weekday = current_date.format("%u").to_string().parse::<u32>().unwrap_or(0);
+            let weekday = current_date
+                .format("%u")
+                .to_string()
+                .parse::<u32>()
+                .unwrap_or(0);
             if weekday < 6 {
                 if let Ok(_kline) = self.fetch_kline_data(stock_code, current_date).await {
                     count += 1;
@@ -63,7 +67,11 @@ impl HistoryBackfill {
 
         while current_date <= end {
             // 跳过周末
-            let weekday = current_date.format("%u").to_string().parse::<u32>().unwrap_or(0);
+            let weekday = current_date
+                .format("%u")
+                .to_string()
+                .parse::<u32>()
+                .unwrap_or(0);
             if weekday < 6 {
                 total_days += 1;
                 tracing::info!("处理日期: {}/{}", total_days, current_date);
@@ -158,9 +166,14 @@ impl HistoryBackfill {
         start_date: NaiveDate,
         end_date: NaiveDate,
     ) -> Result<HashMap<String, usize>> {
-        tracing::info!("📜 回溯题材 {} 历史数据: {} 到 {}", theme_name, start_date, end_date);
+        tracing::info!(
+            "📜 回溯题材 {} 历史数据: {} 到 {}",
+            theme_name,
+            start_date,
+            end_date
+        );
 
-        let mut stats = HashMap::new();
+        let stats = HashMap::new();
 
         // TODO: 实现题材回溯逻辑
         // 1. 查询该题材包含的所有股票

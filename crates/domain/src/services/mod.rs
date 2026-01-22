@@ -9,4 +9,6 @@ pub mod quote_collector;
 // 重新导出服务和trait
 pub use kline_aggregator::{AggregationError, DefaultKlineAggregator, KlineAggregator};
 pub use limit_up_detector::{DefaultLimitUpDetector, DetectionError, LimitUpDetector};
-pub use quote_collector::{CollectionError, DefaultQuoteCollector, QuoteCollector as DomainQuoteCollector};
+pub use quote_collector::{
+    CollectionError, DefaultQuoteCollector, QuoteCollector as DomainQuoteCollector,
+};

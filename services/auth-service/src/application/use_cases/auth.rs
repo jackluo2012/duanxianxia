@@ -1,6 +1,5 @@
 use anyhow::Result;
 use std::sync::Arc;
-use sqlx::PgPool;
 
 use crate::domain::entities::models::{AuthResponse, LoginRequest, RegisterRequest};
 use crate::domain::services::AuthenticationService;

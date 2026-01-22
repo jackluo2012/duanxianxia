@@ -1,5 +1,5 @@
-use chrono::{Utc, NaiveDate};
 use super::*;
+use chrono::{NaiveDate, Utc};
 
 #[tokio::test]
 async fn test_backfill_single_stock() {

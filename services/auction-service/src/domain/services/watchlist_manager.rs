@@ -82,7 +82,10 @@ mod tests {
         manager.add_stock("000001".to_string(), MarketCode::Sz, "测试股票".to_string());
 
         assert!(manager.is_watched("000001"));
-        assert_eq!(manager.get_stock_name("000001"), Some("测试股票".to_string()));
+        assert_eq!(
+            manager.get_stock_name("000001"),
+            Some("测试股票".to_string())
+        );
     }
 
     #[test]

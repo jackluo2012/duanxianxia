@@ -37,7 +37,9 @@ impl SubscriptionManager {
     /// 订阅股票
     pub fn subscribe(&self, client_id: &str, codes: Vec<String>) {
         let mut subs = self.subscriptions.lock().unwrap();
-        let user_codes = subs.entry(client_id.to_string()).or_insert_with(HashSet::new);
+        let user_codes = subs
+            .entry(client_id.to_string())
+            .or_insert_with(HashSet::new);
 
         for code in codes {
             user_codes.insert(code);

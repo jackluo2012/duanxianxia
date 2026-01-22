@@ -1,5 +1,6 @@
 use crate::types::{StockInfo, StockQuote};
 use anyhow::Result;
+use common::now_china;
 use rustdx_complete::tcp::stock::SecurityQuotes;
 use rustdx_complete::tcp::{Tcp, Tdx};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -81,7 +82,7 @@ impl QuoteCollector {
         // 将股票代码收集为 Owned String 以避免生命周期问题，同时包含 market 信息
         let stock_codes_owned: Vec<(u16, String, u8)> = stocks
             .iter()
-            .map(|s| (s.market as u16, s.code.clone(), s.market as u8))
+            .map(|s| (s.market as u16, s.code.clone(), s.market))
             .collect();
 
         // 从连接池获取连接
@@ -104,14 +105,14 @@ impl QuoteCollector {
                     .collect();
 
                 let mut quotes = SecurityQuotes::new(stock_codes);
-                match quotes.recv_parsed(&mut *tcp.lock().unwrap()) {
+                match quotes.recv_parsed(&mut tcp.lock().unwrap()) {
                     Ok(_) => {
                         // 在闭包内直接转换数据为拥有所有权的结构
                         let quote_data = quotes.result();
                         let converted: Vec<StockQuote> = quote_data
                             .iter()
                             .map(|q| StockQuote {
-                                timestamp: chrono::Utc::now().timestamp() as u64, // Unix timestamp (秒)
+                                timestamp: now_china().timestamp() as u64, // Unix timestamp (秒)
                                 code: q.code.clone(),
                                 name: q.name.clone(),
                                 price: q.price,
@@ -119,7 +120,7 @@ impl QuoteCollector {
                                 open: q.open,
                                 high: q.high,
                                 low: q.low,
-                                volume: q.vol as f64,
+                                volume: q.vol,
                                 amount: q.amount,
                                 change_percent: if q.preclose > 0.0 {
                                     ((q.price - q.preclose) / q.preclose) * 100.0

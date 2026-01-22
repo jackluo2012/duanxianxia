@@ -1,10 +1,14 @@
+use crate::domain::entities::models::{
+    BacktestError, BacktestRequest, BacktestResult, StrategyType,
+};
+use crate::domain::services::engine::BacktestEngine;
+use crate::metrics::{
+    record_capital_metrics, record_trade_metrics, update_queue_metrics, BacktestTimer,
+};
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::domain::entities::models::{BacktestRequest, BacktestResult, BacktestError, StrategyType};
-use crate::domain::services::engine::BacktestEngine;
-use crate::metrics::{BacktestTimer, update_queue_metrics, record_capital_metrics, record_trade_metrics};
 
 /// 回测任务状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,9 +80,18 @@ impl TaskManager {
                 }
                 // 更新队列指标
                 let all_tasks = tasks_guard.values().collect::<Vec<_>>();
-                let pending = all_tasks.iter().filter(|t| matches!(t.status, BacktestStatus::Pending)).count() as i64;
-                let running = all_tasks.iter().filter(|t| matches!(t.status, BacktestStatus::Running)).count() as i64;
-                let completed = all_tasks.iter().filter(|t| matches!(t.status, BacktestStatus::Completed)).count() as i64;
+                let pending = all_tasks
+                    .iter()
+                    .filter(|t| matches!(t.status, BacktestStatus::Pending))
+                    .count() as i64;
+                let running = all_tasks
+                    .iter()
+                    .filter(|t| matches!(t.status, BacktestStatus::Running))
+                    .count() as i64;
+                let completed = all_tasks
+                    .iter()
+                    .filter(|t| matches!(t.status, BacktestStatus::Completed))
+                    .count() as i64;
                 drop(tasks_guard);
                 update_queue_metrics(pending, running, completed);
             }
@@ -99,17 +112,17 @@ impl TaskManager {
                         record_capital_metrics(
                             backtest_result.request.initial_capital,
                             perf.final_capital,
-                            perf.total_return
+                            perf.total_return,
                         );
                         record_trade_metrics(
                             perf.trade_count as i64,
                             perf.win_rate,
-                            perf.profit_loss_ratio
+                            perf.profit_loss_ratio,
                         );
 
                         timer.finish();
                         task.result = Some(backtest_result);
-                    },
+                    }
                     Err(e) => {
                         task.status = BacktestStatus::Failed;
                         task.error = Some(e.to_string());
@@ -185,12 +198,10 @@ pub async fn start_backtest(
                 status: BacktestStatus::Running,
                 estimated_time: 30, // 预估30秒
             })
-        },
-        Err(e) => {
-            HttpResponse::InternalServerError().json(serde_json::json!({
-                "error": e.to_string()
-            }))
         }
+        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": e.to_string()
+        })),
     }
 }
 
@@ -202,14 +213,10 @@ pub async fn get_backtest_result(
     let backtest_id = path.into_inner();
 
     match task_manager.get_task(&backtest_id).await {
-        Some(task) => {
-            HttpResponse::Ok().json(task)
-        },
-        None => {
-            HttpResponse::NotFound().json(serde_json::json!({
-                "error": "回测任务不存在"
-            }))
-        }
+        Some(task) => HttpResponse::Ok().json(task),
+        None => HttpResponse::NotFound().json(serde_json::json!({
+            "error": "回测任务不存在"
+        })),
     }
 }
 
@@ -282,14 +289,12 @@ pub async fn get_strategies() -> impl Responder {
             id: "intraday_breakout".to_string(),
             name: "盘中突破策略".to_string(),
             description: "突破前高+成交量放大2倍 (待实现)".to_string(),
-            params: vec![
-                ParamInfo {
-                    name: "volume_multiplier".to_string(),
-                    param_type: "float".to_string(),
-                    default: serde_json::json!(2),
-                    description: "成交量放大倍数 (1.5-5)".to_string(),
-                },
-            ],
+            params: vec![ParamInfo {
+                name: "volume_multiplier".to_string(),
+                param_type: "float".to_string(),
+                default: serde_json::json!(2),
+                description: "成交量放大倍数 (1.5-5)".to_string(),
+            }],
         },
     ];
 
@@ -303,10 +308,9 @@ pub async fn get_backtest_history(
     query: web::Query<std::collections::HashMap<String, String>>,
     task_manager: web::Data<TaskManager>,
 ) -> impl Responder {
-    let page: usize = query.get("page")
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(1);
-    let page_size: usize = query.get("page_size")
+    let page: usize = query.get("page").and_then(|p| p.parse().ok()).unwrap_or(1);
+    let page_size: usize = query
+        .get("page_size")
         .and_then(|p| p.parse().ok())
         .unwrap_or(10);
 
@@ -319,7 +323,8 @@ pub async fn get_backtest_history(
     let total = sorted_tasks.len();
     let start = (page - 1) * page_size;
     let end = std::cmp::min(start + page_size, total);
-    let items: Vec<_> = sorted_tasks.into_iter()
+    let items: Vec<_> = sorted_tasks
+        .into_iter()
         .skip(start)
         .take(end - start)
         .collect();

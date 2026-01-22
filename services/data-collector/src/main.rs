@@ -26,10 +26,10 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use stock_list_manager::StockListManager;
+use time::UtcOffset;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::fmt::time::OffsetTime;
-use time::UtcOffset;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -38,7 +38,10 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_target(false)
-        .with_timer(OffsetTime::new(offset, time::format_description::well_known::Rfc3339))
+        .with_timer(OffsetTime::new(
+            offset,
+            time::format_description::well_known::Rfc3339,
+        ))
         .json()
         .init();
 
@@ -48,8 +51,7 @@ async fn main() -> Result<()> {
     let redis_url = std::env::var("REDIS_URL").unwrap_or("redis://127.0.0.1:6379".to_string());
     let clickhouse_url =
         std::env::var("CLICKHOUSE_URL").unwrap_or("http://localhost:8123".to_string());
-    let clickhouse_db =
-        std::env::var("CLICKHOUSE_DATABASE").unwrap_or("duanxianxia".to_string());
+    let clickhouse_db = std::env::var("CLICKHOUSE_DATABASE").unwrap_or("duanxianxia".to_string());
 
     // 1. 连接 Redis
     let redis_client = RedisClient::open(redis_url)?;
@@ -202,10 +204,7 @@ async fn main() -> Result<()> {
                     info!("执行数据质量检查...");
 
                     // 检查完整性
-                    match quality_monitor
-                        .check_completeness(&collected_codes)
-                        .await
-                    {
+                    match quality_monitor.check_completeness(&collected_codes).await {
                         Ok(report) => {
                             info!(
                                 "完整性检查: 预期={}, 实际={}, 完整性={:.2}%",
@@ -216,8 +215,9 @@ async fn main() -> Result<()> {
 
                             // 记录缺失的股票
                             if !report.missing_stocks.is_empty() {
-                                if let Err(e) =
-                                    quality_monitor.record_missing_stocks(&report.missing_stocks).await
+                                if let Err(e) = quality_monitor
+                                    .record_missing_stocks(&report.missing_stocks)
+                                    .await
                                 {
                                     error!("记录缺失股票失败: {}", e);
                                 }

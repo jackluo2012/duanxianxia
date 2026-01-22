@@ -1,8 +1,8 @@
+use crate::domain::entities::models::{AuctionData, BacktestError, BacktestPeriod, DayData};
+use chrono::NaiveDate;
 use clickhouse::Client;
 use clickhouse::Row;
 use serde::Deserialize;
-use chrono::NaiveDate;
-use crate::domain::entities::models::{DayData, AuctionData, BacktestPeriod, BacktestError};
 
 pub struct ClickHouseDataSource {
     client: Client,
@@ -10,20 +10,28 @@ pub struct ClickHouseDataSource {
 
 impl ClickHouseDataSource {
     pub fn new(url: &str) -> Self {
-        let client = Client::default()
-            .with_url(url);
+        let client = Client::default().with_url(url);
 
         Self { client }
     }
 
     /// 加载回测期间的数据
-    pub async fn load_backtest_data(&self, period: &BacktestPeriod)
-        -> Result<Vec<DayData>, BacktestError> {
-
-        let start_ts = period.start_date.and_hms_opt(9, 0, 0)
-            .unwrap().and_utc().timestamp();
-        let end_ts = period.end_date.and_hms_opt(15, 0, 0)
-            .unwrap().and_utc().timestamp();
+    pub async fn load_backtest_data(
+        &self,
+        period: &BacktestPeriod,
+    ) -> Result<Vec<DayData>, BacktestError> {
+        let start_ts = period
+            .start_date
+            .and_hms_opt(9, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp();
+        let end_ts = period
+            .end_date
+            .and_hms_opt(15, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp();
 
         // 查询竞价数据
         let auction_query = format!(
@@ -43,7 +51,8 @@ impl ClickHouseDataSource {
             start_ts, end_ts
         );
 
-        let auction_records: Vec<AuctionRecord> = self.client
+        let auction_records: Vec<AuctionRecord> = self
+            .client
             .query(&auction_query)
             .fetch_all()
             .await
@@ -75,13 +84,12 @@ impl ClickHouseDataSource {
         }
 
         // 转换为 DayData 列表
-        let mut result: Vec<DayData> = day_data_map.into_iter()
-            .map(|(date, auction_data)| {
-                DayData {
-                    date,
-                    auction_data,
-                    stock_prices: std::collections::HashMap::new(),
-                }
+        let mut result: Vec<DayData> = day_data_map
+            .into_iter()
+            .map(|(date, auction_data)| DayData {
+                date,
+                auction_data,
+                stock_prices: std::collections::HashMap::new(),
             })
             .collect();
 

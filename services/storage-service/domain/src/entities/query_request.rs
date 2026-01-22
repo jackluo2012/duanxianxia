@@ -22,7 +22,11 @@ pub struct QueryRequest {
 
 impl QueryRequest {
     /// 创建新的查询请求
-    pub fn new(code: String, time_range: TimeRange, period: String) -> Result<Self, ValidationError> {
+    pub fn new(
+        code: String,
+        time_range: TimeRange,
+        period: String,
+    ) -> Result<Self, ValidationError> {
         // 验证代码
         if code.is_empty() {
             return Err(ValidationError::InvalidCode("股票代码不能为空".to_string()));
@@ -30,7 +34,10 @@ impl QueryRequest {
 
         // 验证周期
         if !["1m", "5m", "1d"].contains(&period.as_str()) {
-            return Err(ValidationError::InvalidPeriod(format!("无效的周期: {}", period)));
+            return Err(ValidationError::InvalidPeriod(format!(
+                "无效的周期: {}",
+                period
+            )));
         }
 
         Ok(Self {
@@ -43,7 +50,8 @@ impl QueryRequest {
 
     /// 获取查询哈希键(用于缓存)
     pub fn cache_key(&self) -> String {
-        format!("{}:{}:{}:{}",
+        format!(
+            "{}:{}:{}:{}",
             self.code,
             self.time_range.start.format("%Y%m%d%H%M"),
             self.time_range.end.format("%Y%m%d%H%M"),
@@ -63,11 +71,8 @@ mod tests {
         let end = start + Duration::hours(1);
         let time_range = TimeRange::new(start, end).unwrap();
 
-        let request = QueryRequest::new(
-            "000001".to_string(),
-            time_range,
-            "1m".to_string(),
-        ).unwrap();
+        let request =
+            QueryRequest::new("000001".to_string(), time_range, "1m".to_string()).unwrap();
 
         assert_eq!(request.code, "000001");
         assert_eq!(request.period, "1m");
@@ -79,11 +84,7 @@ mod tests {
         let end = start + Duration::hours(1);
         let time_range = TimeRange::new(start, end).unwrap();
 
-        let result = QueryRequest::new(
-            "".to_string(),
-            time_range,
-            "1m".to_string(),
-        );
+        let result = QueryRequest::new("".to_string(), time_range, "1m".to_string());
 
         assert!(result.is_err());
     }
@@ -94,11 +95,7 @@ mod tests {
         let end = start + Duration::hours(1);
         let time_range = TimeRange::new(start, end).unwrap();
 
-        let result = QueryRequest::new(
-            "000001".to_string(),
-            time_range,
-            "invalid".to_string(),
-        );
+        let result = QueryRequest::new("000001".to_string(), time_range, "invalid".to_string());
 
         assert!(result.is_err());
     }
