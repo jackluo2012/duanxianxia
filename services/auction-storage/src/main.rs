@@ -54,21 +54,21 @@ async fn consume_auction_stream(
         let result = result.unwrap();
 
         // 解析 Stream 数据
-        if let redis::Value::Bulk(streams) = result {
+        if let redis::Value::Array(streams) = result {
             for stream in streams {
-                if let redis::Value::Bulk(stream_data) = stream {
-                    if let Some(redis::Value::Bulk(entries)) = stream_data.get(1) {
+                if let redis::Value::Array(stream_data) = stream {
+                    if let Some(redis::Value::Array(entries)) = stream_data.get(1) {
                         for entry in entries {
-                            if let redis::Value::Bulk(fields) = entry {
-                                if let Some(redis::Value::Data(id)) = fields.get(0) {
+                            if let redis::Value::Array(fields) = entry {
+                                if let Some(redis::Value::BulkString(id)) = fields.get(0) {
                                     stream_id = String::from_utf8_lossy(id).to_string();
                                 }
 
-                                if let Some(redis::Value::Bulk(data_fields)) = fields.get(1) {
+                                if let Some(redis::Value::Array(data_fields)) = fields.get(1) {
                                     for (i, field) in data_fields.iter().enumerate() {
-                                        if let redis::Value::Data(field_name) = field {
+                                        if let redis::Value::BulkString(field_name) = field {
                                             if field_name == b"data" {
-                                                if let Some(redis::Value::Data(json_data)) =
+                                                if let Some(redis::Value::BulkString(json_data)) =
                                                     data_fields.get(i + 1)
                                                 {
                                                     let json_str =

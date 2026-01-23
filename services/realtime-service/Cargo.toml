@@ -14,7 +14,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = "0.2"
 time = { workspace = true }
-redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "1.0.2", features = ["tokio-comp", "connection-manager"] }
 shared = { path = "../../shared" }
 futures-util = "0.3"
 uuid = { version = "1.6", features = ["v4", "serde"] }
