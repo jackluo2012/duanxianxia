@@ -80,6 +80,62 @@ struct ReviewRow {
     strength_score: f64,
 }
 
+/// 题材热度查询结果行
+#[derive(Row, Serialize, Deserialize)]
+struct ThemeHotnessRow {
+    theme_name: String,
+    theme_type: String,
+    stock_count: u16,
+    limit_up_count: u16,
+    limit_down_count: u16,
+    limit_up_ratio: f32,
+    avg_consecutive: f32,
+    max_consecutive: u16,
+    total_consecutive_gte_3: u16,
+    total_consecutive_gte_5: u16,
+    total_sealed_amount: f64,
+    avg_sealed_amount: f64,
+    leader_code: String,
+    leader_name: String,
+    leader_consecutive: u16,
+    cycle_stage: String,
+    cycle_days: u32,
+    hotness_rank: u32,
+    hotness_score: f64,
+    created_at: String,
+}
+
+/// 区间统计计数行
+#[derive(Row, Serialize, Deserialize)]
+struct IntervalCountRow {
+    code: String,
+    limit_count: u32,
+    max_consecutive: u8,
+}
+
+/// 题材详情查询结果行
+#[derive(Row, Serialize, Deserialize)]
+struct ThemeDetailRow {
+    code: String,
+    name: String,
+    is_limit_up: u8,
+    consecutive_days: u8,
+    sealed_amount: f64,
+    turnover_rate: f32,
+    limit_reason: String,
+    industry: String,
+    concept: String,
+}
+
+/// 题材关联查询结果行
+#[derive(Row, Serialize, Deserialize)]
+struct ThemeRelationRow {
+    related_theme: String,
+    common_stocks: u64,
+    common_limit_count: u64,
+    correlation_strength: f32,
+}
+
 /// ClickHouse数据库客户端
 #[derive(Clone)]
 pub struct Database {
@@ -235,7 +291,7 @@ impl Database {
                 code,
                 name,
                 is_limit_up,
-                ifNull(limit_type, '') as limit_type,
+                ifNull(toString(limit_type), '') as limit_type,
                 ifNull(first_limit_time, '') as first_limit_time,
                 ifNull(last_limit_time, '') as last_limit_time,
                 open_times,
@@ -448,80 +504,299 @@ impl Database {
     }
 
     /// 计算区间统计分布
+    ///
+    /// 查询最近5/10/20个交易日内每只股票的涨停次数和连板情况
+    /// 返回不同区间内涨停次数的股票分布统计
     async fn calculate_interval_stats(
         &self,
         stocks: &[LimitUpReview],
     ) -> Result<IntervalStatsResponse> {
-        // 简化实现: 基于当前数据计算连板分布
-        // TODO: 实际应该从历史数据计算5/10/20天区间
+        if stocks.is_empty() {
+            // 返回空分布
+            return Ok(IntervalStatsResponse {
+                days_5: IntervalDistribution::empty(),
+                days_10: IntervalDistribution::empty(),
+                days_20: IntervalDistribution::empty(),
+            });
+        }
 
-        let mut distribution = IntervalDistribution {
-            count_8: 0,
-            count_7: 0,
-            count_6: 0,
-            count_5: 0,
-            count_4: 0,
-            count_3: 0,
-            count_2: 0,
-            count_1: 0,
-        };
+        // 获取当前日期（使用第一只股票的交易日期）
+        let current_date = stocks[0].trade_date.format("%Y-%m-%d").to_string();
 
-        // 统计各连板级别的股票数量
-        for stock in stocks {
-            match stock.consecutive_days {
-                8 => distribution.count_8 += 1,
-                7 => distribution.count_7 += 1,
-                6 => distribution.count_6 += 1,
-                5 => distribution.count_5 += 1,
-                4 => distribution.count_4 += 1,
-                3 => distribution.count_3 += 1,
-                2 => distribution.count_2 += 1,
-                1 => distribution.count_1 += 1,
+        // 计算5/10/20天的区间分布
+        let days_5 = self.calculate_interval_distribution(&current_date, 5).await?;
+        let days_10 = self.calculate_interval_distribution(&current_date, 10).await?;
+        let days_20 = self.calculate_interval_distribution(&current_date, 20).await?;
+
+        Ok(IntervalStatsResponse {
+            days_5,
+            days_10,
+            days_20,
+        })
+    }
+
+    /// 计算指定交易天数窗口内的涨停分布
+    ///
+    /// 查询最近N个交易日内每只股票的涨停次数，并返回分布统计
+    async fn calculate_interval_distribution(
+        &self,
+        end_date: &str,
+        trading_days: u32,
+    ) -> Result<IntervalDistribution> {
+        tracing::debug!("计算{}天区间涨停分布: {}", trading_days, end_date);
+
+        // 查询区间内每只股票的涨停次数
+        let sql = format!(
+            "SELECT
+                code,
+                countIf(is_limit_up = 1) as limit_count,
+                max(consecutive_days) as max_consecutive
+            FROM duanxianxia.limit_up_review
+            WHERE trade_date <= ? AND trade_date >= toDate(toDate(?) - INTERVAL {} DAY)
+            GROUP BY code
+            HAVING limit_count > 0",
+            trading_days * 2 // 粗略估算日历天数
+        );
+
+        let mut cursor = self.client.query(&sql).bind(end_date).fetch::<IntervalCountRow>()?;
+
+        let mut distribution = IntervalDistribution::empty();
+
+        while let Some(row) = cursor.next().await? {
+            // 根据区间内涨停次数分类统计
+            match row.limit_count {
+                c if c >= 8 => distribution.count_8 += 1,
+                c if c >= 7 => distribution.count_7 += 1,
+                c if c >= 6 => distribution.count_6 += 1,
+                c if c >= 5 => distribution.count_5 += 1,
+                c if c >= 4 => distribution.count_4 += 1,
+                c if c >= 3 => distribution.count_3 += 1,
+                c if c >= 2 => distribution.count_2 += 1,
+                c if c >= 1 => distribution.count_1 += 1,
                 _ => {}
             }
         }
 
-        // 目前三个区间使用相同数据
-        // TODO: 实现真正的区间统计逻辑
-        Ok(IntervalStatsResponse {
-            days_5: distribution.clone(),
-            days_10: distribution.clone(),
-            days_20: distribution,
-        })
+        Ok(distribution)
     }
 
     /// 获取题材热度榜
+    ///
+    /// 基于limit_up_review表实时计算题材热度，包括：
+    /// - 涨停股票数量统计
+    /// - 连板高度统计
+    /// - 封单金额统计
+    /// - 龙头股票识别
     pub async fn get_theme_hotness(&self, date: &str, limit: usize) -> Result<Vec<ThemeHotness>> {
-        // TODO: 从ClickHouse的theme_hotness表查询
-        // 简化实现: 返回空数组
-        tracing::warn!("get_theme_hotness not fully implemented yet, returning empty list");
-        Ok(vec![])
+        tracing::info!("📊 计算题材热度: {}", date);
+
+        // 从concept字段提取题材并统计
+        let sql = format!(
+            "SELECT
+                multiIf(
+                    concept = '', '未分类',
+                    contains(concept, ','), splitByString(',', concept)[1],
+                    concept
+                ) as theme_name,
+                'concept' as theme_type,
+                count() as stock_count,
+                countIf(is_limit_up = 1) as limit_up_count,
+                countIf(is_limit_up = -1) as limit_down_count,
+                round(countIf(is_limit_up = 1) / count() * 100, 2) as limit_up_ratio,
+                round(avg(consecutive_days), 2) as avg_consecutive,
+                max(consecutive_days) as max_consecutive,
+                countIf(consecutive_days >= 3) as total_consecutive_gte_3,
+                countIf(consecutive_days >= 5) as total_consecutive_gte_5,
+                coalesce(sum(if(is_limit_up = 1, sealed_amount, 0)), 0) as total_sealed_amount,
+                round(coalesce(avg(if(is_limit_up = 1, sealed_amount, null)), 0), 2) as avg_sealed_amount,
+                argMax(argMax(code, consecutive_days), sealed_amount) as leader_code,
+                argMax(argMax(name, consecutive_days), sealed_amount) as leader_name,
+                argMax(consecutive_days, sealed_amount) as leader_consecutive,
+                'init' as cycle_stage,
+                0 as cycle_days,
+                toUInt32(rowNumber() - 1) as hotness_rank,
+                0.0 as hotness_score,
+                now() as created_at
+            FROM duanxianxia.limit_up_review
+            WHERE trade_date = ? AND concept != ''
+            GROUP BY theme_name, theme_type
+            ORDER BY limit_up_count DESC, max_consecutive DESC, total_sealed_amount DESC
+            LIMIT {}",
+            limit
+        );
+
+        let mut cursor = self.client.query(&sql).bind(date).fetch::<ThemeHotnessRow>()?;
+
+        let mut themes = Vec::new();
+        while let Some(row) = cursor.next().await? {
+            let theme = ThemeHotness {
+                trade_date: chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+                    .map_err(|e| anyhow::anyhow!("Invalid date format: {}", e))?,
+                theme_name: row.theme_name,
+                theme_type: if row.theme_type == "industry" {
+                    crate::domain::entities::theme_models::ThemeType::Industry
+                } else {
+                    crate::domain::entities::theme_models::ThemeType::Concept
+                },
+                stock_count: row.stock_count,
+                limit_up_count: row.limit_up_count,
+                limit_down_count: row.limit_down_count,
+                limit_up_ratio: row.limit_up_ratio,
+                avg_consecutive: row.avg_consecutive,
+                max_consecutive: row.max_consecutive,
+                total_consecutive_gte_3: row.total_consecutive_gte_3,
+                total_consecutive_gte_5: row.total_consecutive_gte_5,
+                total_sealed_amount: row.total_sealed_amount,
+                avg_sealed_amount: row.avg_sealed_amount,
+                leader_code: row.leader_code,
+                leader_name: row.leader_name,
+                leader_consecutive: row.leader_consecutive,
+                cycle_stage: crate::domain::entities::theme_models::CycleStage::Init,
+                cycle_days: row.cycle_days as u8,
+                hotness_rank: row.hotness_rank as u16 + 1,
+                hotness_score: row.hotness_score,
+                created_at: chrono::Utc::now(),
+            };
+            themes.push(theme);
+        }
+
+        tracing::info!("✅ 计算出{}个题材", themes.len());
+        Ok(themes)
     }
 
     /// 获取题材详情
+    ///
+    /// 返回指定题材在指定日期的详细信息，包括：
+    /// - 题材基本统计
+    /// - 涨停股票列表（按连板数排序）
+    /// - 龙头、中军、跟风股票分层
     pub async fn get_theme_detail(
         &self,
         date: &str,
         theme_name: &str,
     ) -> Result<serde_json::Value> {
-        // TODO: 从ClickHouse查询题材详情
-        // 简化实现: 返回基本信息
+        tracing::info!("📊 查询题材详情: {} - {}", date, theme_name);
+
+        // 查询该题材下的所有涨停股票
+        let sql = "SELECT
+            code,
+            name,
+            is_limit_up,
+            consecutive_days,
+            sealed_amount,
+            turnover_rate,
+            limit_reason,
+            industry,
+            concept
+        FROM duanxianxia.limit_up_review
+        WHERE trade_date = ? AND (concept LIKE ? OR industry = ?)
+        ORDER BY consecutive_days DESC, sealed_amount DESC";
+
+        let pattern = format!("%{}%", theme_name);
+        let mut cursor = self.client.query(sql).bind(date).bind(&pattern).bind(theme_name).fetch::<ThemeDetailRow>()?;
+
+        let mut stocks = Vec::new();
+        let mut total_sealed = 0.0;
+        let mut max_consecutive = 0u8;
+        let mut limit_up_count = 0usize;
+
+        while let Some(row) = cursor.next().await? {
+            total_sealed += row.sealed_amount;
+            max_consecutive = max_consecutive.max(row.consecutive_days);
+            if row.is_limit_up == 1 {
+                limit_up_count += 1;
+            }
+
+            stocks.push(serde_json::json!({
+                "code": row.code,
+                "name": row.name,
+                "consecutive_days": row.consecutive_days,
+                "sealed_amount": row.sealed_amount,
+                "turnover_rate": row.turnover_rate,
+                "limit_reason": row.limit_reason,
+            }));
+        }
+
+        // 分层：龙头(连板>=5)、中军(3<=连板<5)、跟风(连板<3)
+        let leaders: Vec<_> = stocks.iter()
+            .filter(|s| s["consecutive_days"].as_u64().unwrap_or(0) >= 5)
+            .cloned()
+            .collect();
+
+        let mid: Vec<_> = stocks.iter()
+            .filter(|s| {
+                let cons = s["consecutive_days"].as_u64().unwrap_or(0);
+                cons >= 3 && cons < 5
+            })
+            .cloned()
+            .collect();
+
+        let followers: Vec<_> = stocks.iter()
+            .filter(|s| s["consecutive_days"].as_u64().unwrap_or(0) < 3)
+            .cloned()
+            .collect();
+
         Ok(serde_json::json!({
             "theme_name": theme_name,
             "date": date,
-            "message": "TODO: 实现题材详情查询"
+            "stats": {
+                "total_stocks": limit_up_count,
+                "max_consecutive": max_consecutive,
+                "total_sealed_amount": total_sealed,
+            },
+            "stocks": {
+                "leaders": leaders,
+                "mid": mid,
+                "followers": followers,
+            }
         }))
     }
 
     /// 获取题材关联关系
+    ///
+    /// 基于共同涨停股票挖掘题材之间的关联关系
+    /// 返回与指定题材相关的其他题材及关联强度
     pub async fn get_theme_relations(
         &self,
         date: &str,
         theme_name: &str,
     ) -> Result<Vec<ThemeRelation>> {
-        // TODO: 从ClickHouse的theme_relations表查询
-        // 简化实现: 返回空数组
-        tracing::warn!("get_theme_relations not fully implemented yet, returning empty list");
-        Ok(vec![])
+        tracing::info!("📊 查询题材关联: {} - {}", date, theme_name);
+
+        // 查询与当前题材有共同涨停股票的其他题材
+        let sql = "SELECT
+            arrayJoin(splitByString(',', concept)) as related_theme,
+            count() as common_stocks,
+            countIf(is_limit_up = 1) as common_limit_count,
+            round(countIf(is_limit_up = 1) / count() * 100, 2) as correlation_strength
+        FROM duanxianxia.limit_up_review
+        WHERE trade_date = ? AND concept LIKE ? AND concept != ''
+        GROUP BY related_theme
+        HAVING related_theme != ? AND common_stocks >= 2
+        ORDER BY common_limit_count DESC, correlation_strength DESC
+        LIMIT 10";
+
+        let pattern = format!("%{}%", theme_name);
+        let mut cursor = self.client.query(sql).bind(date).bind(&pattern).bind(theme_name).fetch::<ThemeRelationRow>()?;
+
+        let mut relations = Vec::new();
+        while let Some(row) = cursor.next().await? {
+            let trade_date = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+                .map_err(|e| anyhow::anyhow!("Invalid date format: {}", e))?;
+
+            relations.push(ThemeRelation {
+                trade_date,
+                parent_theme: theme_name.to_string(),
+                child_theme: row.related_theme,
+                relation_type: crate::domain::entities::theme_models::RelationType::Related,
+                correlation_strength: row.correlation_strength,
+                common_stocks: row.common_stocks as u16,
+                common_limit_count: row.common_limit_count as u16,
+                created_at: chrono::Utc::now(),
+            });
+        }
+
+        tracing::info!("✅ 找到{}个关联题材", relations.len());
+        Ok(relations)
     }
 }

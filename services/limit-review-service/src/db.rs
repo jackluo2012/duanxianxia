@@ -227,7 +227,7 @@ impl Database {
                 code,
                 name,
                 is_limit_up,
-                ifNull(empty(limit_type), '') as limit_type,
+                ifNull(toString(limit_type), '') as limit_type,
                 ifNull(isNull(first_limit_time), '') as first_limit_time,
                 ifNull(isNull(last_limit_time), '') as last_limit_time,
                 open_times,

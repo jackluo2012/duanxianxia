@@ -17,6 +17,22 @@ pub struct IntervalDistribution {
     pub count_1: usize,
 }
 
+impl IntervalDistribution {
+    /// 创建空的分布统计
+    pub fn empty() -> Self {
+        Self {
+            count_8: 0,
+            count_7: 0,
+            count_6: 0,
+            count_5: 0,
+            count_4: 0,
+            count_3: 0,
+            count_2: 0,
+            count_1: 0,
+        }
+    }
+}
+
 /// 区间统计响应
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntervalStatsResponse {
