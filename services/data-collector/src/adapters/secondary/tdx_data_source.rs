@@ -28,15 +28,20 @@ impl TdxQuoteDataSource {
     /// ## Parameters
     /// - `pool_size`: Number of TCP connections in the pool (recommended: 3-5)
     pub fn new(pool_size: usize) -> Result<Self, DataSourceError> {
+        // 创建一个新的TCP连接池
         let mut tcp_pool = Vec::new();
 
+        // 循环创建指定数量的TCP连接
         for i in 0..pool_size {
+            // 尝试创建新的TCP连接
             match Tcp::new() {
                 Ok(tcp) => {
+                    // 将连接包装在Arc和Mutex中并添加到连接池
                     tcp_pool.push(Arc::new(std::sync::Mutex::new(tcp)));
                     debug!("TDX TCP connection #{} created successfully", i);
                 }
                 Err(e) => {
+                    // 如果连接创建失败，记录警告信息
                     warn!("TDX TCP connection #{} creation failed: {}", i, e);
                     // At least one connection is required
                     if tcp_pool.is_empty() {

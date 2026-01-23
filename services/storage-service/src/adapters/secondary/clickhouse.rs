@@ -14,6 +14,7 @@ use storage_domain::DomainError;
 pub struct ClickHouseAdapter {
     client: Client,
     database: String,
+    url: String,
 }
 
 impl ClickHouseAdapter {
@@ -30,7 +31,7 @@ impl ClickHouseAdapter {
 
         tracing::info!("✅ ClickHouse连接成功: {}", url);
 
-        Ok(Self { client, database })
+        Ok(Self { client, database, url })
     }
 
     /// 执行批量插入
@@ -82,21 +83,38 @@ impl ClickHouseAdapter {
         // 在SQL中添加FORMAT JSON
         let json_sql = format!("{} FORMAT JSON", sql);
 
-        let json_str = self
-            .client
-            .query(&json_sql)
-            .fetch_one::<String>()
+        // 使用 HTTP 接口执行查询并获取 JSON 响应
+        let url = format!(
+            "{}/?database={}&query={}",
+            self.url.trim_end_matches('/'),
+            self.database,
+            urlencoding::encode(&json_sql)
+        );
+
+        let response = reqwest::get(&url)
             .await
-            .map_err(|e| DomainError::Storage(e.to_string()))?;
+            .map_err(|e| DomainError::Storage(format!("HTTP请求失败: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(DomainError::Storage(format!(
+                "ClickHouse查询失败: HTTP {}",
+                response.status()
+            )));
+        }
+
+        let json_str = response
+            .text()
+            .await
+            .map_err(|e| DomainError::Storage(format!("读取响应失败: {}", e)))?;
 
         // 解析JSON响应
-        let response: Value = serde_json::from_str(&json_str)
-            .map_err(|e| DomainError::Serialization(e.to_string()))?;
+        let clickhouse_response: Value = serde_json::from_str(&json_str)
+            .map_err(|e| DomainError::Serialization(format!("JSON解析失败: {}", e)))?;
 
         // 提取数据行
-        let rows = response["data"]
+        let rows = clickhouse_response["data"]
             .as_array()
-            .ok_or_else(|| DomainError::Validation("Invalid response format".to_string()))?;
+            .ok_or_else(|| DomainError::Validation("无效的响应格式".to_string()))?;
 
         Ok(rows.clone())
     }
@@ -118,8 +136,8 @@ impl storage_domain::QuoteRepository for ClickHouseAdapter {
     ) -> Result<Vec<Self::Item>, DomainError> {
         let query = format!(
             "SELECT * FROM stock_realtime_quotes \
-             WHERE code = '{}' AND datetime >= FROM_UNIXTIME({}) AND datetime < FROM_UNIXTIME({}) \
-             ORDER BY datetime ASC",
+             WHERE code = '{}' AND timestamp >= {} AND timestamp < {} \
+             ORDER BY timestamp ASC",
             code, start, end
         );
 

@@ -7,6 +7,7 @@ use actix_web::{web, App, HttpServer};
 use anyhow::Result;
 use std::sync::Arc;
 use tracing::{info, Level};
+use tracing_appender::{non_blocking, rolling};
 
 mod adapters;
 mod application;
@@ -19,8 +20,15 @@ use config::Config;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    // 初始化日志
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    // 初始化日志（使用非阻塞写入和文件轮转）
+    let file_appender = rolling::daily("../../logs", "storage-service");
+    let (non_blocking_appender, guard) = non_blocking(file_appender);
+    std::mem::forget(guard); // 保持 guard 存活直到程序结束
+
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_writer(non_blocking_appender)
+        .init();
 
     info!("🚀 启动 storage-service (六边形架构)...");
 

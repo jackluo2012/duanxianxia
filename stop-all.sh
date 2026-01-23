@@ -1,6 +1,35 @@
 #!/bin/bash
 
 # 短线侠 - 停止所有服务
+# 用途: 停止所有后端服务和可选的数据库服务
+#
+# 环境变量:
+#   STOP_DB=1    - 自动停止数据库（无需确认）
+#   STOP_DB=0    - 保留数据库运行（无需确认）
+
+# 解析命令行参数
+STOP_DB=""
+FORCE_DB=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --stop-db)
+            STOP_DB=1
+            shift
+            ;;
+        --keep-db)
+            STOP_DB=0
+            shift
+            ;;
+        *)
+            echo "未知选项: $1"
+            echo "用法: $0 [--stop-db] [--keep-db]"
+            echo "  --stop-db   停止数据库服务"
+            echo "  --keep-db   保留数据库运行（默认）"
+            exit 1
+            ;;
+    esac
+done
 
 echo "🛑 停止短线侠系统..."
 echo ""
@@ -32,15 +61,17 @@ echo "  ✅ 残留进程已清理"
 
 echo ""
 
-# 2. 停止数据库 (可选)
-read -p "🗄️  是否停止数据库服务? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "  停止数据库..."
-    docker-compose down
+# 3. 停止数据库 (支持环境变量和命令行参数)
+if [ "$STOP_DB" = "1" ]; then
+    echo "🗄️  停止数据库服务..."
+    docker-compose down 2>/dev/null || true
     echo "  ✅ 数据库已停止"
 else
-    echo "  ℹ️  数据库保持运行"
+    echo "🗄️  数据库保持运行"
+    if [ -z "$STOP_DB" ]; then
+        # 仅在未指定参数时显示提示
+        echo "  提示: 使用 $0 --stop-db 可停止数据库"
+    fi
 fi
 
 echo ""

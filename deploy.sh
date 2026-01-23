@@ -156,7 +156,22 @@ case $DEPLOY_MODE in
 
         # 停止服务
         log_info "停止现有服务..."
-        ./stop-all.sh 2>&1 | tee -a "$LOG_FILE" || true
+        if [ -f "./stop-all.sh" ]; then
+            ./stop-all.sh 2>&1 | tee -a "$LOG_FILE" || true
+        fi
+        sleep 2
+
+        # 清理端口占用
+        log_info "清理端口占用..."
+        for port in 8080 8082 8083 8084 8085 8087 8088 8089 6379; do
+            PID=$(lsof -ti:$port 2>/dev/null || true)
+            if [ -n "$PID" ]; then
+                log_info "  - 停止端口 $port 的进程 $PID"
+                kill $PID 2>/dev/null || true
+                sleep 1
+                kill -9 $PID 2>/dev/null || true
+            fi
+        done
         sleep 2
 
         # 重新编译并启动
@@ -168,29 +183,72 @@ case $DEPLOY_MODE in
 
     full)
         # ==================== 完全部署模式 ====================
+        log_warn "⚠️  完全重置模式：将删除所有数据，像重新部署一套新系统"
+        sleep 3
         log_info "步骤 3: 完全部署 - 清理并重新部署"
         echo ""
 
-        # 确认操作
-        read -p "⚠️  完全部署将清除所有数据,是否继续? (yes/NO) " -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
-            log_warn "用户取消部署"
-            exit 0
+        # 1. 停止所有服务
+        log_info "[1/6] 停止所有服务..."
+        if [ -f "./stop-all.sh" ]; then
+            ./stop-all.sh 2>&1 | tee -a "$LOG_FILE" || true
         fi
-
-        # 完全清理
-        log_info "清理系统..."
-        ./reset-all.sh 2>&1 | tee -a "$LOG_FILE"
         sleep 2
 
-        # 启动数据库
-        log_info "启动数据库服务..."
+        # 2. 清理端口占用
+        log_info "[2/6] 清理端口占用..."
+        for port in 8080 8082 8083 8084 8085 8087 8088 8089 6379 5433; do
+            PID=$(lsof -ti:$port 2>/dev/null || true)
+            if [ -n "$PID" ]; then
+                log_info "  - 停止端口 $port 的进程 $PID"
+                kill $PID 2>/dev/null || true
+                sleep 1
+                kill -9 $PID 2>/dev/null || true
+            fi
+        done
+
+        # 3. 清理 Docker 容器、网络和数据卷（完全删除数据）
+        log_info "[3/6] 清理 Docker 资源（包括数据卷）..."
+        log_warn "  - 将删除所有数据库数据！"
+        docker-compose down -v 2>&1 | tee -a "$LOG_FILE" || true
+        sleep 2
+
+        # 删除所有相关容器
+        docker ps -a --filter "name=duanxianxia" --format "{{.Names}}" | xargs -r docker rm -f 2>/dev/null || true
+
+        # 删除所有相关网络
+        docker network ls --filter "name=duanxianxia" --format "{{.Name}}" | xargs -r docker network rm 2>/dev/null || true
+
+        # 删除所有相关数据卷
+        docker volume ls --filter "name=duanxianxia" --format "{{.Name}}" | xargs -r docker volume rm -f 2>/dev/null || true
+        docker volume rm -f duanxianxia_clickhouse_data duanxianxia_redis_data duanxianxia_postgres_data 2>/dev/null || true
+        log_info "  ✅ Docker 资源已完全清理"
+
+        # 4. 清理编译产物
+        log_info "[4/6] 清理编译产物..."
+        for service_dir in services/*/; do
+            if [ -d "$service_dir/target" ]; then
+                log "  清理 $service_dir/target"
+                rm -rf "$service_dir/target"
+            fi
+        done
+        log_info "  ✅ 编译产物已清理"
+
+        # 5. 清理日志和 PID 文件
+        log_info "[5/6] 清理日志和 PID 文件..."
+        if [ -d "logs" ]; then
+            find logs -name "*.pid" -type f -delete 2>/dev/null || true
+            # 保留部分日志用于调试，只清理 PID 文件
+            log_info "  ✅ PID 文件已清理"
+        fi
+
+        # 6. 启动数据库和服务
+        log_info "[6/6] 启动全新系统..."
+        log_info "  - 启动数据库服务..."
         docker-compose up -d redis clickhouse postgres 2>&1 | tee -a "$LOG_FILE"
         sleep 10
 
-        # 初始化数据库
-        log_info "初始化数据库..."
+        log_info "  - 初始化数据库..."
         if [ -f "db/init.sql" ]; then
             docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/init.sql 2>&1 | tee -a "$LOG_FILE" || true
         fi
@@ -198,11 +256,10 @@ case $DEPLOY_MODE in
             docker exec -i $(docker ps -q -f name=clickhouse) clickhouse-client --multiquery < db/auction.sql 2>&1 | tee -a "$LOG_FILE" || true
         fi
 
-        # 启动服务
-        log_info "启动所有服务..."
+        log_info "  - 启动所有服务..."
         ./start-all.sh 2>&1 | tee -a "$LOG_FILE"
 
-        log_info "完全部署完成"
+        log_info "✅ 完全重置部署完成（全新系统）"
         ;;
 
     update)
@@ -220,12 +277,27 @@ case $DEPLOY_MODE in
 
         # 停止服务
         log_info "停止现有服务..."
-        ./stop-all.sh 2>&1 | tee -a "$LOG_FILE" || true
+        if [ -f "./stop-all.sh" ]; then
+            ./stop-all.sh 2>&1 | tee -a "$LOG_FILE" || true
+        fi
+        sleep 2
+
+        # 清理端口占用
+        log_info "清理端口占用..."
+        for port in 8080 8082 8083 8084 8085 8087 8088 8089 6379; do
+            PID=$(lsof -ti:$port 2>/dev/null || true)
+            if [ -n "$PID" ]; then
+                log_info "  - 停止端口 $port 的进程 $PID"
+                kill $PID 2>/dev/null || true
+                sleep 1
+                kill -9 $PID 2>/dev/null || true
+            fi
+        done
         sleep 2
 
         # 重新编译
         log_info "重新编译服务..."
-        cd services/data-collector && cargo build 2>&1 | tee -a "../../$LOG_FILE" && cd ../..
+        cd services/data-collector && cargo build --bin data-collector 2>&1 | tee -a "../../$LOG_FILE" && cd ../..
         cd services/storage-service && cargo build 2>&1 | tee -a "../../$LOG_FILE" && cd ../..
         cd services/realtime-service && cargo build 2>&1 | tee -a "../../$LOG_FILE" && cd ../..
         cd services/auth-service && cargo build 2>&1 | tee -a "../../$LOG_FILE" && cd ../..

@@ -112,42 +112,42 @@ echo "🔧 启动后端服务..."
 # 创建日志目录
 mkdir -p logs
 
-# 启动数据采集服务
-echo "  启动 data-collector..."
+# 启动数据采集服务（Hexagonal 架构）
+echo "  启动 data-collector (Hexagonal 架构)..."
 cd services/data-collector
-cargo run --bin data-collector > ../../logs/data-collector.log 2>&1 &
+stdbuf -oL -eL cargo run --bin data-collector > ../../logs/data-collector.log 2>&1 &
 COLLECTOR_PID=$!
 echo "  PID: $COLLECTOR_PID"
 cd ../..
 
-# 启动存储服务
+# 启动存储服务（使用行缓冲）
 echo "  启动 storage-service..."
 cd services/storage-service
-cargo run > ../../logs/storage-service.log 2>&1 &
+stdbuf -oL -eL cargo run > ../../logs/storage-service.log 2>&1 &
 STORAGE_PID=$!
 echo "  PID: $STORAGE_PID"
 cd ../..
 
-# 启动实时推送服务
+# 启动实时推送服务（使用行缓冲）
 echo "  启动 realtime-service..."
 cd services/realtime-service
-cargo run > ../../logs/realtime-service.log 2>&1 &
+stdbuf -oL -eL cargo run > ../../logs/realtime-service.log 2>&1 &
 REALTIME_PID=$!
 echo "  PID: $REALTIME_PID"
 cd ../..
 
-# 启动认证服务
+# 启动认证服务（使用行缓冲）
 echo "  启动 auth-service..."
 cd services/auth-service
-cargo run > ../../logs/auth-service.log 2>&1 &
+stdbuf -oL -eL cargo run > ../../logs/auth-service.log 2>&1 &
 AUTH_PID=$!
 echo "  PID: $AUTH_PID"
 cd ../..
 
-# 启动涨停复盘服务
+# 启动涨停复盘服务（使用行缓冲）
 echo "  启动 limit-review-service..."
 cd services/limit-review-service
-cargo run > ../../logs/limit-review-service.log 2>&1 &
+stdbuf -oL -eL cargo run > ../../logs/limit-review-service.log 2>&1 &
 LIMIT_REVIEW_PID=$!
 echo "  PID: $LIMIT_REVIEW_PID"
 cd ../..
@@ -178,7 +178,7 @@ echo "  🗄️  数据库服务:"
 docker-compose ps redis clickhouse postgres 2>/dev/null | tail -n +3 || echo "    (数据库未运行)"
 echo ""
 echo "  🔧 后端服务:"
-echo "    • data-collector (PID: $COLLECTOR_PID) - 日志: logs/data-collector.log"
+echo "    • data-collector (Hexagonal) (PID: $COLLECTOR_PID) - 日志: logs/data-collector.log"
 echo "    • storage-service (PID: $STORAGE_PID) - 日志: logs/storage-service.log"
 echo "    • realtime-service (PID: $REALTIME_PID) - 日志: logs/realtime-service.log"
 echo "    • auth-service (PID: $AUTH_PID) - 日志: logs/auth-service.log"

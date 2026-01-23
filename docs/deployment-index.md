@@ -1,6 +1,6 @@
 # 部署文档导航
 
-**最后更新:** 2026-01-13
+**最后更新:** 2026-01-23
 
 ---
 
@@ -22,19 +22,25 @@ bash ./health-check.sh
 
 ### 主要文档
 
-1. **[完整部署指南](./DEPLOYMENT.md)** ⭐⭐⭐
+1. **[Hexagonal 架构文档](./HEXAGONAL_ARCHITECTURE.md)** ⭐⭐⭐ NEW
+   - 六边形架构设计
+   - Domain-Application-Adapters 分层
+   - 端口和适配器模式
+   - 性能指标和测试结果
+
+2. **[完整部署指南](./DEPLOYMENT.md)** ⭐⭐⭐
    - 环境要求和检查
    - 三种部署模式（quick/full/update）
    - 详细部署步骤
    - 故障排查
    - 维护操作
 
-2. **[快速开始指南](../QUICK_START.md)** ⭐⭐
+3. **[快速开始指南](../QUICK_START.md)** ⭐⭐
    - 5分钟快速部署
    - 常用命令
    - 验证方法
 
-3. **[故障排查指南](../TROUBLESHOOTING.md)** ⭐⭐
+4. **[故障排查指南](../TROUBLESHOOTING.md)** ⭐⭐
    - 常见问题解答
    - 问题诊断步骤
    - 解决方案

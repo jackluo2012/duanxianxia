@@ -11,6 +11,7 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+tracing-appender = "0.2"
 time = { workspace = true }
 jsonwebtoken = "9.3"
 bcrypt = "0.16"

@@ -83,3 +83,4 @@ clickhouse_data/
 # Redis 数据
 dump.rdb
 appendonly.aof
+backup

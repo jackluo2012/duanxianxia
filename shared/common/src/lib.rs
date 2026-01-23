@@ -1,4 +1,9 @@
 // shared/common/src/lib.rs
+
+// 导出 types 模块中的共享类型
+pub mod types;
+pub use types::{StockQuote, WebSocketMessage, User};
+
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::{Asia, Tz};
 use serde::{Deserializer, Serializer};

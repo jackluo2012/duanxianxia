@@ -4,7 +4,7 @@
 
 use crate::types::StockQuote as LegacyStockQuote;
 use async_trait::async_trait;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use clickhouse::Client;
 use common::from_utc;
 use domain::entities::StockQuote;

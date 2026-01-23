@@ -93,9 +93,11 @@ done
 
 if [ ${#PORTS_OCCUPIED[@]} -eq 0 ]; then
     pass "所有端口未被占用"
+    ((CHECKS_PASSED++))
 else
-    fail "以下端口被占用: ${PORTS_OCCUPIED[*]}"
-    echo "   请检查并停止占用这些端口的进程"
+    warn "以下端口被占用: ${PORTS_OCCUPIED[*]}"
+    echo "   deploy.sh 会自动清理这些端口"
+    ((WARNINGS++))
 fi
 
 # 5. 磁盘空间检查

@@ -5,6 +5,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::sync::Arc;
 
 use crate::adapters::secondary::ClickHouseAdapter;
@@ -48,6 +49,7 @@ struct HistoryPoint {
 /// Storage服务状态
 #[derive(Clone)]
 pub struct StorageServiceState {
+    #[allow(dead_code)]
     pub store_use_case: Arc<tokio::sync::Mutex<StorageUseCase>>,
     pub query_use_case: Arc<QueryUseCase>,
 }
@@ -109,11 +111,25 @@ async fn get_history(
         .await
     {
         Ok(data) => {
+            tracing::debug!("查询返回 {} 条原始数据", data.len());
+            if !data.is_empty() {
+                tracing::debug!("第一条数据: {:?}", data.first());
+            }
+
             // 转换为响应格式
             let points: Vec<HistoryPoint> = data
                 .into_iter()
-                .filter_map(|v| convert_to_history_point(v))
+                .filter_map(|v| {
+                    let v_clone = v.clone();
+                    let result = convert_to_history_point(v);
+                    if result.is_none() {
+                        tracing::debug!("数据转换失败: {:?}", v_clone);
+                    }
+                    result
+                })
                 .collect();
+
+            tracing::debug!("成功转换 {} 条数据", points.len());
 
             HttpResponse::Ok().json(HistoryResponse {
                 code,
@@ -146,13 +162,46 @@ fn parse_date(date_str: &str) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
 fn convert_to_history_point(value: serde_json::Value) -> Option<HistoryPoint> {
     let obj = value.as_object()?;
 
+    // 处理 timestamp - 支持多种格式
+    let timestamp = match obj.get("timestamp") {
+        Some(Value::Number(n)) => n.as_u64().unwrap_or(0),
+        Some(Value::String(s)) => s.parse::<u64>().unwrap_or(0),
+        _ => return None,
+    };
+
+    let datetime = if timestamp > 0 {
+        chrono::DateTime::from_timestamp(timestamp as i64, 0)
+            .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+            .unwrap_or_else(|| "".to_string())
+    } else {
+        "".to_string()
+    };
+
+    // 辅助函数：从 Value 中提取 f64
+    let get_f64 = |key: &str| -> Option<f64> {
+        match obj.get(key) {
+            Some(Value::Number(n)) => n.as_f64(),
+            Some(Value::String(s)) => s.parse::<f64>().ok(),
+            _ => None,
+        }
+    };
+
+    // 辅助函数：从 Value 中提取 u64
+    let get_u64 = |key: &str| -> u64 {
+        match obj.get(key) {
+            Some(Value::Number(n)) => n.as_u64().unwrap_or(0),
+            Some(Value::String(s)) => s.parse::<u64>().unwrap_or(0),
+            _ => 0,
+        }
+    };
+
     Some(HistoryPoint {
-        time: obj.get("datetime")?.as_str()?.to_string(),
-        price: obj.get("price").and_then(|v| v.as_f64()),
-        open: obj.get("open").and_then(|v| v.as_f64()),
-        high: obj.get("high").and_then(|v| v.as_f64()),
-        low: obj.get("low").and_then(|v| v.as_f64()),
-        close: obj.get("close").and_then(|v| v.as_f64()),
-        vol: obj.get("volume").and_then(|v| v.as_u64()).unwrap_or(0),
+        time: datetime,
+        price: get_f64("price"),
+        open: get_f64("open"),
+        high: get_f64("high"),
+        low: get_f64("low"),
+        close: get_f64("price"), // 使用 price 作为 close
+        vol: get_u64("volume"),
     })
 }
