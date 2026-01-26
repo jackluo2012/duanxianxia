@@ -49,7 +49,7 @@ struct ReviewRow {
     trade_date: String,
     code: String,
     name: String,
-    is_limit_up: u8,
+    is_limit_up: i8,
     limit_type: String,
     first_limit_time: String,
     last_limit_time: String,
@@ -107,7 +107,6 @@ impl Database {
             WHERE trade_date = ? AND is_limit_up = 1
             ORDER BY consecutive_days DESC, sealed_amount DESC
             LIMIT 100")
-            .bind(date)
             .fetch::<LeaderBoardRow>()?;
 
         let mut items = Vec::new();
@@ -146,10 +145,9 @@ impl Database {
                 toString(trade_date) as trade_date,
                 open_times
             FROM duanxianxia.limit_up_review
-            WHERE code = ? AND is_limit_up = 1
+            WHERE code = '{}' AND is_limit_up = 1
             ORDER BY trade_date DESC
             LIMIT 1")
-            .bind(code)
             .fetch::<LatestLimitRow>()?;
 
         let latest = if let Some(row) = cursor.next().await? {
@@ -167,11 +165,9 @@ impl Database {
                 open_times as open_count,
                 toFloat64(sealed_amount) as final_sealed
             FROM duanxianxia.limit_up_review
-            WHERE code = ? AND is_limit_up = 1
+            WHERE code = '{}' AND is_limit_up = 1
             ORDER BY trade_date DESC
-            LIMIT ?")
-            .bind(code)
-            .bind(limit_days)
+            LIMIT {}")
             .fetch::<HistoryRow>()?;
 
         let mut limit_up_history = Vec::new();
@@ -221,20 +217,19 @@ impl Database {
 
     /// 获取指定日期的涨停复盘数据
     pub async fn get_daily_review(&self, date: &str) -> Result<Vec<LimitUpReview>> {
-        let mut cursor = self.client
-            .query("SELECT
+        let sql = format!("SELECT
                 toString(trade_date) as trade_date,
                 code,
                 name,
                 is_limit_up,
                 ifNull(toString(limit_type), '') as limit_type,
-                ifNull(isNull(first_limit_time), '') as first_limit_time,
-                ifNull(isNull(last_limit_time), '') as last_limit_time,
+                ifNull(toString(first_limit_time), '') as first_limit_time,
+                ifNull(toString(last_limit_time), '') as last_limit_time,
                 open_times,
                 toFloat64(ifNull(limit_price, 0)) as limit_price,
                 toFloat64(ifNull(open_price, 0)) as open_price,
                 toFloat64(ifNull(close_price, 0)) as close_price,
-                toFloat64(ifNull(high_price, 0)) as high_price,
+                toFloat64(ifNull(high_price), 0)) as high_price,
                 toFloat64(ifNull(low_price, 0)) as low_price,
                 volume,
                 toFloat64(amount) as amount,
@@ -253,8 +248,10 @@ impl Database {
                 ifNull(seal_period, '') as seal_period,
                 toFloat64(ifNull(strength_score, 0)) as strength_score
             FROM duanxianxia.limit_up_review
-            WHERE trade_date = ?")
-            .bind(date)
+            WHERE trade_date = '{}'", date);
+
+        let mut cursor = self.client
+            .query(&sql)
             .fetch::<ReviewRow>()?;
 
         let mut reviews = Vec::new();

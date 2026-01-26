@@ -48,7 +48,6 @@ impl DataLoader {
             GROUP BY code
             ORDER BY code
         ")
-        .bind(date)
         .fetch::<StockQuoteRow>()
         .await
             .context("Failed to load day quotes")?;
@@ -63,27 +62,28 @@ impl DataLoader {
 
     /// 加载单只股票的3秒级行情(用于精确计算开板次数)
     pub async fn load_tick_data(&self, code: &str, date: Date) -> Result<Vec<Tick>> {
-        let mut cursor = self
-            .client
-            .query("SELECT
+        let date_str = date.format("%Y-%m-%d").to_string();
+        let start_time = format!("{} 09:30:00", date_str);
+        let end_time = format!("{} 15:00:00", date_str);
+
+        let sql = format!("SELECT
                 timestamp,
                 code,
                 price,
                 volume,
                 amount
             FROM stock_realtime_quotes
-            WHERE code = ?
-              AND toDate(toDateTime(timestamp, 'Asia/Shanghai')) = ?
-              AND toDateTime(timestamp, 'Asia/Shanghai') >= toDateTime(?, 'Asia/Shanghai')
-              AND toDateTime(timestamp, 'Asia/Shanghai') < toDateTime(?, 'Asia/Shanghai')
-            ORDER BY timestamp
-        ")
-        .bind(code)
-        .bind(date)
-        .bind(format!("{} 09:30:00", date))
-        .bind(format!("{} 15:00:00", date))
-        .fetch::<TickRow>()
-        .await
+            WHERE code = '{}'
+              AND toDate(toDateTime(timestamp, 'Asia/Shanghai')) = '{}'
+              AND toDateTime(timestamp, 'Asia/Shanghai') >= toDateTime('{}', 'Asia/Shanghai')
+              AND toDateTime(timestamp, 'Asia/Shanghai') < toDateTime('{}', 'Asia/Shanghai')
+            ORDER BY timestamp", code, date_str, start_time, end_time);
+
+        let mut cursor = self
+            .client
+            .query(&sql)
+            .fetch::<TickRow>()
+            .await
             .context("Failed to load tick data")?;
 
         let mut ticks = Vec::new();
@@ -115,8 +115,6 @@ impl DataLoader {
                       AND toDate(toDateTime(timestamp, 'Asia/Shanghai')) = ?
                     LIMIT 1
         ")
-        .bind(code)
-        .bind(prev_date)
         .fetch_optional::<PrevCloseRow>()
         .await
             .context("Failed to get prev close")?;
@@ -135,7 +133,6 @@ impl DataLoader {
         let result = self
             .client
             .query("SELECT code, name, market FROM stock_list WHERE code = ? LIMIT 1")
-            .bind(code)
             .fetch_optional::<StockInfoRow>()
             .await
             .context("Failed to get stock info")?;
@@ -173,8 +170,6 @@ impl DataLoader {
                 LIMIT 60
             ) AS recent_60d
         ")
-        .bind(code)
-        .bind(date)
         .fetch_optional::<MaxHighRow>()
         .await
             .context("Failed to get 60d high")?;

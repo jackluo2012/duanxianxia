@@ -52,7 +52,7 @@ struct ReviewRow {
     trade_date: String,
     code: String,
     name: String,
-    is_limit_up: u8,
+    is_limit_up: i8,
     limit_type: String,
     first_limit_time: String,
     last_limit_time: String,
@@ -85,31 +85,31 @@ struct ReviewRow {
 struct ThemeHotnessRow {
     theme_name: String,
     theme_type: String,
-    stock_count: u16,
-    limit_up_count: u16,
-    limit_down_count: u16,
-    limit_up_ratio: f32,
-    avg_consecutive: f32,
-    max_consecutive: u16,
-    total_consecutive_gte_3: u16,
-    total_consecutive_gte_5: u16,
+    stock_count: u64,
+    limit_up_count: u64,
+    limit_down_count: u64,
+    limit_up_ratio: f64,
+    avg_consecutive: f64,
+    max_consecutive: u8,
+    total_consecutive_gte_3: u64,
+    total_consecutive_gte_5: u64,
     total_sealed_amount: f64,
     avg_sealed_amount: f64,
     leader_code: String,
     leader_name: String,
-    leader_consecutive: u16,
+    leader_consecutive: u8,
     cycle_stage: String,
-    cycle_days: u32,
-    hotness_rank: u32,
+    cycle_days: u8,
+    hotness_rank: u8,
     hotness_score: f64,
-    created_at: String,
+    created_at: String, // will be converted from DateTime
 }
 
 /// 区间统计计数行
 #[derive(Row, Serialize, Deserialize)]
 struct IntervalCountRow {
     code: String,
-    limit_count: u32,
+    limit_count: u64,
     max_consecutive: u8,
 }
 
@@ -118,7 +118,7 @@ struct IntervalCountRow {
 struct ThemeDetailRow {
     code: String,
     name: String,
-    is_limit_up: u8,
+    is_limit_up: i8,
     consecutive_days: u8,
     sealed_amount: f64,
     turnover_rate: f32,
@@ -152,8 +152,7 @@ impl Database {
 
     /// 获取连板排行榜(指定日期)
     pub async fn get_leader_board(&self, date: &str) -> Result<Vec<LeaderBoardItem>> {
-        let mut cursor = self.client
-            .query("SELECT
+        let sql = format!("SELECT
                 code,
                 name,
                 toFloat64(close_price) as price,
@@ -162,10 +161,12 @@ impl Database {
                 consecutive_days + 1 as consecutive_limit_up,
                 toFloat64(sealed_amount) as sealed_amount
             FROM duanxianxia.limit_up_review
-            WHERE trade_date = ? AND is_limit_up = 1
+            WHERE trade_date = '{}' AND is_limit_up = 1
             ORDER BY consecutive_days DESC, sealed_amount DESC
-            LIMIT 100")
-            .bind(date)
+            LIMIT 100", date);
+
+        let mut cursor = self.client
+            .query(&sql)
             .fetch::<LeaderBoardRow>()?;
 
         let mut items = Vec::new();
@@ -208,10 +209,9 @@ impl Database {
                 toString(trade_date) as trade_date,
                 open_times
             FROM duanxianxia.limit_up_review
-            WHERE code = ? AND is_limit_up = 1
+            WHERE code = '{}' AND is_limit_up = 1
             ORDER BY trade_date DESC
             LIMIT 1")
-            .bind(code)
             .fetch::<LatestLimitRow>()?;
 
         let latest = if let Some(row) = cursor.next().await? {
@@ -229,11 +229,9 @@ impl Database {
                 open_times as open_count,
                 toFloat64(sealed_amount) as final_sealed
             FROM duanxianxia.limit_up_review
-            WHERE code = ? AND is_limit_up = 1
+            WHERE code = '{}' AND is_limit_up = 1
             ORDER BY trade_date DESC
             LIMIT ?")
-            .bind(code)
-            .bind(limit_days)
             .fetch::<HistoryRow>()?;
 
         let mut limit_up_history = Vec::new();
@@ -283,17 +281,14 @@ impl Database {
 
     /// 获取指定日期的涨停复盘数据
     pub async fn get_daily_review(&self, date: &str) -> Result<Vec<LimitUpReview>> {
-        let mut cursor = self
-            .client
-            .query(
-                "SELECT
+        let sql = format!("SELECT
                 toString(trade_date) as trade_date,
                 code,
                 name,
                 is_limit_up,
                 ifNull(toString(limit_type), '') as limit_type,
-                ifNull(first_limit_time, '') as first_limit_time,
-                ifNull(last_limit_time, '') as last_limit_time,
+                ifNull(toString(first_limit_time), '') as first_limit_time,
+                ifNull(toString(last_limit_time), '') as last_limit_time,
                 open_times,
                 toFloat64(ifNull(limit_price, 0)) as limit_price,
                 toFloat64(ifNull(open_price, 0)) as open_price,
@@ -317,9 +312,11 @@ impl Database {
                 ifNull(seal_period, '') as seal_period,
                 toFloat64(ifNull(strength_score, 0)) as strength_score
             FROM duanxianxia.limit_up_review
-            WHERE trade_date = ?",
-            )
-            .bind(date)
+            WHERE trade_date = '{}'", date);
+
+        let mut cursor = self
+            .client
+            .query(&sql)
             .fetch::<ReviewRow>()?;
 
         let mut reviews = Vec::new();
@@ -552,13 +549,13 @@ impl Database {
                 countIf(is_limit_up = 1) as limit_count,
                 max(consecutive_days) as max_consecutive
             FROM duanxianxia.limit_up_review
-            WHERE trade_date <= ? AND trade_date >= toDate(toDate(?) - INTERVAL {} DAY)
+            WHERE trade_date <= '{}' AND trade_date >= toDate(toDate('{}') - INTERVAL {} DAY)
             GROUP BY code
             HAVING limit_count > 0",
-            trading_days * 2 // 粗略估算日历天数
+            end_date, end_date, trading_days * 2 // 粗略估算日历天数
         );
 
-        let mut cursor = self.client.query(&sql).bind(end_date).fetch::<IntervalCountRow>()?;
+        let mut cursor = self.client.query(&sql).fetch::<IntervalCountRow>()?;
 
         let mut distribution = IntervalDistribution::empty();
 
@@ -595,7 +592,7 @@ impl Database {
             "SELECT
                 multiIf(
                     concept = '', '未分类',
-                    contains(concept, ','), splitByString(',', concept)[1],
+                    position(concept, ',') > 0, splitByString(',', concept)[1],
                     concept
                 ) as theme_name,
                 'concept' as theme_type,
@@ -609,24 +606,23 @@ impl Database {
                 countIf(consecutive_days >= 5) as total_consecutive_gte_5,
                 coalesce(sum(if(is_limit_up = 1, sealed_amount, 0)), 0) as total_sealed_amount,
                 round(coalesce(avg(if(is_limit_up = 1, sealed_amount, null)), 0), 2) as avg_sealed_amount,
-                argMax(argMax(code, consecutive_days), sealed_amount) as leader_code,
-                argMax(argMax(name, consecutive_days), sealed_amount) as leader_name,
-                argMax(consecutive_days, sealed_amount) as leader_consecutive,
+                argMax(code, sealed_amount) as leader_code,
+                argMax(name, sealed_amount) as leader_name,
+                max(consecutive_days) as leader_consecutive,
                 'init' as cycle_stage,
                 0 as cycle_days,
-                toUInt32(rowNumber() - 1) as hotness_rank,
+                0 as hotness_rank,
                 0.0 as hotness_score,
-                now() as created_at
+                toString(now()) as created_at
             FROM duanxianxia.limit_up_review
-            WHERE trade_date = ? AND concept != ''
+            WHERE trade_date = '{}' AND concept != ''
             GROUP BY theme_name, theme_type
             ORDER BY limit_up_count DESC, max_consecutive DESC, total_sealed_amount DESC
             LIMIT {}",
-            limit
+            date, limit
         );
 
-        let mut cursor = self.client.query(&sql).bind(date).fetch::<ThemeHotnessRow>()?;
-
+        let mut cursor = self.client.query(&sql).fetch::<ThemeHotnessRow>()?;
         let mut themes = Vec::new();
         while let Some(row) = cursor.next().await? {
             let theme = ThemeHotness {
@@ -638,21 +634,21 @@ impl Database {
                 } else {
                     crate::domain::entities::theme_models::ThemeType::Concept
                 },
-                stock_count: row.stock_count,
-                limit_up_count: row.limit_up_count,
-                limit_down_count: row.limit_down_count,
-                limit_up_ratio: row.limit_up_ratio,
-                avg_consecutive: row.avg_consecutive,
-                max_consecutive: row.max_consecutive,
-                total_consecutive_gte_3: row.total_consecutive_gte_3,
-                total_consecutive_gte_5: row.total_consecutive_gte_5,
+                stock_count: row.stock_count as u16,
+                limit_up_count: row.limit_up_count as u16,
+                limit_down_count: row.limit_down_count as u16,
+                limit_up_ratio: row.limit_up_ratio as f32,
+                avg_consecutive: row.avg_consecutive as f32,
+                max_consecutive: row.max_consecutive as u16,
+                total_consecutive_gte_3: row.total_consecutive_gte_3 as u16,
+                total_consecutive_gte_5: row.total_consecutive_gte_5 as u16,
                 total_sealed_amount: row.total_sealed_amount,
                 avg_sealed_amount: row.avg_sealed_amount,
                 leader_code: row.leader_code,
                 leader_name: row.leader_name,
-                leader_consecutive: row.leader_consecutive,
+                leader_consecutive: row.leader_consecutive as u16,
                 cycle_stage: crate::domain::entities::theme_models::CycleStage::Init,
-                cycle_days: row.cycle_days as u8,
+                cycle_days: row.cycle_days,
                 hotness_rank: row.hotness_rank as u16 + 1,
                 hotness_score: row.hotness_score,
                 created_at: chrono::Utc::now(),
@@ -678,7 +674,8 @@ impl Database {
         tracing::info!("📊 查询题材详情: {} - {}", date, theme_name);
 
         // 查询该题材下的所有涨停股票
-        let sql = "SELECT
+        let pattern = format!("%{}%", theme_name);
+        let sql = format!("SELECT
             code,
             name,
             is_limit_up,
@@ -689,11 +686,10 @@ impl Database {
             industry,
             concept
         FROM duanxianxia.limit_up_review
-        WHERE trade_date = ? AND (concept LIKE ? OR industry = ?)
-        ORDER BY consecutive_days DESC, sealed_amount DESC";
+        WHERE trade_date = '{}' AND (concept LIKE '{}' OR industry = '{}')
+        ORDER BY consecutive_days DESC, sealed_amount DESC", date, pattern, theme_name);
 
-        let pattern = format!("%{}%", theme_name);
-        let mut cursor = self.client.query(sql).bind(date).bind(&pattern).bind(theme_name).fetch::<ThemeDetailRow>()?;
+        let mut cursor = self.client.query(&sql).fetch::<ThemeDetailRow>()?;
 
         let mut stocks = Vec::new();
         let mut total_sealed = 0.0;
@@ -764,20 +760,20 @@ impl Database {
         tracing::info!("📊 查询题材关联: {} - {}", date, theme_name);
 
         // 查询与当前题材有共同涨停股票的其他题材
-        let sql = "SELECT
+        let pattern = format!("%{}%", theme_name);
+        let sql = format!("SELECT
             arrayJoin(splitByString(',', concept)) as related_theme,
             count() as common_stocks,
             countIf(is_limit_up = 1) as common_limit_count,
             round(countIf(is_limit_up = 1) / count() * 100, 2) as correlation_strength
         FROM duanxianxia.limit_up_review
-        WHERE trade_date = ? AND concept LIKE ? AND concept != ''
+        WHERE trade_date = '{}' AND concept LIKE '{}' AND concept != ''
         GROUP BY related_theme
-        HAVING related_theme != ? AND common_stocks >= 2
+        HAVING related_theme != '{}' AND common_stocks >= 2
         ORDER BY common_limit_count DESC, correlation_strength DESC
-        LIMIT 10";
+        LIMIT 10", date, pattern, theme_name);
 
-        let pattern = format!("%{}%", theme_name);
-        let mut cursor = self.client.query(sql).bind(date).bind(&pattern).bind(theme_name).fetch::<ThemeRelationRow>()?;
+        let mut cursor = self.client.query(&sql).fetch::<ThemeRelationRow>()?;
 
         let mut relations = Vec::new();
         while let Some(row) = cursor.next().await? {
