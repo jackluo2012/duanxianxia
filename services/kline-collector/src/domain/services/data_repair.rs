@@ -198,7 +198,7 @@ impl DataRepairEngine {
             let next_kline = existing_klines
                 .iter()
                 .filter(|k| k.timestamp > timestamp)
-                .min_by_key(|k| k.timestamp - k.timestamp);
+                .min_by_key(|k| k.timestamp - timestamp);
 
             // 根据相邻数据生成填充K线
             let filled = if let (Some(prev), Some(next)) = (prev_kline, next_kline) {
