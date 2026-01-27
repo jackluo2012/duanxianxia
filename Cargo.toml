@@ -33,4 +33,4 @@ time = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter", "chrono", "time"] }
 async-trait = "0.1"
-rustdx-complete = "0.6.4"
+rustdx-complete = "1.0.0"

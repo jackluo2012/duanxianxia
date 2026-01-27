@@ -1124,6 +1124,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
+dependencies = [
+ "dirs-sys",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2100,15 +2121,21 @@ dependencies = [
 name = "kline-collector"
 version = "0.1.0"
 dependencies = [
+ "actix-web",
  "anyhow",
  "chrono",
  "clickhouse 0.14.1",
+ "dirs",
+ "lazy_static",
+ "prometheus",
  "redis",
  "rustdx-complete",
  "serde",
  "serde_json",
  "shared",
+ "tempfile",
  "tokio",
+ "toml",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2627,6 +2654,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "option-ext"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
+
+[[package]]
 name = "ordered-multimap"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2897,6 +2930,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "prometheus"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d33c28a30771f7f96db69893f78b857f7450d7e0237e9c8fc6427a81bae7ed1"
+dependencies = [
+ "cfg-if",
+ "fnv",
+ "lazy_static",
+ "memchr",
+ "parking_lot",
+ "protobuf",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "protobuf"
+version = "2.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
+
+[[package]]
 name = "quanta"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3078,6 +3132,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_users"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
+dependencies = [
+ "getrandom 0.2.16",
+ "libredox",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "regex"
 version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3225,9 +3290,9 @@ dependencies = [
 
 [[package]]
 name = "rustdx-complete"
-version = "0.6.6"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8878485c3b59cf5c0541640e20e6a5ca12a1dbb84e6caa4b38fa7bafc5c83b5"
+checksum = "a67bdc2637bf226d93ad62288943619c857e954d6d34a0a486acb87200612281"
 dependencies = [
  "chrono",
  "encoding_rs",
@@ -3236,6 +3301,7 @@ dependencies = [
  "miniz_oxide",
  "serde",
  "thiserror 1.0.69",
+ "trade_date_a",
 ]
 
 [[package]]
@@ -4320,6 +4386,15 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "trade_date_a"
+version = "2025.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6e087a0eafa71bc4c0c0768122fdc5d09c92a4c1a0199c147092f8527a5de62"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]

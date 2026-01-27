@@ -4,7 +4,13 @@
 
 pub mod adapters;
 pub mod application;
+pub mod config;
 pub mod domain;
+pub mod health;
+pub mod monitoring;
 
 // 重新导出核心类型
+pub use config::*;
 pub use domain::*;
+pub use health::*;
+pub use monitoring::*;

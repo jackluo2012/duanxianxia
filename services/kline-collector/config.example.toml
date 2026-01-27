@@ -1,0 +1,140 @@
+# K线采集服务配置文件示例
+#
+# 复制此文件为 config.toml 并根据实际环境修改配置
+
+# ============================================================
+# 服务配置
+# ============================================================
+[service]
+# 服务名称（用于日志和监控标识）
+name = "kline-collector"
+
+# HTTP API 绑定地址
+bind_address = "127.0.0.1:8081"
+
+# 日志级别：trace, debug, info, warn, error
+# 生产环境建议使用 info 或 warn
+log_level = "info"
+
+# ============================================================
+# 数据源配置
+# ============================================================
+[datasource]
+# Redis 连接 URL（主要数据源）
+# 格式：redis://[:password@]host[:port][/db]
+redis_url = "redis://localhost:6379"
+
+# Redis Stream 名称（从data-collector接收行情）
+stream_name = "stock_quotes"
+
+# rustdx 连接池大小（降级数据源）
+# 建议值：3-10，根据CPU核心数调整
+rustdx_pool_size = 3
+
+# ============================================================
+# K线周期配置
+# ============================================================
+[periods]
+# 启用的K线周期列表
+# 支持的周期：1m, 5m, 15m, 30m, 60m, 1d
+# 根据业务需求选择，建议至少包含 1m 和 1d
+enabled = ["1m", "5m", "15m", "30m", "60m", "1d"]
+
+# ============================================================
+# 批量写入配置
+# ============================================================
+[batch]
+# 基础批量大小（条数）
+# 当缓冲区达到此数量时触发写入
+batch_size = 100
+
+# 批量刷新基准间隔（秒）
+# 当达到此时间间隔时触发写入（即使未达到batch_size）
+write_interval_secs = 5
+
+# 注意：实际使用的是智能批量策略，会根据负载自动调整
+# 高负载时增加批量大小，低负载时减少延迟
+
+# ============================================================
+# 历史数据回填配置
+# ============================================================
+[backfill]
+# 是否启用自动回填功能
+enabled = true
+
+# 服务启动时回填最近几天的数据
+# 建议值：7-30天，根据存储容量和数据完整性需求调整
+startup_days = 7
+
+# 定时回填时间（24小时制，HH:MM格式）
+# 建议设置在收盘后（如15:30），确保当天数据完整
+schedule_time = "15:30"
+
+# 最大并发回填任务数
+# 建议值：5-10，过多可能导致ClickHouse压力过大
+max_concurrent_tasks = 5
+
+# ============================================================
+# 数据质量配置
+# ============================================================
+[quality]
+# 价格变动阈值（0-1之间的浮点数）
+# 超过此阈值的变动会被标记为异常
+# 例如：0.2 表示20%的涨跌幅
+price_change_threshold = 0.2
+
+# 是否启用自动修复功能
+# 启用后会自动从rustdx重新获取异常或缺失的数据
+enable_auto_repair = true
+
+# ============================================================
+# 环境变量覆盖
+# ============================================================
+# 可以通过环境变量覆盖配置文件中的设置
+# 支持的环境变量：
+#
+# REDIS_URL                    - 覆盖 datasource.redis_url
+# CLICKHOUSE_URL               - 覆盖 ClickHouse连接地址（代码中硬编码）
+# TDX_POOL_SIZE                - 覆盖 datasource.rustdx_pool_size
+# ENABLED_PERIODS              - 覆盖 periods.enabled（逗号分隔字符串）
+# BATCH_INTERVAL_SECS          - 覆盖 batch.write_interval_secs
+# BATCH_SIZE                   - 覆盖 batch.batch_size
+# BACKFILL_ENABLED             - 覆盖 backfill.enabled（true/false）
+# STARTUP_DAYS                 - 覆盖 backfill.startup_days
+# SCHEDULE_TIME                - 覆盖 backfill.schedule_time
+# MAX_CONCURRENT_TASKS         - 覆盖 backfill.max_concurrent_tasks
+# PRICE_CHANGE_THRESHOLD       - 覆盖 quality.price_change_threshold
+# ENABLE_AUTO_REPAIR           - 覆盖 quality.enable_auto_repair（true/false）
+
+# ============================================================
+# 配置示例
+# ============================================================
+
+# ===== 开发环境配置 =====
+# [batch]
+# batch_size = 10              # 快速刷新，便于测试
+# write_interval_secs = 2
+#
+# [backfill]
+# startup_days = 3             # 仅回填最近3天
+# max_concurrent_tasks = 2     # 降低并发
+
+# ===== 生产环境配置 =====
+# [batch]
+# batch_size = 500             # 增大批量，提升吞吐量
+# write_interval_secs = 10     # 降低写入频率
+#
+# [backfill]
+# startup_days = 30            # 回填最近30天
+# max_concurrent_tasks = 10    # 增加并发
+#
+# [service]
+# log_level = "warn"           # 减少日志输出
+
+# ===== 低延迟环境配置 =====
+# [batch]
+# batch_size = 50              # 减小批量
+# write_interval_secs = 1      # 秒级刷新
+#
+# [backfill]
+# max_concurrent_tasks = 3     # 降低并发，减少对实时处理的影响

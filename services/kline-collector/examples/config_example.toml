@@ -1,0 +1,188 @@
+# K线收集器配置文件示例
+#
+# 复制此文件为 config.toml 并根据实际环境修改
+
+[server]
+# HTTP 服务绑定地址
+bind_address = "0.0.0.0:8080"
+
+# 日志级别: trace, debug, info, warn, error
+log_level = "info"
+
+[redis]
+# Redis 连接配置
+url = "redis://127.0.0.1:6379"
+# Redis 连接池大小
+pool_size = 10
+
+# Redis Stream 配置
+[redis.stream]
+stream_name = "market_data_stream"
+consumer_group = "kline_collector_group"
+consumer_name = "consumer_1"
+
+# 批量读取配置
+batch_size = 100
+block_timeout_ms = 5000
+
+[clickhouse]
+# ClickHouse 连接配置
+url = "http://localhost:8124"
+
+# 数据库配置
+database = "kline_db"
+table_prefix = "kline"
+
+# 批量写入配置
+batch_size = 100
+flush_interval_seconds = 10
+
+# 重试配置
+max_retries = 3
+retry_delay_ms = 1000
+
+# 压缩
+compression = "lz4"
+
+[rustdx]
+# rustdx 降级数据源配置
+enabled = true
+
+# 连接池大小
+pool_size = 3
+
+# 限流配置 (每秒请求数)
+rate_limit = 100
+
+# 健康检查
+health_check_interval_seconds = 60
+test_stock_code = "000001"
+
+[aggregation]
+# K线聚合引擎配置
+
+# 要聚合的周期列表
+periods = ["1m", "5m", "15m", "30m", "60m", "1d"]
+
+# 窗口大小 (秒)
+window_size_seconds = 60
+
+# 缓冲区大小
+buffer_size = 1000
+
+# 自动刷新间隔
+auto_flush_interval_seconds = 5
+
+[backfill]
+# 历史数据回填配置
+
+# 默认回填天数
+default_days = 7
+
+# 单次最大回填天数
+max_days = 30
+
+# 回填任务并发数
+concurrent_tasks = 3
+
+# 重试配置
+max_retries = 3
+
+[wal]
+# Write-Ahead Log 配置
+
+# 是否启用 WAL
+enabled = true
+
+# WAL 目录
+wal_dir = "./data/wal"
+
+# WAL 保留时间 (分钟)
+retention_minutes = 10080  # 7天
+
+# 自动清理间隔
+cleanup_interval_minutes = 60
+
+# 压缩旧 WAL 文件
+compress_old_files = true
+
+[monitoring]
+# 监控和指标配置
+
+# 是否启用 Prometheus 指标
+enabled = true
+
+# 指标采集间隔
+collection_interval_seconds = 15
+
+# 指标保留时间 (秒)
+retention_seconds = 3600
+
+[health]
+# 健康检查配置
+
+# 检查间隔
+check_interval_seconds = 30
+
+# 超时设置
+timeout_seconds = 5
+
+# 失败阈值 (连续失败多少次标记为不健康)
+failure_threshold = 3
+
+# 各组件检查配置
+[health.redis]
+enabled = true
+timeout_milliseconds = 3000
+
+[health.clickhouse]
+enabled = true
+timeout_milliseconds = 5000
+
+[health.rustdx]
+enabled = true
+timeout_milliseconds = 5000
+
+[data_quality]
+# 数据质量检查配置
+
+# 是否启用数据质量检查
+enabled = true
+
+# 价格异常检测阈值 (百分比)
+price_change_threshold = 0.2  # 20%
+
+# 成交量异常检测阈值
+volume_change_threshold = 10.0  # 10倍
+
+# 价格合理性检查
+min_price = 0.01
+max_price = 10000.0
+
+# 成交量合理性检查
+min_volume = 0
+max_volume = 1e12
+
+# 时间戳检查
+# 允许的最大时间偏差 (秒)
+max_timestamp_deviation = 300  # 5分钟
+
+[performance]
+# 性能优化配置
+
+# Tokio 运行时配置
+[performance.runtime]
+worker_threads = 4
+max_blocking_threads = 512
+
+# 缓冲区配置
+[performance.buffer]
+channel_size = 10000
+batch_size = 100
+
+# 连接池配置
+[performance.pool]
+max_size = 100
+min_idle = 10
+connection_timeout_seconds = 5
+idle_timeout_seconds = 600

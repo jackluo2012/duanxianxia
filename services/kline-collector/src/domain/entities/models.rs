@@ -6,6 +6,16 @@ use serde::{Deserialize, Serialize};
 pub enum KlinePeriod {
     OneMinute,
     FiveMinutes,
+    FifteenMinutes,
+    ThirtyMinutes,
+    OneHour,
+    OneDay,
+}
+
+impl std::fmt::Display for KlinePeriod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 impl KlinePeriod {
@@ -13,6 +23,10 @@ impl KlinePeriod {
         match self {
             KlinePeriod::OneMinute => "1m",
             KlinePeriod::FiveMinutes => "5m",
+            KlinePeriod::FifteenMinutes => "15m",
+            KlinePeriod::ThirtyMinutes => "30m",
+            KlinePeriod::OneHour => "60m",
+            KlinePeriod::OneDay => "1d",
         }
     }
 
@@ -20,14 +34,48 @@ impl KlinePeriod {
         match self {
             KlinePeriod::OneMinute => 1,
             KlinePeriod::FiveMinutes => 5,
+            KlinePeriod::FifteenMinutes => 15,
+            KlinePeriod::ThirtyMinutes => 30,
+            KlinePeriod::OneHour => 60,
+            KlinePeriod::OneDay => 1440, // 24 * 60
         }
+    }
+
+    /// 从字符串解析周期
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "1m" => Some(KlinePeriod::OneMinute),
+            "5m" => Some(KlinePeriod::FiveMinutes),
+            "15m" => Some(KlinePeriod::FifteenMinutes),
+            "30m" => Some(KlinePeriod::ThirtyMinutes),
+            "60m" | "1h" => Some(KlinePeriod::OneHour),
+            "1d" => Some(KlinePeriod::OneDay),
+            _ => None,
+        }
+    }
+
+    /// 判断是否为分钟级周期
+    pub fn is_minute_period(&self) -> bool {
+        matches!(
+            self,
+            KlinePeriod::OneMinute
+                | KlinePeriod::FiveMinutes
+                | KlinePeriod::FifteenMinutes
+                | KlinePeriod::ThirtyMinutes
+                | KlinePeriod::OneHour
+        )
+    }
+
+    /// 判断是否为日级周期
+    pub fn is_daily_period(&self) -> bool {
+        matches!(self, KlinePeriod::OneDay)
     }
 }
 
 /// K线数据结构
-#[derive(Debug, Clone, Serialize, Deserialize, clickhouse::Row)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KlineData {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: i64,  // Unix 时间戳（秒）
     pub code: String,
     pub name: String,
     pub period: String,
@@ -39,6 +87,26 @@ pub struct KlineData {
     pub amount: f64,
     pub trade_count: u32,
     pub source: String,
+}
+
+impl KlineData {
+    /// 从带时间的 KlineWindow 创建
+    pub fn from_window(window: &KlineWindow, source: &str) -> Self {
+        Self {
+            timestamp: window.window_start.timestamp(),
+            code: window.code.clone(),
+            name: window.name.clone(),
+            period: window.period.as_str().to_string(),
+            open: window.open,
+            high: window.high,
+            low: window.low,
+            close: window.close,
+            volume: window.volume,
+            amount: window.amount,
+            trade_count: window.trade_count,
+            source: source.to_string(),
+        }
+    }
 }
 
 /// K线聚合窗口（内存中）
@@ -90,20 +158,7 @@ impl KlineWindow {
     }
 
     pub fn to_kline_data(&self, source: &str) -> KlineData {
-        KlineData {
-            timestamp: self.window_start,
-            code: self.code.clone(),
-            name: self.name.clone(),
-            period: self.period.as_str().to_string(),
-            open: self.open,
-            high: self.high,
-            low: self.low,
-            close: self.close,
-            volume: self.volume,
-            amount: self.amount,
-            trade_count: self.trade_count,
-            source: source.to_string(),
-        }
+        KlineData::from_window(self, source)
     }
 }
 
