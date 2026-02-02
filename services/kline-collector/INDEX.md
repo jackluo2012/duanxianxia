@@ -46,11 +46,31 @@
 
 ### 真实数据测试
 
-6. **[真实数据测试报告](./REAL_DATA_TEST_REPORT.md)** ⭐
+6. **[真实数据测试报告](./docs/reports/REAL_DATA_TEST_REPORT.md)** ⭐
    - 真实环境全面测试
    - API 端点验证
    - 服务质量指标
    - 生产就绪性评估
+
+### 历史回填报告
+
+7. **[历史回填完成报告](./docs/reports/BACKFILL_COMPLETION_REPORT.md)** ⭐
+   - 功能完成度评估 (100%)
+   - 测试覆盖率报告
+   - 生产就绪度评估
+   - 架构设计验证
+
+8. **[历史回填执行报告](./docs/reports/REAL_BACKFILL_EXECUTION_REPORT.md)** ⭐
+   - ClickHouse环境准备
+   - 真实数据回填执行
+   - 数据验证结果
+   - 性能测试指标
+
+9. **[历史回填测试报告](./docs/reports/REAL_BACKFILL_TEST_REPORT.md)**
+   - rustdx数据源集成测试
+   - 历史回填引擎验证
+   - 周期映射测试
+   - HTTP API接口验证
 
 ---
 
@@ -58,23 +78,23 @@
 
 ### 部署文档
 
-7. **[快速开始指南](./QUICKSTART.md)**
-   - 环境准备
-   - 服务启动
-   - 基础使用
-   - 常见问题
+10. **[快速开始指南](./QUICKSTART.md)**
+    - 环境准备
+    - 服务启动
+    - 基础使用
+    - 常见问题
 
-8. **[配置示例](./config.example.toml)**
-   - 完整配置示例
-   - 参数说明
-   - 环境变量支持
+11. **[配置示例](./config.example.toml)**
+    - 完整配置示例
+    - 参数说明
+    - 环境变量支持
 
-9. **[配置指南](./CONFIG_GUIDE.md)**
-   - 配置详解
-   - 最佳实践
-   - 调优建议
+12. **[配置指南](./CONFIG_GUIDE.md)**
+    - 配置详解
+    - 最佳实践
+    - 调优建议
 
-10. **[部署总结](./DEPLOYMENT_SUMMARY.md)**
+13. **[部署总结](./DEPLOYMENT_SUMMARY.md)**
     - 部署步骤
     - 验证清单
     - 运维建议
@@ -85,7 +105,7 @@
 
 ### 功能说明
 
-11. **[README](./README.md)**
+14. **[README](./README.md)**
     - 项目概述
     - 功能特性
     - 使用指南
@@ -93,8 +113,16 @@
 
 ### 测试日志
 
-12. **[测试日志目录](./logs/)**
+15. **[测试日志目录](./logs/)**
     - `test-20260127-145018.log` - 真实数据测试日志
+
+### 示例代码
+
+16. **[示例代码目录](./examples/)**
+    - `run_real_backfill.rs` - 真实数据回填示例
+    - `test_backfill_comprehensive.rs` - 全面功能测试
+    - `test_real_backfill.rs` - 真实回填测试
+    - `full_usage_example.rs` - 完整使用示例
 
 ---
 
@@ -168,7 +196,8 @@
 - **启动服务** → [QUICKSTART.md](./QUICKSTART.md)
 - **配置服务** → [CONFIG_GUIDE.md](./CONFIG_GUIDE.md)
 - **查看设计** → [设计文档](../../docs/plans/2026-01-26-kline-collector-design.md)
-- **测试报告** → [REAL_DATA_TEST_REPORT.md](./REAL_DATA_TEST_REPORT.md)
+- **测试报告** → [真实数据测试报告](./docs/reports/REAL_DATA_TEST_REPORT.md)
+- **回填完成报告** → [历史回填完成报告](./docs/reports/BACKFILL_COMPLETION_REPORT.md)
 - **完成报告** → [Phase 3 完整报告](../../docs/kline-collector-phase3-complete-report.md)
 
 ---

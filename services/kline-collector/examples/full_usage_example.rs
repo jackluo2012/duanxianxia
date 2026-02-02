@@ -34,11 +34,9 @@ async fn main() -> Result<()> {
     info!("  1.1 初始化 Redis Stream 读取器...");
     let redis_url = "redis://127.0.0.1:6379";
     let redis_client = redis::Client::open(redis_url)?;
-    let redis_conn = redis_client
-        .get_multiplexed_async_connection()
-        .await?;
+    let manager = redis::aio::ConnectionManager::new(redis_client).await?;
     let mut redis_reader = RedisStreamReader::new(
-        redis::aio::ConnectionManager::new(redis_conn).await?,
+        manager,
         "market_data_stream".to_string(),
         "kline_collector_group".to_string(),
         "consumer_1".to_string(),
@@ -78,13 +76,12 @@ async fn main() -> Result<()> {
     info!("  1.4 初始化聚合引擎...");
     let aggregation_engine = AggregationEngine::new(
         vec![KlinePeriod::OneMinute, KlinePeriod::FiveMinutes, KlinePeriod::OneDay],
-        60,  // 60秒窗口
-        100, // 缓冲区大小
     );
     info!("     ✅ 聚合引擎初始化完成");
 
     // 1.5 初始化历史回填引擎
     info!("  1.5 初始化历史回填引擎...");
+    let has_rustdx = rustdx_fallback.is_some();
     let backfill_engine = if let Some(rustdx) = rustdx_fallback {
         HistoryBackfillEngine::with_rustdx(
             Arc::new(RwLock::new(ch_writer)),
@@ -105,7 +102,7 @@ async fn main() -> Result<()> {
     // ========================================
     info!("\n📊 步骤 2: 执行历史数据回填");
 
-    if rustdx_fallback.is_some() {
+    if has_rustdx {
         info!("  开始回填最近 3 天的历史数据...");
 
         let mut engine = backfill_engine;
@@ -176,7 +173,7 @@ async fn main() -> Result<()> {
 
     // 使用聚合引擎处理
     let mut engine = aggregation_engine;
-    engine.process_quote(&mock_quote)?;
+    let _closed_windows = engine.process_quote(&mock_quote);
     info!("  ✅ 行情已处理");
     info!("     当前活动窗口数: {}", engine.active_window_count());
 
@@ -188,7 +185,7 @@ async fn main() -> Result<()> {
     info!("  系统状态总结:");
     info!("    • Redis Stream: 已连接");
     info!("    • ClickHouse: 已连接");
-    info!("    • rustdx: {}", if rustdx_fallback.is_some() { "已启用" } else { "未启用" });
+    info!("    • rustdx: {}", if has_rustdx { "已启用" } else { "未启用" });
     info!("    • 活动聚合窗口: {}", engine.active_window_count());
     info!("    • 系统健康状态: {:?}", health.status);
 
@@ -215,7 +212,7 @@ async fn create_writer_with_wal(
     let client = ClickHouseWriter::create_client(clickhouse_url).await?;
 
     // 创建 WAL 管理器
-    let wal_manager = WalManager::new(wal_dir.to_string(), 7 * 24 * 60); // 7天保留
+    let wal_manager = WalManager::new(wal_dir, true)?; // 启用WAL
 
     // 创建写入器并设置 WAL
     let mut writer = ClickHouseWriter::new(
