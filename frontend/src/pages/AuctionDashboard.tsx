@@ -16,6 +16,11 @@ interface AuctionStock {
   sealed_amount_buy: number;
   sealed_amount_sell: number;
   intensity_score?: number;
+  open_price?: number;
+  preclose_price?: number;
+  volume?: number;
+  amount?: number;
+  updateTime?: string;
 }
 
 function AuctionDashboard() {
@@ -67,9 +72,21 @@ function AuctionDashboard() {
 
   return (
     <div style={{ padding: '24px' }}>
-      <Title level={2} style={{ marginBottom: 24 }}>
+      <Title level={2} style={{ marginBottom: 16 }}>
         竞价分析
       </Title>
+
+      {/* 说明卡片 */}
+      <Card
+        size="small"
+        style={{ marginBottom: 16, background: '#f0f5ff', border: '1px solid #adc6ff' }}
+      >
+        <div style={{ fontSize: 13, color: '#597ef7' }}>
+          💡 <strong>竞价时段:</strong> 9:15-9:25 |
+          <strong style={{ marginLeft: 16 }}>数据更新:</strong> 每5秒自动刷新 |
+          <strong style={{ marginLeft: 16 }}>功能:</strong> 买封排行、强度评分、异动检测
+        </div>
+      </Card>
 
       {/* 主导航 Tab */}
       <Tabs
@@ -85,9 +102,9 @@ function AuctionDashboard() {
           {/* 左侧排行榜 */}
           <Col span={14}>
             <Card
-              title="竞价排行榜"
+              title={<span style={{ fontWeight: 'bold' }}>竞价排行榜</span>}
               extra={
-                <Tag color="processing">
+                <Tag color="processing" style={{ margin: 0 }}>
                   竞价时段: 9:15-9:25
                 </Tag>
               }
