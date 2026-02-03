@@ -1,84 +1,227 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+/**
+ * 增强的WebSocket Hook
+ * 支持自动重连、心跳检测、订阅管理
+ */
 
-interface UseWebSocketOptions {
-  onMessage?: (data: any) => void;
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { config } from '../config';
+
+export interface WebSocketMessage {
+  type: string;
+  data: any;
+  timestamp?: number;
 }
 
-export function useWebSocket(url: string, options?: UseWebSocketOptions) {
+export interface UseWebSocketOptions {
+  onMessage?: (message: WebSocketMessage) => void;
+  onError?: (error: Event) => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+}
+
+export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
+  const {
+    onMessage,
+    onError,
+    onConnect,
+    onDisconnect,
+  } = options;
+
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const heartbeatTimeoutRef = useRef<ReturnType<typeof setInterval>>();
+  const subscriptionsRef = useRef<Set<string>>(new Set());
+
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
-  // 使用 ref 存储 onMessage 回调，避免 connect 函数依赖变化
-  const onMessageRef = useRef(options?.onMessage);
-  onMessageRef.current = options?.onMessage;
+  // 使用 ref 存储回调，避免函数依赖变化
+  const onMessageRef = useRef(onMessage);
+  const onErrorRef = useRef(onError);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
 
+  onMessageRef.current = onMessage;
+  onErrorRef.current = onError;
+  onConnectRef.current = onConnect;
+  onDisconnectRef.current = onDisconnect;
+
+  /**
+   * 发送心跳
+   */
+  const sendHeartbeat = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'heartbeat',
+        timestamp: Date.now(),
+      }));
+    }
+  }, []);
+
+  /**
+   * 启动心跳
+   */
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatTimeoutRef.current) {
+      clearInterval(heartbeatTimeoutRef.current);
+    }
+    heartbeatTimeoutRef.current = setInterval(() => {
+      sendHeartbeat();
+    }, config.wsHeartbeatInterval);
+  }, [sendHeartbeat]);
+
+  /**
+   * 停止心跳
+   */
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatTimeoutRef.current) {
+      clearInterval(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = undefined;
+    }
+  }, []);
+
+  /**
+   * 连接WebSocket
+   */
   const connect = useCallback(() => {
-    // 清除之前的重连定时器
+    // 清除之前的定时器
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
-    // 关闭旧的 WebSocket 连接，防止内存泄漏
+    // 关闭旧连接
     if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
       wsRef.current.close();
     }
 
     setStatus('connecting');
-    const ws = new WebSocket(url);
 
-    ws.onopen = () => {
-      console.log('WebSocket 连接成功');
-      setStatus('connected');
-    };
+    try {
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
 
-    ws.onclose = () => {
-      console.log('WebSocket 连接关闭');
+      ws.onopen = () => {
+        console.log('[WebSocket] 连接成功');
+        setStatus('connected');
+        onConnectRef.current?.();
+        startHeartbeat();
+
+        // 重连后重新订阅
+        if (subscriptionsRef.current.size > 0) {
+          ws.send(JSON.stringify({
+            type: 'subscribe',
+            codes: Array.from(subscriptionsRef.current),
+          }));
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log('[WebSocket] 连接关闭', event.code, event.reason);
+        setStatus('disconnected');
+        stopHeartbeat();
+        onDisconnectRef.current?.();
+
+        // 自动重连
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('[WebSocket] 尝试重连...');
+          connect();
+        }, config.wsReconnectInterval);
+      };
+
+      ws.onerror = (error) => {
+        console.error('[WebSocket] 连接错误:', error);
+        onErrorRef.current?.(error);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message: WebSocketMessage = JSON.parse(event.data);
+          onMessageRef.current?.(message);
+        } catch (error) {
+          console.error('[WebSocket] 解析消息失败:', error);
+        }
+      };
+    } catch (error) {
+      console.error('[WebSocket] 创建连接失败:', error);
       setStatus('disconnected');
-      // 自动重连
-      reconnectTimeoutRef.current = setTimeout(() => {
-        console.log('尝试重新连接...');
-        connect();
-      }, 3000);
-    };
+    }
+  }, [url, startHeartbeat, stopHeartbeat]);
 
-    ws.onerror = (error) => {
-      console.error('WebSocket 错误:', error);
-    };
+  /**
+   * 断开连接
+   */
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearInterval(heartbeatTimeoutRef.current);
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    setStatus('disconnected');
+  }, []);
 
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        onMessageRef.current?.(message);
-      } catch (error) {
-        console.error('解析消息失败:', error);
-      }
-    };
+  /**
+   * 订阅股票代码
+   */
+  const subscribe = useCallback((codes: string[]) => {
+    // 更新订阅列表
+    codes.forEach(code => subscriptionsRef.current.add(code));
 
-    wsRef.current = ws;
-  }, [url]);
-
-  useEffect(() => {
-    connect();
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [connect]);
-
-  const subscribe = (codes: string[]) => {
+    // 发送订阅请求
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        action: 'subscribe',
+        type: 'subscribe',
         codes,
       }));
+      console.log('[WebSocket] 订阅:', codes);
     }
-  };
+  }, []);
 
-  return { status, subscribe };
+  /**
+   * 取消订阅股票代码
+   */
+  const unsubscribe = useCallback((codes: string[]) => {
+    // 更新订阅列表
+    codes.forEach(code => subscriptionsRef.current.delete(code));
+
+    // 发送取消订阅请求
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'unsubscribe',
+        codes,
+      }));
+      console.log('[WebSocket] 取消订阅:', codes);
+    }
+  }, []);
+
+  /**
+   * 获取当前订阅列表
+   */
+  const getSubscriptions = useCallback(() => {
+    return Array.from(subscriptionsRef.current);
+  }, []);
+
+  // 组件挂载时连接
+  useEffect(() => {
+    if (config.enableWs) {
+      connect();
+    }
+
+    return () => {
+      disconnect();
+      stopHeartbeat();
+    };
+  }, [connect, disconnect, stopHeartbeat]);
+
+  return {
+    status,
+    connect,
+    disconnect,
+    subscribe,
+    unsubscribe,
+    getSubscriptions,
+  };
 }

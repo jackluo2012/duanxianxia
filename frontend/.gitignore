@@ -3,3 +3,8 @@ dist
 dist-ssr
 *.local
 .DS_Store
+
+# 环境变量（保留示例文件）
+.env
+.env.local
+.env.*.local

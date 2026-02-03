@@ -1,4 +1,5 @@
-import axios from 'axios';
+import request from './request';
+import { config } from '../config';
 
 export interface HistoryPoint {
   time: string;
@@ -8,6 +9,7 @@ export interface HistoryPoint {
   low?: number;
   close?: number;
   vol: number;
+  amount?: number;
 }
 
 export interface HistoryResponse {
@@ -31,11 +33,35 @@ export interface StockQuote {
   datetime?: string;
 }
 
-const API_BASE_URL = 'http://localhost:8083';
-
-export async function fetchQuoteHistory(code: string, period: string = '1m'): Promise<HistoryResponse> {
-  const response = await axios.get<HistoryResponse>(
-    `${API_BASE_URL}/api/quotes/${code}/history?period=${period}`
+/**
+ * 获取股票历史K线数据
+ * @param code 股票代码
+ * @param period 周期 (1m/5m/15m/30m/60m/1d)
+ * @returns 历史K线数据
+ */
+export async function fetchQuoteHistory(
+  code: string,
+  period: string = '1m'
+): Promise<HistoryResponse> {
+  return request.get(
+    `${config.storageUrl}/api/quotes/${code}/history?period=${period}`
   );
-  return response.data;
+}
+
+/**
+ * 获取实时行情
+ * @param codes 股票代码数组
+ * @returns 实时行情数据
+ */
+export async function fetchRealtimeQuotes(codes: string[]): Promise<StockQuote[]> {
+  return request.post(`${config.apiBaseUrl}/api/quotes/batch`, { codes });
+}
+
+/**
+ * 获取单只股票实时行情
+ * @param code 股票代码
+ * @returns 实时行情数据
+ */
+export async function fetchRealtimeQuote(code: string): Promise<StockQuote> {
+  return request.get(`${config.apiBaseUrl}/api/quotes/${code}`);
 }
