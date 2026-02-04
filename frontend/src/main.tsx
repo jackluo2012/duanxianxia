@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { worker } from './mocks/browser';
 import App from './App';
 import './index.css';
 
