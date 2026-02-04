@@ -1,9 +1,10 @@
-// 概念板块 API 客户端
-// 对应 query-service 的 Sectors API
+/**
+ * 概念板块 API 接口
+ * 提供板块列表、板块表现、板块成分股等数据
+ */
 
-import axios from 'axios';
-
-const QUERY_API_BASE = 'http://127.0.0.1:8086';
+import request from './request';
+import { config } from '../config';
 
 // ============================================
 // 类型定义
@@ -17,6 +18,8 @@ export interface SectorItem {
   total_amount: number;
   limit_up_count: number;
   limit_down_count: number;
+  leader_code?: string;
+  leader_name?: string;
 }
 
 export interface SectorPerformanceItem {
@@ -41,6 +44,9 @@ export interface SectorStockItem {
   change_percent: number;
   volume: number;
   amount: number;
+  is_leader?: boolean;
+  limit_up?: boolean;
+  limit_down?: boolean;
 }
 
 // ============================================
@@ -49,72 +55,38 @@ export interface SectorStockItem {
 
 /**
  * 获取板块列表
- * @param limit - 返回数量限制（默认100）
+ * @param limit 返回数量限制
+ * @returns 板块列表
  */
-export async function fetchSectors(
-  limit: number = 100
-): Promise<SectorItem[]> {
-  try {
-    const response = await axios.get<SectorItem[]>(
-      `${QUERY_API_BASE}/api/sectors/list?limit=${limit}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('获取板块列表失败:', error);
-    throw error;
-  }
+export async function fetchSectors(limit: number = 100): Promise<SectorItem[]> {
+  return request.get(`${config.storageUrl}/api/sectors/list?limit=${limit}`);
 }
 
 /**
  * 获取板块表现排行
- * @param limit - 返回数量限制（默认50）
+ * @param limit 返回数量限制
+ * @returns 板块表现列表
  */
 export async function fetchSectorPerformance(
   limit: number = 50
 ): Promise<SectorPerformanceItem[]> {
-  try {
-    const response = await axios.get<SectorPerformanceItem[]>(
-      `${QUERY_API_BASE}/api/sectors/performance?limit=${limit}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('获取板块表现失败:', error);
-    throw error;
-  }
+  return request.get(`${config.storageUrl}/api/sectors/performance?limit=${limit}`);
 }
 
 /**
  * 获取板块成分股
- * @param code - 板块代码
+ * @param code 板块代码
+ * @returns 成分股列表
  */
-export async function fetchSectorStocks(
-  code: string
-): Promise<SectorStockItem[]> {
-  try {
-    const response = await axios.get<SectorStockItem[]>(
-      `${QUERY_API_BASE}/api/sectors/stocks/${code}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('获取板块成分股失败:', error);
-    throw error;
-  }
+export async function fetchSectorStocks(code: string): Promise<SectorStockItem[]> {
+  return request.get(`${config.storageUrl}/api/sectors/stocks/${code}`);
 }
 
 /**
  * 搜索板块
- * @param keyword - 搜索关键词
+ * @param keyword 搜索关键词
+ * @returns 匹配的板块列表
  */
-export async function searchSectors(
-  keyword: string
-): Promise<SectorItem[]> {
-  try {
-    const response = await axios.get<SectorItem[]>(
-      `${QUERY_API_BASE}/api/sectors/search/${encodeURIComponent(keyword)}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('搜索板块失败:', error);
-    throw error;
-  }
+export async function searchSectors(keyword: string): Promise<SectorItem[]> {
+  return request.get(`${config.storageUrl}/api/sectors/search/${encodeURIComponent(keyword)}`);
 }
