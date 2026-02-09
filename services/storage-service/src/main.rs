@@ -15,7 +15,8 @@ mod config;
 
 use adapters::primary::{configure_routes, StorageServiceState};
 use adapters::secondary::{ClickHouseAdapter, RedisAdapter};
-use application::use_cases::{QueryHistoryUseCase, StoreQuoteUseCase};
+use application::use_cases::{QueryHistoryUseCase, QueryRealtimeUseCase, StoreQuoteUseCase};
+use application::QuoteEnricher;
 use config::Config;
 
 #[actix_web::main]
@@ -43,17 +44,29 @@ async fn main() -> Result<()> {
         ClickHouseAdapter::new(config.clickhouse_url.clone(), "duanxianxia".to_string()).await?;
     info!("✅ ClickHouse适配器创建成功");
 
+    // 创建数据补充器
+    let enricher = Arc::new(QuoteEnricher::with_url(
+        config.clickhouse_url.clone(),
+        "duanxianxia".to_string(),
+    ));
+    info!("✅ 数据补充器创建成功");
+
     // 创建用例
     let store_use_case = Arc::new(tokio::sync::Mutex::new(StoreQuoteUseCase::new(
         clickhouse_adapter.clone(),
     )));
-    let query_use_case = Arc::new(QueryHistoryUseCase::new(clickhouse_adapter));
+    let query_use_case = Arc::new(QueryHistoryUseCase::new(clickhouse_adapter.clone()));
+    let query_realtime_use_case = Arc::new(QueryRealtimeUseCase::with_enricher(
+        Arc::new(clickhouse_adapter.clone()),
+        enricher,
+    ));
     info!("✅ 用例创建成功");
 
     // 创建服务状态
     let service_state = StorageServiceState {
         store_use_case: store_use_case.clone(),
         query_use_case: query_use_case.clone(),
+        query_realtime_use_case,
     };
 
     // 启动Redis Stream消费任务

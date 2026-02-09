@@ -59,7 +59,7 @@ export interface SectorStockItem {
  * @returns 板块列表
  */
 export async function fetchSectors(limit: number = 100): Promise<SectorItem[]> {
-  return request.get(`${config.storageUrl}/api/sectors/list?limit=${limit}`);
+  return request.get(`${config.storageUrl}/sectors/list?limit=${limit}`);
 }
 
 /**
@@ -70,7 +70,7 @@ export async function fetchSectors(limit: number = 100): Promise<SectorItem[]> {
 export async function fetchSectorPerformance(
   limit: number = 50
 ): Promise<SectorPerformanceItem[]> {
-  return request.get(`${config.storageUrl}/api/sectors/performance?limit=${limit}`);
+  return request.get(`${config.storageUrl}/sectors/performance?limit=${limit}`);
 }
 
 /**
@@ -79,7 +79,7 @@ export async function fetchSectorPerformance(
  * @returns 成分股列表
  */
 export async function fetchSectorStocks(code: string): Promise<SectorStockItem[]> {
-  return request.get(`${config.storageUrl}/api/sectors/stocks/${code}`);
+  return request.get(`${config.storageUrl}/sectors/stocks/${code}`);
 }
 
 /**
@@ -88,5 +88,5 @@ export async function fetchSectorStocks(code: string): Promise<SectorStockItem[]
  * @returns 匹配的板块列表
  */
 export async function searchSectors(keyword: string): Promise<SectorItem[]> {
-  return request.get(`${config.storageUrl}/api/sectors/search/${encodeURIComponent(keyword)}`);
+  return request.get(`${config.storageUrl}/sectors/search/${encodeURIComponent(keyword)}`);
 }

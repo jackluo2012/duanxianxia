@@ -3,7 +3,7 @@
 //! 自动检测和修复异常或缺失的K线数据
 
 use anyhow::Result;
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Duration, Utc};
 use tracing::{debug, info, warn};
 
 use crate::domain::entities::{KlineData, KlinePeriod};

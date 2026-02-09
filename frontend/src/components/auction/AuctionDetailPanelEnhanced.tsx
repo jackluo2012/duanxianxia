@@ -3,7 +3,7 @@
  * 展示竞价详细信息、历史数据、买卖盘等
  */
 
-import { Card, Col, Row, Statistic, Table, Tag, Typography, Divider, Space, Progress } from 'antd';
+import { Card, Col, Row, Statistic, Tag, Typography, Divider, Space, Progress } from 'antd';
 import { RiseOutlined, FallOutlined, MinusOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
@@ -15,20 +15,12 @@ interface AuctionDetailPanelProps {
   stock: AuctionStock | null;
 }
 
-interface OrderBook {
-  price: number;
-  volume: number;
-  amount: number;
-}
-
 function AuctionDetailPanel({ stock }: AuctionDetailPanelProps) {
-  const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<AuctionHistoryPoint[]>([]);
 
   useEffect(() => {
     if (!stock) {
-      setDetail(null);
       setHistory([]);
       return;
     }
@@ -37,7 +29,6 @@ function AuctionDetailPanel({ stock }: AuctionDetailPanelProps) {
       setLoading(true);
       try {
         const response = await fetchAuctionDetail(stock.code);
-        setDetail(response);
         setHistory(response.history || []);
       } catch (err) {
         console.error('Failed to fetch auction detail:', err);
@@ -52,7 +43,6 @@ function AuctionDetailPanel({ stock }: AuctionDetailPanelProps) {
   if (!stock) {
     return (
       <Card
-        style={{ height: '100%' }}
         style={{ height: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <div style={{ textAlign: 'center', color: '#999' }}>

@@ -29,7 +29,7 @@ export function useQuoteData(
 
   // WebSocket连接
   const { status, subscribe, unsubscribe } = useWebSocket(
-    `${config.realtimeUrl}/ws/realtime`,
+    `${config.realtimeUrl}/realtime`,
     {
       onMessage: (message) => {
         if (message.type === 'quote_update') {
@@ -47,7 +47,7 @@ export function useQuoteData(
                     time: quote.datetime || newData[newData.length - 1].time,
                     price: quote.price,
                     close: quote.price,
-                    vol: quote.vol,
+                    vol: quote.volume, // 使用 volume 字段
                     high: Math.max(newData[newData.length - 1].high || quote.price, quote.price),
                     low: Math.min(newData[newData.length - 1].low || quote.price, quote.price),
                   };
@@ -82,13 +82,13 @@ export function useQuoteData(
           code: response.code,
           name: response.name,
           price: lastPoint.close || lastPoint.price || 0,
-          preclose: lastPoint.preclose || 0,
+          preclose: 0,
           open: lastPoint.open || 0,
           high: lastPoint.high || 0,
           low: lastPoint.low || 0,
-          vol: lastPoint.vol,
+          volume: lastPoint.vol, // HistoryPoint 使用 vol，映射到 volume
           amount: lastPoint.amount || 0,
-          change_percent: lastPoint.change_percent || 0,
+          change_percent: 0,
           datetime: lastPoint.time,
         });
       }

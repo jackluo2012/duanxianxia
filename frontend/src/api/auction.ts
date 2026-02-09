@@ -58,7 +58,7 @@ export async function fetchAuctionRankings(
   limit: number = 50
 ): Promise<AuctionRankingResponse> {
   return request.get(
-    `${config.storageUrl}/api/auction/rankings?type=${rankingType}&limit=${limit}`
+    `${config.storageUrl}/auction/rankings?type=${rankingType}&limit=${limit}`
   );
 }
 
@@ -68,7 +68,7 @@ export async function fetchAuctionRankings(
  * @returns 竞价详情数据
  */
 export async function fetchAuctionDetail(code: string): Promise<AuctionDetailResponse> {
-  return request.get(`${config.storageUrl}/api/auction/detail/${code}`);
+  return request.get(`${config.storageUrl}/auction/detail/${code}`);
 }
 
 /**
@@ -82,6 +82,6 @@ export async function fetchAuctionHistory(
   limit: number = 100
 ): Promise<{ data: AuctionHistoryPoint[] }> {
   return request.get(
-    `${config.storageUrl}/api/auction/history/${code}?limit=${limit}`
+    `${config.storageUrl}/auction/history/${code}?limit=${limit}`
   );
 }

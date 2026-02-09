@@ -54,7 +54,6 @@ struct RankingItem {
 }
 
 /// GET /api/auction/rankings?type={type}&limit={limit}
-#[get("/api/auction/rankings")]
 pub async fn rankings(query: web::Query<RankingsQuery>) -> impl Responder {
     let ranking_type = query.ranking_type.clone();
     let limit = query.limit;
@@ -103,7 +102,7 @@ struct TimelinePoint {
 }
 
 /// GET /api/auction/details/{code}
-#[get("/api/auction/details/{code}")]
+// #[get("/auction/details/{code}")]
 pub async fn get_auction_details(path: web::Path<String>) -> impl Responder {
     let code = path.into_inner();
 
@@ -145,7 +144,7 @@ pub struct AlertHistoryResponse {
 }
 
 /// POST /api/auction/alerts - 创建告警规则
-#[post("/api/auction/alerts")]
+// #[post("/auction/alerts")]
 pub async fn create_alert(
     state: web::Data<AppState>,
     req: web::Json<CreateAlertRequest>,
@@ -171,14 +170,14 @@ pub async fn create_alert(
 }
 
 /// GET /api/auction/alerts - 获取告警规则列表
-#[get("/api/auction/alerts")]
+// #[get("/auction/alerts")]
 pub async fn get_alerts(state: web::Data<AppState>) -> impl Responder {
     let rules = state.alert_use_case.get_all_rules().await;
     HttpResponse::Ok().json(AlertRulesResponse { rules })
 }
 
 /// DELETE /api/auction/alerts/{id} - 删除告警规则
-#[delete("/api/auction/alerts/{id}")]
+// #[delete("/api/auction/alerts/{id}")]
 pub async fn delete_alert(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
     let id = path.into_inner();
 
@@ -198,7 +197,7 @@ pub async fn delete_alert(state: web::Data<AppState>, path: web::Path<String>) -
 }
 
 /// GET /api/auction/alerts/history?limit=100 - 获取告警历史
-#[get("/api/auction/alerts/history")]
+// #[get("/auction/alerts/history")]
 pub async fn get_alert_history(
     state: web::Data<AppState>,
     query: web::Query<AlertHistoryQuery>,
@@ -241,7 +240,7 @@ pub struct IsWatchedResponse {
 }
 
 /// POST /api/auction/watchlist - 添加股票到自选股
-#[post("/api/auction/watchlist")]
+// #[post("/auction/watchlist")]
 pub async fn add_to_watchlist(
     state: web::Data<AppState>,
     req: web::Json<AddToWatchlistRequest>,
@@ -267,7 +266,7 @@ pub async fn add_to_watchlist(
 }
 
 /// DELETE /api/auction/watchlist/{code} - 从自选股中移除股票
-#[delete("/api/auction/watchlist/{code}")]
+// #[delete("/api/auction/watchlist/{code}")]
 pub async fn remove_from_watchlist(
     state: web::Data<AppState>,
     path: web::Path<String>,
@@ -295,7 +294,7 @@ pub async fn remove_from_watchlist(
 }
 
 /// GET /api/auction/watchlist?user_id={user_id} - 获取自选股列表
-#[get("/api/auction/watchlist")]
+// #[get("/auction/watchlist")]
 pub async fn get_watchlist(
     state: web::Data<AppState>,
     query: web::Query<WatchlistQuery>,
@@ -309,7 +308,7 @@ pub async fn get_watchlist(
 }
 
 /// GET /api/auction/watchlist/{code}/check?user_id={user_id} - 检查股票是否在自选股中
-#[get("/api/auction/watchlist/{code}/check")]
+// #[get("/auction/watchlist/{code}/check")]
 pub async fn check_is_watched(
     state: web::Data<AppState>,
     path: web::Path<String>,
@@ -344,16 +343,40 @@ pub async fn health_check() -> impl Responder {
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
+            .service(
+                web::resource("/auction/rankings")
+                    .route(web::get().to(rankings))
+            )
+            .service(
+                web::resource("/auction/details/{code}")
+                    .route(web::get().to(get_auction_details))
+            )
+            .service(
+                web::resource("/auction/alerts")
+                    .route(web::post().to(create_alert))
+                    .route(web::get().to(get_alerts))
+            )
+            .service(
+                web::resource("/auction/alerts/{id}")
+                    .route(web::delete().to(delete_alert))
+            )
+            .service(
+                web::resource("/auction/alerts/history")
+                    .route(web::get().to(get_alert_history))
+            )
+            .service(
+                web::resource("/watchlist")
+                    .route(web::post().to(add_to_watchlist))
+                    .route(web::get().to(get_watchlist))
+            )
+            .service(
+                web::resource("/watchlist/{code}")
+                    .route(web::delete().to(remove_from_watchlist))
+            )
+            .service(
+                web::resource("/watchlist/{code}/check")
+                    .route(web::get().to(check_is_watched))
+            )
             .route("/health", web::get().to(health_check))
-            .service(rankings)
-            .service(get_auction_details)
-            .service(create_alert)
-            .service(get_alerts)
-            .service(delete_alert)
-            .service(get_alert_history)
-            .service(add_to_watchlist)
-            .service(remove_from_watchlist)
-            .service(get_watchlist)
-            .service(check_is_watched),
     );
 }

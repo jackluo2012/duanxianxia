@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8084';
+import request from './request';
 
 export interface WatchlistItem {
   code: string;
@@ -10,10 +8,10 @@ export interface WatchlistItem {
 
 // 获取自选股列表
 export async function getWatchlist(userId: string = 'default'): Promise<WatchlistItem[]> {
-  const response = await axios.get(`${API_BASE_URL}/api/auction/watchlist`, {
-    params: { user_id: userId },
-  });
-  return response.data.items;
+  const response = await request.get<{items: WatchlistItem[]}>(
+    `/auction/watchlist?user_id=${userId}`
+  );
+  return response.items || [];
 }
 
 // 添加股票到自选股
@@ -22,12 +20,11 @@ export async function addToWatchlist(
   name: string,
   userId: string = 'default'
 ): Promise<{ message: string; code: string; name: string }> {
-  const response = await axios.post(`${API_BASE_URL}/api/auction/watchlist`, {
+  return request.post('/auction/watchlist', {
     code,
     name,
     user_id: userId,
   });
-  return response.data;
 }
 
 // 从自选股中移除股票
@@ -35,16 +32,13 @@ export async function removeFromWatchlist(
   code: string,
   userId: string = 'default'
 ): Promise<{ message: string; code: string }> {
-  const response = await axios.delete(`${API_BASE_URL}/api/auction/watchlist/${code}`, {
-    params: { user_id: userId },
-  });
-  return response.data;
+  return request.delete(`/auction/watchlist/${code}?user_id=${userId}`);
 }
 
 // 检查股票是否在自选股中
 export async function isWatched(code: string, userId: string = 'default'): Promise<boolean> {
-  const response = await axios.get(`${API_BASE_URL}/api/auction/watchlist/${code}/check`, {
-    params: { user_id: userId },
-  });
-  return response.data.watched;
+  const response = await request.get<{watched: boolean}>(
+    `/auction/watchlist/${code}/check?user_id=${userId}`
+  );
+  return response.watched || false;
 }

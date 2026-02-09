@@ -9,11 +9,13 @@ use serde_json::Value;
 use std::sync::Arc;
 
 use crate::adapters::secondary::ClickHouseAdapter;
-use crate::application::use_cases::{QueryHistoryUseCase, StoreQuoteUseCase};
+use crate::application::use_cases::{QueryHistoryUseCase, QueryRealtimeUseCase, StoreQuoteUseCase};
+use storage_domain::RealtimeQuote;
 
 /// 类型别名,简化泛型使用
 pub type StorageUseCase = StoreQuoteUseCase<ClickHouseAdapter>;
 pub type QueryUseCase = QueryHistoryUseCase<ClickHouseAdapter>;
+pub type QueryRealtimeUseCaseType = QueryRealtimeUseCase<ClickHouseAdapter>;
 
 /// HTTP请求/响应类型
 #[derive(Debug, Deserialize)]
@@ -52,6 +54,7 @@ pub struct StorageServiceState {
     #[allow(dead_code)]
     pub store_use_case: Arc<tokio::sync::Mutex<StorageUseCase>>,
     pub query_use_case: Arc<QueryUseCase>,
+    pub query_realtime_use_case: Arc<QueryRealtimeUseCaseType>,
 }
 
 /// 配置HTTP路由
@@ -59,6 +62,8 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
             .route("/health", web::get().to(health_check))
+            .route("/quotes/{code}", web::get().to(get_realtime_quote))
+            .route("/quotes/batch", web::post().to(get_batch_quotes))
             .route("/quotes/{code}/history", web::get().to(get_history)),
     );
 }
@@ -69,6 +74,66 @@ async fn health_check() -> impl Responder {
         "status": "healthy",
         "service": "storage-service"
     }))
+}
+
+
+/// 获取单只股票实时行情
+async fn get_realtime_quote(
+    service: web::Data<StorageServiceState>,
+    path: web::Path<String>,
+) -> impl Responder {
+    let code = path.into_inner();
+
+    // 使用QueryRealtimeUseCase查询实时数据
+    match service.query_realtime_use_case.execute(&code).await {
+        Ok(quote) => {
+            tracing::debug!("成功查询股票 {} 的实时行情", code);
+            HttpResponse::Ok().json(quote)
+        }
+        Err(e) => {
+            tracing::error!("查询股票 {} 实时行情失败: {}", code, e);
+            HttpResponse::NotFound().json(serde_json::json!({
+                "error": format!("股票 {} 未找到或无数据", code)
+            }))
+        }
+    }
+}
+
+/// 批量获取实时行情
+async fn get_batch_quotes(
+    service: web::Data<StorageServiceState>,
+    body: web::Json<serde_json::Value>,
+) -> impl Responder {
+    let codes_array = body.get("codes").and_then(|c| c.as_array());
+
+    if codes_array.is_none() || codes_array.unwrap().is_empty() {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "缺少codes参数"
+        }));
+    }
+
+    let codes: Vec<String> = codes_array
+        .unwrap()
+        .iter()
+        .filter_map(|c| c.as_str())
+        .map(|s| s.to_string())
+        .collect();
+
+    tracing::debug!("批量查询 {} 只股票的实时行情", codes.len());
+
+    // 使用QueryRealtimeUseCase批量查询
+    match service.query_realtime_use_case.execute_batch(&codes).await {
+        Ok(quotes) => {
+            tracing::debug!("成功查询 {} 只股票的实时行情", quotes.len());
+            HttpResponse::Ok().json(quotes)
+        }
+        Err(e) => {
+            tracing::error!("批量查询实时行情失败: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": e.to_string()
+            }))
+        }
+    }
 }
 
 /// 获取历史行情端点

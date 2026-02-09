@@ -65,7 +65,7 @@ export async function fetchLeaders(
   if (sector) params.append('sector', sector);
   params.append('limit', limit.toString());
 
-  return request.get(`${config.storageUrl}/api/screener/leaders?${params.toString()}`);
+  return request.get(`${config.storageUrl}/screener/leaders?${params.toString()}`);
 }
 
 /**
@@ -81,7 +81,7 @@ export async function fetchConsecutiveBoards(
   limit: number = 50
 ): Promise<ConsecutiveBoardItem[]> {
   return request.get(
-    `${config.storageUrl}/api/screener/consecutive?min_days=${minDays}&board_type=${boardType}&limit=${limit}`
+    `${config.storageUrl}/screener/consecutive?min_days=${minDays}&board_type=${boardType}&limit=${limit}`
   );
 }
 
@@ -95,7 +95,7 @@ export async function fetchLimitUp(
   date: string = 'today',
   limit: number = 50
 ): Promise<LimitItem[]> {
-  return request.get(`${config.storageUrl}/api/screener/limit-up?date=${date}&limit=${limit}`);
+  return request.get(`${config.storageUrl}/screener/limit-up?date=${date}&limit=${limit}`);
 }
 
 /**
@@ -108,7 +108,7 @@ export async function fetchLimitDown(
   date: string = 'today',
   limit: number = 50
 ): Promise<LimitItem[]> {
-  return request.get(`${config.storageUrl}/api/screener/limit-down?date=${date}&limit=${limit}`);
+  return request.get(`${config.storageUrl}/screener/limit-down?date=${date}&limit=${limit}`);
 }
 
 /**
@@ -119,7 +119,7 @@ export async function fetchLimitDown(
 export async function fetchLeadersRealtime(
   sectorCode: string
 ): Promise<LeaderItem[]> {
-  return request.get(`${config.storageUrl}/api/screener/leaders-realtime?sector_code=${sectorCode}`);
+  return request.get(`${config.storageUrl}/screener/leaders-realtime?sector_code=${sectorCode}`);
 }
 
 /**
@@ -128,7 +128,7 @@ export async function fetchLeadersRealtime(
  * @returns 连板天数
  */
 export async function fetchConsecutiveRealtime(code: string): Promise<number> {
-  return request.get(`${config.storageUrl}/api/screener/consecutive-realtime?code=${code}`);
+  return request.get(`${config.storageUrl}/screener/consecutive-realtime?code=${code}`);
 }
 
 /**
@@ -136,5 +136,5 @@ export async function fetchConsecutiveRealtime(code: string): Promise<number> {
  * @returns 涨跌停股票列表
  */
 export async function detectLimitStocks(): Promise<LimitItem[]> {
-  return request.get(`${config.storageUrl}/api/screener/limit-detect`);
+  return request.get(`${config.storageUrl}/screener/limit-detect`);
 }

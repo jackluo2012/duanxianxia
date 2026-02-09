@@ -50,10 +50,11 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
    */
   const sendHeartbeat = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'heartbeat',
-        timestamp: Date.now(),
-      }));
+      // 使用WebSocket原生的ping，而不是应用层心跳
+      // wsRef.current.send(JSON.stringify({
+      //   type: 'heartbeat',
+      //   timestamp: Date.now(),
+      // }));
     }
   }, []);
 
@@ -173,7 +174,7 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
     // 发送订阅请求
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'subscribe',
+        action: 'subscribe',  // 后端期望 "action" 字段
         codes,
       }));
       console.log('[WebSocket] 订阅:', codes);
@@ -190,7 +191,7 @@ export function useWebSocket(url: string, options: UseWebSocketOptions = {}) {
     // 发送取消订阅请求
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'unsubscribe',
+        action: 'unsubscribe',  // 后端期望 "action" 字段
         codes,
       }));
       console.log('[WebSocket] 取消订阅:', codes);

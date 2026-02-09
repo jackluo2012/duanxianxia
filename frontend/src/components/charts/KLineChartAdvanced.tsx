@@ -3,7 +3,7 @@
  * 支持缩放、十字线、技术指标叠加
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { HistoryPoint } from '../../api/quotes';
 import { config } from '../../config';
@@ -182,7 +182,7 @@ export default function KLineChartAdvanced({
       value: d.vol,
       // 根据涨跌设置颜色
       itemStyle: {
-        color: (d.close || d.price) >= (d.open || d.price) ? '#ef5350' : '#26a69a',
+        color: (d.close ?? d.price ?? 0) >= (d.open ?? d.price ?? 0) ? '#ef5350' : '#26a69a',
       },
     }));
   }, [sampledData]);

@@ -1,4 +1,4 @@
-import { List, Tag, Typography, Space, Button, Tooltip } from 'antd';
+import { List, Tag, Typography, Space, Button } from 'antd';
 import { ReloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useAuctionRanking } from '../../hooks/useAuctionRanking';
 import { AuctionStock } from '../../api/auction';

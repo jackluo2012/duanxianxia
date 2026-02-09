@@ -42,10 +42,10 @@ function Dashboard() {
     },
     {
       title: '成交量',
-      dataIndex: 'vol',
-      key: 'vol',
+      dataIndex: 'volume',
+      key: 'volume',
       width: 120,
-      render: (value: number) => value.toLocaleString(),
+      render: (value: number) => value ? value.toLocaleString() : '-',
     },
     {
       title: '时间',
@@ -61,7 +61,10 @@ function Dashboard() {
     : '0.00';
 
   // 格式化成交量
-  const formatVolume = (vol: number) => {
+  const formatVolume = (vol: number | undefined) => {
+    if (vol === undefined || vol === null || isNaN(vol)) {
+      return '-';
+    }
     if (vol >= 100000000) {
       return `${(vol / 100000000).toFixed(2)}亿`;
     } else if (vol >= 10000) {
@@ -170,7 +173,7 @@ function Dashboard() {
               <Col span={3}>
                 <Statistic
                   title={<Text type="secondary">成交量</Text>}
-                  value={realtimeQuote ? formatVolume(realtimeQuote.vol) : '-'}
+                  value={realtimeQuote ? formatVolume(realtimeQuote.volume) : '-'}
                   valueStyle={{ fontSize: 16 }}
                 />
               </Col>

@@ -27,7 +27,7 @@ export interface StockQuote {
   open: number;
   high: number;
   low: number;
-  vol: number;
+  volume: number; // 后端返回的是 volume，不是 vol
   amount: number;
   change_percent: number;
   datetime?: string;
@@ -44,7 +44,7 @@ export async function fetchQuoteHistory(
   period: string = '1m'
 ): Promise<HistoryResponse> {
   return request.get(
-    `${config.storageUrl}/api/quotes/${code}/history?period=${period}`
+    `${config.storageUrl}/quotes/${code}/history?period=${period}`
   );
 }
 
@@ -54,7 +54,7 @@ export async function fetchQuoteHistory(
  * @returns 实时行情数据
  */
 export async function fetchRealtimeQuotes(codes: string[]): Promise<StockQuote[]> {
-  return request.post(`${config.apiBaseUrl}/api/quotes/batch`, { codes });
+  return request.post(`${config.apiBaseUrl}/quotes/batch`, { codes });
 }
 
 /**
@@ -63,5 +63,5 @@ export async function fetchRealtimeQuotes(codes: string[]): Promise<StockQuote[]
  * @returns 实时行情数据
  */
 export async function fetchRealtimeQuote(code: string): Promise<StockQuote> {
-  return request.get(`${config.apiBaseUrl}/api/quotes/${code}`);
+  return request.get(`${config.apiBaseUrl}/quotes/${code}`);
 }

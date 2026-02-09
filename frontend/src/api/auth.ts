@@ -40,7 +40,7 @@ export interface RegisterRequest {
  * @returns 登录响应 (token + user info)
  */
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
-  return request.post(`${config.apiBaseUrl}/auth/login`, credentials);
+  return request.post('/auth/login', credentials);
 }
 
 /**
@@ -49,7 +49,7 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
  * @returns 注册响应
  */
 export async function register(data: RegisterRequest): Promise<LoginResponse> {
-  return request.post(`${config.apiBaseUrl}/auth/register`, data);
+  return request.post('/auth/register', data);
 }
 
 /**
@@ -58,7 +58,7 @@ export async function register(data: RegisterRequest): Promise<LoginResponse> {
  * @returns 新的登录响应
  */
 export async function refreshToken(refreshToken: string): Promise<LoginResponse> {
-  return request.post(`${config.apiBaseUrl}/auth/refresh`, { refreshToken });
+  return request.post('/auth/refresh', { refreshToken });
 }
 
 /**
@@ -66,7 +66,7 @@ export async function refreshToken(refreshToken: string): Promise<LoginResponse>
  * @returns 用户信息
  */
 export async function getCurrentUser(): Promise<UserInfo> {
-  return request.get(`${config.apiBaseUrl}/auth/me`);
+  return request.get('/auth/me');
 }
 
 /**
@@ -74,5 +74,5 @@ export async function getCurrentUser(): Promise<UserInfo> {
  * @returns 登出结果
  */
 export async function logout(): Promise<void> {
-  return request.post(`${config.apiBaseUrl}/auth/logout`);
+  return request.post('/auth/logout');
 }

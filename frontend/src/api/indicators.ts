@@ -71,7 +71,7 @@ export async function fetchIndicators(
   code: string,
   limit: number = 100
 ): Promise<IndicatorData[]> {
-  return request.get(`${config.storageUrl}/api/indicators/${code}?limit=${limit}`);
+  return request.get(`${config.storageUrl}/indicators/${code}?limit=${limit}`);
 }
 
 /**
@@ -84,7 +84,7 @@ export async function fetchMA(
   code: string,
   limit: number = 100
 ): Promise<MAData[]> {
-  return request.get(`${config.storageUrl}/api/indicators/${code}/ma?limit=${limit}`);
+  return request.get(`${config.storageUrl}/indicators/${code}/ma?limit=${limit}`);
 }
 
 /**
@@ -97,7 +97,7 @@ export async function fetchMACD(
   code: string,
   limit: number = 100
 ): Promise<MACDData[]> {
-  return request.get(`${config.storageUrl}/api/indicators/${code}/macd?limit=${limit}`);
+  return request.get(`${config.storageUrl}/indicators/${code}/macd?limit=${limit}`);
 }
 
 /**
@@ -110,7 +110,7 @@ export async function fetchKDJ(
   code: string,
   limit: number = 100
 ): Promise<KDJData[]> {
-  return request.get(`${config.storageUrl}/api/indicators/${code}/kdj?limit=${limit}`);
+  return request.get(`${config.storageUrl}/indicators/${code}/kdj?limit=${limit}`);
 }
 
 /**
@@ -123,5 +123,5 @@ export async function fetchRSI(
   code: string,
   limit: number = 100
 ): Promise<RSIData[]> {
-  return request.get(`${config.storageUrl}/api/indicators/${code}/rsi?limit=${limit}`);
+  return request.get(`${config.storageUrl}/indicators/${code}/rsi?limit=${limit}`);
 }

@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8084';
+import request from './request';
 
 export interface AlertRuleType {
   change_percent?: { threshold: number };
@@ -37,8 +35,8 @@ export interface AlertEvent {
 
 // 获取告警规则列表
 export async function getAlertRules(): Promise<AlertRule[]> {
-  const response = await axios.get(`${API_BASE_URL}/api/auction/alerts`);
-  return response.data.rules;
+  const response = await request.get<{rules: AlertRule[]}>('/auction/alerts');
+  return response.rules || [];
 }
 
 // 创建告警规则
@@ -47,23 +45,22 @@ export async function createAlertRule(
   ruleType: AlertRuleType,
   enabled: boolean = true
 ): Promise<AlertRule> {
-  const response = await axios.post(`${API_BASE_URL}/api/auction/alerts`, {
+  return request.post('/auction/alerts', {
     name,
     rule_type: ruleType,
     enabled,
   });
-  return response.data;
 }
 
 // 删除告警规则
 export async function deleteAlertRule(ruleId: string): Promise<void> {
-  await axios.delete(`${API_BASE_URL}/api/auction/alerts/${ruleId}`);
+  return request.delete(`/auction/alerts/${ruleId}`);
 }
 
 // 获取告警历史
 export async function getAlertHistory(limit: number = 100): Promise<AlertEvent[]> {
-  const response = await axios.get(`${API_BASE_URL}/api/auction/alerts/history`, {
-    params: { limit },
-  });
-  return response.data.alerts;
+  const response = await request.get<{alerts: AlertEvent[]}>(
+    `/auction/alerts/history?limit=${limit}`
+  );
+  return response.alerts || [];
 }
