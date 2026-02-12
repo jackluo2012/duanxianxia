@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "data-collector"
+name = "data_collector"
 path = "src/main.rs"
 
 [features]
@@ -23,5 +23,10 @@ rustdx-complete = { workspace = true }
 clickhouse = { version = "0.14.1", features = ["time"] }
 chrono = { workspace = true, features = ["serde"] }
 async-trait = { workspace = true }
+rand = "0.8"
+reqwest = { version = "0.12", features = ["json"] }
+thiserror = "2.0"
+urlencoding = "2.1"
+futures = "0.3"
 domain = { path = "../../crates/domain" }
 common = { path = "../../shared/common" }

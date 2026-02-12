@@ -580,7 +580,7 @@ impl SectorAlgorithmImpl {
             {
                 Ok(_) => calculated_count += 1,
                 Err(e) => {
-                    eprintln!(
+                    tracing::error!(
                         "Failed to calculate performance for sector {}: {}",
                         sector_code, e
                     );

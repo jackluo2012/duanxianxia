@@ -237,18 +237,18 @@ impl ScreenerAlgorithmImpl {
         let query = format!(
             r#"
             SELECT
-                toString(date) as date,
+                toString(start_date) as date,
                 code,
                 name,
                 sector_name,
                 board_type,
                 consecutive_days,
-                limit_count,
+                limit_times as limit_count,
                 toString(start_date) as start_date,
                 toString(end_date) as end_date,
                 current_price,
-                price,
-                change_percent,
+                last_limit_price as price,
+                0.0 as change_percent,
                 reason
             FROM consecutive_boards
             WHERE consecutive_days >= {}
@@ -557,7 +557,6 @@ mod tests {
 
         for rank in ranks {
             let height = (1.0 - rank as f64 / total) * 100.0;
-            println!("Rank {}: Height = {}", rank, height);
             assert!(height >= 0.0 && height <= 100.0);
         }
     }

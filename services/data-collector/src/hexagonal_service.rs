@@ -12,15 +12,15 @@ use tokio::time::interval;
 use tracing::{debug, error, info};
 
 // Import hexagonal architecture components
-use crate::adapters::secondary::{ClickHouseQuoteRepository, TdxQuoteDataSource};
+use crate::adapters::secondary::{ClickHouseQuoteRepository, HttpQuoteDataSource, MockQuoteDataSource, TdxQuoteDataSource};
 use crate::application::{ApplicationQuoteCollectionService, QuoteCollectionOrchestrator};
 use domain::ports::secondary::{QuoteDataSource, StockQuoteRepository};
-use domain::value_objects::StockCode;
 
 /// Hexagonal Service Configuration
 pub struct HexagonalServiceConfig {
     pub tdx_pool_size: usize,
     pub collection_interval_secs: u64,
+    pub data_source_type: String, // "tdx" or "mock"
 }
 
 impl Default for HexagonalServiceConfig {
@@ -28,6 +28,7 @@ impl Default for HexagonalServiceConfig {
         Self {
             tdx_pool_size: 3,
             collection_interval_secs: 5,
+            data_source_type: "http".to_string(), // Default to HTTP for real data
         }
     }
 }
@@ -37,7 +38,7 @@ impl Default for HexagonalServiceConfig {
 /// This service uses the new hexagonal architecture to collect stock quotes
 pub struct HexagonalCollectionService {
     app_service: Arc<ApplicationQuoteCollectionService>,
-    data_source: Arc<TdxQuoteDataSource>, // Keep reference for direct access
+    _data_source_type: String, // Keep track of the data source type
     config: HexagonalServiceConfig,
 }
 
@@ -48,18 +49,37 @@ impl HexagonalCollectionService {
         config: HexagonalServiceConfig,
     ) -> Result<Self> {
         info!("Initializing hexagonal architecture service");
+        info!("Data source type: {}", config.data_source_type);
 
-        // Create secondary adapters
-        let tdx_source = Arc::new(
-            TdxQuoteDataSource::new(config.tdx_pool_size)
-                .map_err(|e| anyhow::anyhow!("Failed to create TDX source: {:?}", e))?,
-        );
+        // Create secondary adapters based on configuration
+        let data_source: Arc<dyn QuoteDataSource> = match config.data_source_type.as_str() {
+            "mock" => {
+                info!("Using Mock data source (no external dependencies)");
+                Arc::new(MockQuoteDataSource::new()
+                    .map_err(|e| anyhow::anyhow!("Failed to create Mock source: {:?}", e))?)
+            }
+            "http" | "sina" | "tencent" => {
+                info!("Using HTTP API data source (real market data)");
+                let api_type = if config.data_source_type == "http" {
+                    "sina"
+                } else {
+                    config.data_source_type.as_str()
+                };
+                Arc::new(HttpQuoteDataSource::new(api_type)
+                    .map_err(|e| anyhow::anyhow!("Failed to create HTTP source: {:?}", e))?)
+            }
+            "tdx" | _ => {
+                info!("Using TDX data source");
+                Arc::new(TdxQuoteDataSource::new(config.tdx_pool_size)
+                    .map_err(|e| anyhow::anyhow!("Failed to create TDX source: {:?}", e))?)
+            }
+        };
 
         let ch_repository = Arc::new(ClickHouseQuoteRepository::new(clickhouse_client));
 
         // Create application service
         let app_service = Arc::new(ApplicationQuoteCollectionService::new(
-            tdx_source.clone(),
+            data_source.clone(),
             ch_repository,
         ));
 
@@ -67,7 +87,7 @@ impl HexagonalCollectionService {
 
         Ok(Self {
             app_service,
-            data_source: tdx_source,
+            _data_source_type: config.data_source_type.clone(),
             config,
         })
     }
@@ -104,27 +124,7 @@ impl HexagonalCollectionService {
         Ok(count)
     }
 
-    /// Get a quote for a single stock
-    pub async fn get_quote(
-        &self,
-        code: &str,
-    ) -> Result<domain::entities::StockQuote, anyhow::Error> {
-        let stock_code = StockCode::new(code.to_string())
-            .map_err(|e| anyhow::anyhow!("Invalid stock code: {}", e))?;
-
-        // Use the data source directly
-        let quotes = self
-            .data_source
-            .fetch_quotes(&[stock_code.clone()])
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to get quote: {:?}", e))?;
-
-        if quotes.is_empty() {
-            anyhow::bail!("No quote found for code: {}", code);
-        }
-
-        Ok(quotes.into_iter().next().unwrap())
-    }
+    /// Get a quote for a single stock (removed - using app_service instead)
 
     /// Start collection with orchestrator (with retry logic)
     pub async fn start_with_orchestrator(&self, stock_codes: Vec<String>) -> Result<()> {

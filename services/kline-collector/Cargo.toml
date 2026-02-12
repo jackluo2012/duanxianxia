@@ -24,6 +24,8 @@ dirs = "5.0"
 shared = { path = "../../shared" }
 prometheus = "0.13"
 lazy_static = "1.4"
+reqwest = { version = "0.12", features = ["json"] }
+rand = "0.8"
 
 [dev-dependencies]
 tempfile = "3"

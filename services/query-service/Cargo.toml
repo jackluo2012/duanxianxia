@@ -15,6 +15,8 @@ tracing-subscriber = { workspace = true }
 clickhouse = { version = "0.14.1", features = ["time"] }
 shared = { path = "../../shared" }
 chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", features = ["json"] }
+urlencoding = "2.1"
 
 [profile.release]
 opt-level = 3

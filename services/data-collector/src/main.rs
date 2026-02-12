@@ -13,7 +13,7 @@ use clickhouse::Client;
 use hexagonal_service::{HexagonalCollectionService, HexagonalServiceConfig};
 use std::env;
 use time::UtcOffset;
-use tracing::{error, info};
+use tracing::error;
 use tracing_subscriber::fmt::time::OffsetTime;
 
 #[tokio::main]
@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
         .json()
         .init();
 
-    info!("🚀 Starting Hexagonal Architecture Data Collector");
+    tracing::info!("🚀 Starting Hexagonal Architecture Data Collector");
 
     // Load configuration from environment variables
     let clickhouse_url =
@@ -44,9 +44,11 @@ async fn main() -> Result<()> {
         .parse::<u64>()
         .unwrap_or(5);
 
-    info!(
+    tracing::info!(
         "Configuration: ClickHouse={}, TDX Pool Size={}, Interval={}s",
-        clickhouse_url, tdx_pool_size, collection_interval
+        clickhouse_url,
+        tdx_pool_size,
+        collection_interval
     );
 
     // Create ClickHouse client
@@ -54,17 +56,19 @@ async fn main() -> Result<()> {
         .with_url(&clickhouse_url)
         .with_database("duanxianxia");
 
-    info!("✅ ClickHouse client created");
+    tracing::info!("✅ ClickHouse client created");
 
     // Create hexagonal service configuration
     let config = HexagonalServiceConfig {
         tdx_pool_size,
         collection_interval_secs: collection_interval,
+        data_source_type: env::var("DATA_SOURCE_TYPE")
+            .unwrap_or_else(|_| "http".to_string()),
     };
 
     // Initialize the hexagonal service
     let service = HexagonalCollectionService::new(client, config).await?;
-    info!("✅ Hexagonal service initialized");
+    tracing::info!("✅ Hexagonal service initialized");
 
     // TODO: Load stock list from database or configuration
     // For now, use a small test list
@@ -75,20 +79,13 @@ async fn main() -> Result<()> {
         "600036".to_string(), // 招商银行
     ];
 
-    info!(
-        "📊 Starting data collection for {} stocks",
-        stock_codes.len()
-    );
+    tracing::info!("📊 Starting data collection for {} stocks", stock_codes.len());
 
-    // Start the collection service with orchestrator (this will run indefinitely)
-    match service.start_with_orchestrator(stock_codes).await {
-        Ok(_) => {
-            info!("✅ Data collection service completed successfully");
-            Ok(())
-        }
-        Err(e) => {
-            error!("❌ Data collection service failed: {:?}", e);
-            Err(e)
-        }
+    // Start the collection service
+    if let Err(e) = service.start(stock_codes).await {
+        error!("❌ Service failed: {}", e);
+        return Err(e);
     }
+
+    Ok(())
 }

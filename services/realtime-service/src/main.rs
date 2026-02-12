@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
             .route("/health", web::get().to(health_check))
             .route("/ws/realtime", web::get().to(realtime_service::websocket_handler))
     })
-    .bind("0.0.0.0:8080")?
+    .bind("0.0.0.0:8090")?
     .run()
     .await
     .ok();

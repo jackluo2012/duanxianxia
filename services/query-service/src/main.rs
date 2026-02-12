@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     // 从环境变量读取配置
     let clickhouse_url =
         std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
-    let bind_address = std::env::var("BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0:8086".to_string());
+    let bind_address = std::env::var("BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0:8089".to_string());
 
     info!("ClickHouse URL: {}", clickhouse_url);
     info!("Bind address: {}", bind_address);
@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
     match clickhouse_client.query("SELECT 1").execute().await {
         Ok(_) => info!("Connected to ClickHouse successfully"),
         Err(e) => {
-            eprintln!("Failed to connect to ClickHouse: {}", e);
+            tracing::error!("Failed to connect to ClickHouse: {}", e);
             return Err(anyhow::anyhow!("ClickHouse connection failed: {}", e));
         }
     }
@@ -109,7 +109,8 @@ async fn main() -> Result<()> {
                         web::get().to(review::get_consecutive_review),
                     )
                     .route("/sectors", web::get().to(review::get_sector_review))
-                    .route("/trend", web::get().to(review::get_trend_review)),
+                    .route("/trend", web::get().to(review::get_trend_review))
+                    .route("/leader-board", web::get().to(review::get_leader_board)),
             )
             .service(
                 web::scope("/api/history")

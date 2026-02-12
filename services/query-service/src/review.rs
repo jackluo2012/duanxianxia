@@ -295,6 +295,132 @@ impl ReviewService {
 
         Ok(summaries)
     }
+
+    /// 获取连板排行榜
+    pub async fn get_leader_board(
+        &self,
+        market: Option<u8>,
+        min_consecutive: Option<u32>,
+        date_range: Option<Vec<String>>,
+    ) -> HttpResponse {
+        let min_days = min_consecutive.unwrap_or(3);
+        let market_filter = if let Some(m) = market {
+            format!(" AND code LIKE '{}'", if m == 1 { "6%" } else { "0%,00%,30%" })
+        } else {
+            String::new()
+        };
+
+        let date_filter = if let Some(dates) = date_range {
+            if dates.len() >= 2 {
+                format!(" AND start_date >= '{}' AND end_date <= '{}'", dates[0], dates[1])
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+
+        let query = format!(
+            "SELECT
+                toString(start_date) as date,
+                code,
+                name,
+                sector_name,
+                board_type,
+                consecutive_days,
+                limit_times as limit_count,
+                toString(start_date) as start_date,
+                toString(end_date) as end_date,
+                current_price,
+                last_limit_price as price,
+                reason
+            FROM consecutive_boards
+            WHERE consecutive_days >= {} {} {}
+            ORDER BY consecutive_days DESC, start_date DESC
+            LIMIT 50 FORMAT JSON",
+            min_days, market_filter, date_filter
+        );
+
+        debug!("查询连板排行榜: {}", query);
+
+        // 使用HTTP JSON格式查询
+        let url = format!("http://localhost:8123/?database=duanxianxia&query={}",
+            urlencoding::encode(&query));
+
+        match reqwest::get(&url).await {
+            Ok(resp) => {
+                if !resp.status().is_success() {
+                    return HttpResponse::Ok().json(serde_json::json!({
+                        "total": 0,
+                        "items": []
+                    }));
+                }
+
+                match resp.text().await {
+                    Ok(text) => {
+                        match serde_json::from_str::<serde_json::Value>(&text) {
+                            Ok(json_resp) => {
+                                // 解析data字段
+                                let items = json_resp["data"].as_array()
+                                    .cloned()
+                                    .unwrap_or_default();
+
+                                HttpResponse::Ok().json(serde_json::json!({
+                                    "total": items.len(),
+                                    "items": items
+                                }))
+                            },
+                            Err(e) => {
+                                error!("JSON解析失败: {}", e);
+                                HttpResponse::Ok().json(serde_json::json!({
+                                    "total": 0,
+                                    "items": [],
+                                    "error": format!("解析失败: {}", e)
+                                }))
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        error!("读取响应失败: {}", e);
+                        HttpResponse::Ok().json(serde_json::json!({
+                            "total": 0,
+                            "items": [],
+                            "error": format!("读取失败: {}", e)
+                        }))
+                    }
+                }
+            },
+            Err(e) => {
+                error!("HTTP请求失败: {}", e);
+                HttpResponse::Ok().json(serde_json::json!({
+                    "total": 0,
+                    "items": [],
+                    "error": format!("HTTP失败: {}", e)
+                }))
+            }
+        }
+    }
+}
+
+/// 获取连板排行榜API处理函数
+pub async fn get_leader_board(
+    query: web::Query<LeaderBoardQuery>,
+    client: web::Data<clickhouse::Client>,
+) -> HttpResponse {
+    let review_service = ReviewService::new(client.as_ref().clone());
+    review_service.get_leader_board(query.market, Some(query.min_consecutive), query.date_range.clone()).await
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LeaderBoardQuery {
+    pub market: Option<u8>,
+    #[serde(default = "default_min_consecutive")]
+    pub min_consecutive: u32,
+    pub date_range: Option<Vec<String>>,
+}
+
+fn default_min_consecutive() -> u32 {
+    3
 }
 
 // ===================================================================

@@ -6,7 +6,8 @@ use tracing::{error, info, warn};
 
 mod metrics;
 
-use auction_service::adapters::{RedisStreamPublisher, TongdaxinDataSource};
+use auction_service::adapters::{RedisStreamPublisher};
+use auction_service::adapters::primary::HttpAuctionDataSource;
 use auction_service::application::AuctionCollectionUseCase;
 use auction_service::domain::{
     AuctionQuote, AuctionTimeChecker, SealedAmountCalculator, WatchlistManager,
@@ -21,9 +22,9 @@ async fn run_auction_collector(use_case: Arc<AuctionCollectionUseCase>) -> Resul
     let mut publisher = RedisStreamPublisher::new(conn);
     info!("成功连接到 Redis");
 
-    // 初始化通达信连接
-    let mut tdx_source = TongdaxinDataSource::new()?;
-    info!("成功连接到通达信服务器");
+    // 初始化HTTP数据源
+    let mut http_source = HttpAuctionDataSource::new()?;
+    info!("成功初始化HTTP数据源（腾讯财经API）");
 
     loop {
         // 时序检查：只在竞价时段运行
@@ -41,13 +42,8 @@ async fn run_auction_collector(use_case: Arc<AuctionCollectionUseCase>) -> Resul
         let mut failed_codes = Vec::new();
 
         for (market, code) in watchlist {
-            match tdx_source.fetch_auction_quote(&code, market as u16) {
+            match http_source.fetch_auction_quote(&code, market as u16).await {
                 Ok(mut quote) => {
-                    // 设置股票名称
-                    if let Some(name) = std::env::var("STOCK_NAMES").ok() {
-                        // TODO: 从环境变量或配置获取股票名称
-                    }
-
                     // 计算封单金额（通过UseCase）
                     let (sealed_buy, sealed_sell) = use_case.calculate_sealed_amount(
                         quote.buy1_price,

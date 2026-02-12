@@ -18,7 +18,7 @@ pub async fn get_leaders(client: web::Data<Client>) -> HttpResponse {
     match algo.calculate_leader_height(None, 50).await {
         Ok(leaders) => HttpResponse::Ok().json(leaders),
         Err(e) => {
-            eprintln!("Error calculating leader height: {}", e);
+            tracing::error!("Error calculating leader height: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "计算龙头高度失败",
                 "message": e.to_string()
@@ -34,7 +34,7 @@ pub async fn get_consecutive_boards(client: web::Data<Client>) -> HttpResponse {
     match algo.get_consecutive_boards(3, "连涨", 50).await {
         Ok(boards) => HttpResponse::Ok().json(boards),
         Err(e) => {
-            eprintln!("Error getting consecutive boards: {}", e);
+            tracing::error!("Error getting consecutive boards: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询连板统计失败",
                 "message": e.to_string()
@@ -49,7 +49,7 @@ pub async fn get_limit_up(client: web::Data<Client>) -> HttpResponse {
     match algo.get_limit_up_stocks("today", 50).await {
         Ok(stocks) => HttpResponse::Ok().json(stocks),
         Err(e) => {
-            eprintln!("Error getting limit up stocks: {}", e);
+            tracing::error!("Error getting limit up stocks: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询涨停股票失败",
                 "message": e.to_string()
@@ -64,7 +64,7 @@ pub async fn get_limit_down(client: web::Data<Client>) -> HttpResponse {
     match algo.get_limit_down_stocks("today", 50).await {
         Ok(stocks) => HttpResponse::Ok().json(stocks),
         Err(e) => {
-            eprintln!("Error getting limit down stocks: {}", e);
+            tracing::error!("Error getting limit down stocks: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询跌停股票失败",
                 "message": e.to_string()
@@ -92,7 +92,7 @@ pub async fn get_sectors(
     match algo.get_sectors(&date).await {
         Ok(sectors) => HttpResponse::Ok().json(sectors),
         Err(e) => {
-            eprintln!("Error getting sectors: {}", e);
+            tracing::error!("Error getting sectors: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询板块列表失败",
                 "message": e.to_string()
@@ -113,7 +113,7 @@ pub async fn get_sector_stocks(
     match algo.get_sector_stocks(&sector_code, &date).await {
         Ok(stocks) => HttpResponse::Ok().json(stocks),
         Err(e) => {
-            eprintln!("Error getting sector stocks: {}", e);
+            tracing::error!("Error getting sector stocks: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询板块内股票失败",
                 "message": e.to_string()
@@ -139,7 +139,7 @@ pub async fn get_sector_performance(
     match algo.get_sector_performance(&date, limit).await {
         Ok(performances) => HttpResponse::Ok().json(performances),
         Err(e) => {
-            eprintln!("Error getting sector performance: {}", e);
+            tracing::error!("Error getting sector performance: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询板块表现失败",
                 "message": e.to_string()
@@ -164,7 +164,7 @@ pub async fn get_sector_flow(
             "message": "板块资金流向查询成功"
         })),
         Err(e) => {
-            eprintln!("Error getting sector flow: {}", e);
+            tracing::error!("Error getting sector flow: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询板块资金流向失败",
                 "message": e.to_string()
@@ -193,7 +193,7 @@ pub async fn get_indicators(client: web::Data<Client>, path: web::Path<String>) 
             "message": "请先执行技术指标计算"
         })),
         Err(e) => {
-            eprintln!("Error getting indicators: {}", e);
+            tracing::error!("Error getting indicators: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询技术指标失败",
                 "message": e.to_string()
@@ -229,7 +229,7 @@ pub async fn get_indicator_history(
     {
         Ok(history) => HttpResponse::Ok().json(history),
         Err(e) => {
-            eprintln!("Error getting indicator history: {}", e);
+            tracing::error!("Error getting indicator history: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "查询历史指标失败",
                 "message": e.to_string()
@@ -271,7 +271,7 @@ pub async fn calculate_indicators(
             }))
         }
         Err(e) => {
-            eprintln!("Error calculating indicators: {}", e);
+            tracing::error!("Error calculating indicators: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "计算技术指标失败",
                 "message": e.to_string()
@@ -317,7 +317,7 @@ pub async fn get_ma(
             HttpResponse::Ok().json(ma_data)
         }
         Err(e) => {
-            eprintln!("Error getting MA data: {}", e);
+            tracing::error!("Error getting MA data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "获取MA指标失败",
                 "message": e.to_string()
@@ -362,7 +362,7 @@ pub async fn get_macd(
             HttpResponse::Ok().json(macd_data)
         }
         Err(e) => {
-            eprintln!("Error getting MACD data: {}", e);
+            tracing::error!("Error getting MACD data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "获取MACD指标失败",
                 "message": e.to_string()
@@ -407,7 +407,7 @@ pub async fn get_kdj(
             HttpResponse::Ok().json(kdj_data)
         }
         Err(e) => {
-            eprintln!("Error getting KDJ data: {}", e);
+            tracing::error!("Error getting KDJ data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "获取KDJ指标失败",
                 "message": e.to_string()
@@ -452,7 +452,7 @@ pub async fn get_rsi(
             HttpResponse::Ok().json(rsi_data)
         }
         Err(e) => {
-            eprintln!("Error getting RSI data: {}", e);
+            tracing::error!("Error getting RSI data: {}", e);
             HttpResponse::InternalServerError().json(serde_json::json!({
                 "error": "获取RSI指标失败",
                 "message": e.to_string()

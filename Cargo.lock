@@ -411,6 +411,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "redis",
+ "reqwest",
  "rustdx-complete",
  "serde",
  "serde_json",
@@ -1035,13 +1036,18 @@ dependencies = [
  "clickhouse 0.14.1",
  "common",
  "domain",
+ "futures",
+ "rand 0.8.5",
+ "reqwest",
  "rustdx-complete",
  "serde",
  "serde_json",
+ "thiserror 2.0.17",
  "time",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "urlencoding",
 ]
 
 [[package]]
@@ -2128,7 +2134,9 @@ dependencies = [
  "dirs",
  "lazy_static",
  "prometheus",
+ "rand 0.8.5",
  "redis",
+ "reqwest",
  "rustdx-complete",
  "serde",
  "serde_json",
@@ -2975,12 +2983,14 @@ dependencies = [
  "anyhow",
  "chrono",
  "clickhouse 0.14.1",
+ "reqwest",
  "serde",
  "serde_json",
  "shared",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "urlencoding",
 ]
 
 [[package]]
