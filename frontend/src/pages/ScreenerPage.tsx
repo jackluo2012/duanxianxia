@@ -1,8 +1,3 @@
-/**
- * 个股挖掘页面
- * 包含龙头高度、连板统计、涨跌停分析等功能
- */
-
 import { useState, useMemo } from 'react';
 import {
   Card,
@@ -31,6 +26,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useScreenerData } from '../hooks/useScreenerData';
+import { TableToolbar } from '../components/table/TableToolbar';
 import type { LeaderItem, ConsecutiveBoardItem, LimitItem } from '../api/screener';
 
 const { Title, Text } = Typography;
@@ -59,6 +55,25 @@ function ScreenerPage() {
   });
 
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [activeTab, setActiveTab] = useState('leaders');
+
+  // 行选择状态
+  const [selectedLeaderKeys, setSelectedLeaderKeys] = useState<React.Key[]>([]);
+  const [selectedConsecutiveKeys, setSelectedConsecutiveKeys] = useState<React.Key[]>([]);
+  const [selectedLimitKeys, setSelectedLimitKeys] = useState<React.Key[]>([]);
+
+  const [selectedLeaders, setSelectedLeaders] = useState<LeaderItem[]>([]);
+  const [selectedConsecutive, setSelectedConsecutive] = useState<ConsecutiveBoardItem[]>([]);
+  const [selectedLimits, setSelectedLimits] = useState<LimitItem[]>([]);
+
+  const clearSelection = () => {
+    setSelectedLeaderKeys([]);
+    setSelectedLeaders([]);
+    setSelectedConsecutiveKeys([]);
+    setSelectedConsecutive([]);
+    setSelectedLimitKeys([]);
+    setSelectedLimits([]);
+  };
 
   // 格式化金额
   const formatAmount = (amount: number) => {
@@ -354,6 +369,33 @@ function ScreenerPage() {
     );
   }, [leaders, searchKeyword]);
 
+  const leaderRowSelection = {
+    type: 'checkbox' as const,
+    selectedRowKeys: selectedLeaderKeys,
+    onChange: (keys: React.Key[], rows: LeaderItem[]) => {
+      setSelectedLeaderKeys(keys);
+      setSelectedLeaders(rows);
+    },
+  };
+
+  const consecutiveRowSelection = {
+    type: 'checkbox' as const,
+    selectedRowKeys: selectedConsecutiveKeys,
+    onChange: (keys: React.Key[], rows: ConsecutiveBoardItem[]) => {
+      setSelectedConsecutiveKeys(keys);
+      setSelectedConsecutive(rows);
+    },
+  };
+
+  const limitRowSelection = {
+    type: 'checkbox' as const,
+    selectedRowKeys: selectedLimitKeys,
+    onChange: (keys: React.Key[], rows: LimitItem[]) => {
+      setSelectedLimitKeys(keys);
+      setSelectedLimits(rows);
+    },
+  };
+
   return (
     <div style={{ padding: 24 }}>
       {/* 标题和操作栏 */}
@@ -384,6 +426,8 @@ function ScreenerPage() {
       <Card>
         <Tabs
           defaultActiveKey="leaders"
+          activeKey={activeTab}
+          onChange={setActiveTab}
           items={[
             {
               key: 'leaders',
@@ -395,6 +439,17 @@ function ScreenerPage() {
               ),
               children: (
                 <>
+                  <TableToolbar
+                    data={filteredLeaders}
+                    columns={leaderColumns}
+                    tableType="leader"
+                    loading={loading}
+                    selectedRows={selectedLeaders}
+                    selectedRowKeys={selectedLeaderKeys}
+                    onRefresh={refresh}
+                    onClearSelection={clearSelection}
+                  />
+
                   {/* 筛选栏 */}
                   <Row gutter={16} style={{ marginBottom: 16 }}>
                     <Col span={8}>
@@ -469,6 +524,7 @@ function ScreenerPage() {
 
                   {/* 龙头高度表格 */}
                   <Table
+                    rowSelection={leaderRowSelection}
                     columns={leaderColumns}
                     dataSource={filteredLeaders}
                     loading={loading}
@@ -495,6 +551,17 @@ function ScreenerPage() {
               ),
               children: (
                 <>
+                  <TableToolbar
+                    data={consecutiveData}
+                    columns={consecutiveColumns}
+                    tableType="consecutive"
+                    loading={loading}
+                    selectedRows={selectedConsecutive}
+                    selectedRowKeys={selectedConsecutiveKeys}
+                    onRefresh={refresh}
+                    onClearSelection={clearSelection}
+                  />
+
                   {/* 筛选栏 */}
                   <Row gutter={16} style={{ marginBottom: 16 }}>
                     <Col span={6}>
@@ -566,6 +633,7 @@ function ScreenerPage() {
 
                   {/* 连板统计表格 */}
                   <Table
+                    rowSelection={consecutiveRowSelection}
                     columns={consecutiveColumns}
                     dataSource={consecutiveData}
                     loading={loading}
@@ -592,6 +660,17 @@ function ScreenerPage() {
               ),
               children: (
                 <>
+                  <TableToolbar
+                    data={[...limitUpData, ...limitDownData]}
+                    columns={limitColumns}
+                    tableType="limit"
+                    loading={loading}
+                    selectedRows={selectedLimits}
+                    selectedRowKeys={selectedLimitKeys}
+                    onRefresh={refresh}
+                    onClearSelection={clearSelection}
+                  />
+
                   {/* 统计信息 */}
                   <Row gutter={16} style={{ marginBottom: 16 }}>
                     <Col span={6}>
@@ -637,6 +716,7 @@ function ScreenerPage() {
 
                   {/* 涨跌停表格 */}
                   <Table
+                    rowSelection={limitRowSelection}
                     columns={limitColumns}
                     dataSource={[...limitUpData, ...limitDownData]}
                     loading={loading}

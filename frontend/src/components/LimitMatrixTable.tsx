@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import './LimitMatrixTable.css';
+import { TableExportButton } from './table/TableExportButton';
 
 interface LimitData {
   consecutiveLevel: number;
@@ -13,11 +14,17 @@ interface LimitMatrixTableProps {
   };
 }
 
+interface ExportItem {
+  stock: string;
+  level: string;
+  theme: string;
+}
+
 export const LimitMatrixTable: React.FC<LimitMatrixTableProps> = ({ data }) => {
   const { tradeDate, limitData } = data;
 
   // 获取所有题材
-  const allThemes = React.useMemo(() => {
+  const allThemes = useMemo(() => {
     const themes = new Set<string>();
     limitData.forEach(level => {
       Object.keys(level.themes).forEach(theme => themes.add(theme));
@@ -25,14 +32,46 @@ export const LimitMatrixTable: React.FC<LimitMatrixTableProps> = ({ data }) => {
     return Array.from(themes);
   }, [limitData]);
 
+  const exportData = useMemo(() => {
+    const items: ExportItem[] = [];
+    limitData.forEach(level => {
+      Object.entries(level.themes).forEach(([theme, stocks]) => {
+        stocks.forEach(stock => {
+          items.push({
+            stock,
+            level: `${level.consecutiveLevel}板`,
+            theme,
+          });
+        });
+      });
+    });
+    return items;
+  }, [limitData]);
+
+  const exportColumns = [
+    { title: '股票名称', dataIndex: 'stock', key: 'stock' },
+    { title: '连板数', dataIndex: 'level', key: 'level' },
+    { title: '题材', dataIndex: 'theme', key: 'theme' },
+  ];
+
   return (
     <div className="limit-matrix-table">
-      <h3>📊 {tradeDate} 涨停板梯队矩阵</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h3 style={{ margin: 0 }}>📊 {tradeDate} 涨停板梯队矩阵</h3>
+        <TableExportButton
+          data={exportData}
+          columns={exportColumns}
+          tableType="matrix"
+          filename={`涨停梯队_${tradeDate}`}
+          disabled={limitData.length === 0}
+        />
+      </div>
 
       {limitData.length === 0 ? (
         <div className="no-data">暂无数据</div>
       ) : (
-        <table>
+        <>
+          <table>
           <thead>
             <tr>
               <th>板数</th>
@@ -55,7 +94,8 @@ export const LimitMatrixTable: React.FC<LimitMatrixTableProps> = ({ data }) => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </>
       )}
     </div>
   );

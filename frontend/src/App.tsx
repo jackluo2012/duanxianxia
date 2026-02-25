@@ -10,6 +10,10 @@ import {
   RiseOutlined,
   LogoutOutlined,
   UserOutlined,
+  CrownOutlined,
+  FileTextOutlined,
+  SoundOutlined,
+  FireOutlined,
 } from '@ant-design/icons';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -18,6 +22,11 @@ import ScreenerPage from './pages/ScreenerPage';
 import SectorsPage from './pages/SectorsPage';
 import IndicatorsPage from './pages/IndicatorsPage';
 import LeaderPage from './pages/LeaderPage';
+import ResearchPage from './pages/ResearchPage';
+import NewsVoicePage from './pages/NewsVoicePage';
+import NewsHotPage from './pages/NewsHotPage';
+import UserProfilePage from './pages/UserProfilePage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { TokenRefreshProvider } from './components/TokenRefreshProvider';
 import { setupTokenRefreshInterceptor } from './utils/tokenRefresh';
@@ -45,6 +54,7 @@ function AppContent() {
       key: '/auction',
       icon: <LineChartOutlined />,
       label: '竞价分析',
+      permissions: ['market:websocket:connect'], // 需要实时数据权限
     },
     {
       key: '/screener',
@@ -65,6 +75,22 @@ function AppContent() {
       key: '/leader',
       icon: <RiseOutlined />,
       label: '龙头高度',
+      permissions: ['screener:advanced:use'], // 需要高级筛选权限
+    },
+    {
+      key: '/research',
+      icon: <FileTextOutlined />,
+      label: '研报检索',
+    },
+    {
+      key: '/news-voice',
+      icon: <SoundOutlined />,
+      label: '语音快讯',
+    },
+    {
+      key: '/news-hot',
+      icon: <FireOutlined />,
+      label: '热点聚焦',
     },
   ];
 
@@ -78,6 +104,21 @@ function AppContent() {
   };
 
   const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: '用户中心',
+      onClick: () => navigate('/profile'),
+    },
+    {
+      key: 'subscription',
+      icon: <CrownOutlined />,
+      label: '订阅管理',
+      onClick: () => navigate('/subscription'),
+    },
+    {
+      type: 'divider' as const,
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -158,8 +199,48 @@ function AppContent() {
             <Route
               path="/leader"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute permission="screener:advanced:use">
                   <LeaderPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <UserProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subscription"
+              element={
+                <ProtectedRoute>
+                  <SubscriptionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/research"
+              element={
+                <ProtectedRoute>
+                  <ResearchPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/news-voice"
+              element={
+                <ProtectedRoute>
+                  <NewsVoicePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/news-hot"
+              element={
+                <ProtectedRoute>
+                  <NewsHotPage />
                 </ProtectedRoute>
               }
             />

@@ -50,12 +50,22 @@ async fn main() -> anyhow::Result<()> {
 
     let pool = pool.ok_or_else(|| anyhow::anyhow!("无法连接到 PostgreSQL，已重试 5 次"))?;
 
+    tracing::info!("启动认证服务在端口 8082");
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
+            // 健康检查
+            .route("/health", web::get().to(health_check))
             .route("/api/health", web::get().to(health_check))
+            // 认证端点
             .route("/api/auth/register", web::post().to(auth_service::register))
             .route("/api/auth/login", web::post().to(auth_service::login))
+            // RBAC 端点
+            .route("/api/auth/roles", web::get().to(auth_service::get_roles))
+            .route("/api/auth/permissions", web::get().to(auth_service::get_permissions))
+            .route("/api/auth/users/{id}/permissions", web::get().to(auth_service::get_user_permissions))
+            .route("/api/auth/users/{id}/roles", web::put().to(auth_service::assign_user_role))
     })
     .bind("0.0.0.0:8082")?
     .run()

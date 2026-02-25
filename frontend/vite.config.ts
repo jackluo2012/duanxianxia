@@ -14,40 +14,13 @@ export default defineConfig({
     host: true, // 监听所有地址
     open: true, // 自动打开浏览器
     proxy: {
-      // auth-service (用户认证)
-      '/api/auth': {
-        target: 'http://localhost:8082',
+      // API网关 - 统一入口（端口8080）
+      '/api': {
+        target: 'http://localhost:8080',
         changeOrigin: true,
+        // 网关会处理路由转发
       },
-      // storage-service (K线数据和行情)
-      '/api/quotes': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-      },
-      '/api/kline': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-      },
-      // query-service (选股查询)
-      '/api/screener': {
-        target: 'http://localhost:8089',
-        changeOrigin: true,
-      },
-      '/api/sectors': {
-        target: 'http://localhost:8089',
-        changeOrigin: true,
-      },
-      // auction-storage (竞价数据)
-      '/api/auction': {
-        target: 'http://localhost:8084',
-        changeOrigin: true,
-      },
-      // limit-review-service (涨停复盘)
-      '/api/review': {
-        target: 'http://localhost:8087',
-        changeOrigin: true,
-      },
-      // WebSocket代理
+      // WebSocket代理通过网关
       '/ws': {
         target: 'ws://localhost:8080',
         ws: true,

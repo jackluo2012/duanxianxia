@@ -1,4 +1,5 @@
-use crate::domain::entities::models::{AuthResponse, LoginRequest, RegisterRequest, UserInfo};
+use crate::domain::entities::models::{AuthResponse, AssignRoleRequest, LoginRequest, RegisterRequest, UserInfo};
+use crate::domain::services::rbac::RbacService;
 use actix_web::{web, HttpResponse, Result};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use jsonwebtoken::{encode, EncodingKey, Header};
@@ -12,6 +13,8 @@ pub async fn register(
     pool: web::Data<PgPool>,
     req: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse> {
+    let rbac_service = RbacService::new(pool.get_ref().clone());
+
     // 检查用户名是否已存在
     let exists = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE username = $1")
         .bind(&req.username)
@@ -46,18 +49,46 @@ pub async fn register(
         }
     };
 
-    // 生成 token
+    // 分配默认角色
+    if let Err(_) = rbac_service.assign_default_role(user_id).await {
+        return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": { "code": "INTERNAL_ERROR", "message": "分配默认角色失败" }
+        })));
+    }
+
+    // 获取用户权限和角色
+    let roles = match rbac_service.get_user_roles(user_id).await {
+        Ok(r) => r,
+        Err(_) => {
+            return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": { "code": "INTERNAL_ERROR", "message": "获取用户角色失败" }
+            })));
+        }
+    };
+
+    let permissions = match rbac_service.get_user_permission_names(user_id).await {
+        Ok(p) => p,
+        Err(_) => {
+            return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": { "code": "INTERNAL_ERROR", "message": "获取用户权限失败" }
+            })));
+        }
+    };
+
+    // 生成包含权限的 token
     let expiration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs()
         + TOKEN_EXPIRATION;
 
-    let claims = serde_json::json!({
-        "sub": req.username,
-        "user_id": user_id,
-        "exp": expiration
-    });
+    let claims = crate::domain::entities::models::Claims {
+        sub: user_id.to_string(),
+        username: req.username.clone(),
+        exp: expiration as usize,
+        roles: roles.into_iter().map(|r| r.name).collect(),
+        permissions,
+    };
 
     let token = encode(
         &Header::default(),
@@ -80,6 +111,8 @@ pub async fn register(
 }
 
 pub async fn login(pool: web::Data<PgPool>, req: web::Json<LoginRequest>) -> Result<HttpResponse> {
+    let rbac_service = RbacService::new(pool.get_ref().clone());
+
     // 查询用户
     let user = match sqlx::query_as::<_, (i32, String, String, String)>(
         "SELECT id, username, email, password_hash FROM users WHERE username = $1",
@@ -108,18 +141,39 @@ pub async fn login(pool: web::Data<PgPool>, req: web::Json<LoginRequest>) -> Res
         })));
     }
 
-    // 生成 token
+    // 获取用户权限和角色
+    let roles = match rbac_service.get_user_roles(user.0).await {
+        Ok(r) => r,
+        Err(_) => {
+            return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": { "code": "INTERNAL_ERROR", "message": "获取用户角色失败" }
+            })));
+        }
+    };
+
+    let permissions = match rbac_service.get_user_permission_names(user.0).await {
+        Ok(p) => p,
+        Err(_) => {
+            return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": { "code": "INTERNAL_ERROR", "message": "获取用户权限失败" }
+            })));
+        }
+    };
+
+    // 生成包含权限的 token
     let expiration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs()
         + TOKEN_EXPIRATION;
 
-    let claims = serde_json::json!({
-        "sub": user.1,
-        "user_id": user.0,
-        "exp": expiration
-    });
+    let claims = crate::domain::entities::models::Claims {
+        sub: user.0.to_string(),
+        username: user.1.clone(),
+        exp: expiration as usize,
+        roles: roles.into_iter().map(|r| r.name).collect(),
+        permissions,
+    };
 
     let token = encode(
         &Header::default(),
@@ -139,4 +193,68 @@ pub async fn login(pool: web::Data<PgPool>, req: web::Json<LoginRequest>) -> Res
     };
 
     Ok(HttpResponse::Ok().json(response))
+}
+
+// ============== RBAC API 端点 ==============
+
+/// 获取所有角色
+pub async fn get_roles(pool: web::Data<PgPool>) -> Result<HttpResponse> {
+    let rbac_service = RbacService::new(pool.get_ref().clone());
+
+    match rbac_service.get_all_roles().await {
+        Ok(roles) => Ok(HttpResponse::Ok().json(roles)),
+        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": { "code": "INTERNAL_ERROR", "message": "获取角色列表失败" }
+        }))),
+    }
+}
+
+/// 获取所有权限
+pub async fn get_permissions(pool: web::Data<PgPool>) -> Result<HttpResponse> {
+    let rbac_service = RbacService::new(pool.get_ref().clone());
+
+    match rbac_service.get_all_permissions().await {
+        Ok(permissions) => Ok(HttpResponse::Ok().json(permissions)),
+        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": { "code": "INTERNAL_ERROR", "message": "获取权限列表失败" }
+        }))),
+    }
+}
+
+/// 获取当前用户的权限
+pub async fn get_user_permissions(
+    pool: web::Data<PgPool>,
+    path: web::Path<i32>,
+) -> Result<HttpResponse> {
+    let user_id = path.into_inner();
+    let rbac_service = RbacService::new(pool.get_ref().clone());
+
+    match rbac_service.get_user_permissions(user_id).await {
+        Ok(permissions) => Ok(HttpResponse::Ok().json(permissions)),
+        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": { "code": "INTERNAL_ERROR", "message": "获取用户权限失败" }
+        }))),
+    }
+}
+
+/// 为用户分配角色
+pub async fn assign_user_role(
+    pool: web::Data<PgPool>,
+    path: web::Path<i32>,
+    req: web::Json<AssignRoleRequest>,
+) -> Result<HttpResponse> {
+    let user_id = path.into_inner();
+    let rbac_service = RbacService::new(pool.get_ref().clone());
+
+    match rbac_service
+        .assign_role_to_user(user_id, req.role_id, user_id)
+        .await
+    {
+        Ok(_) => Ok(HttpResponse::Ok().json(serde_json::json!({
+            "message": "角色分配成功"
+        }))),
+        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": { "code": "INTERNAL_ERROR", "message": "角色分配失败" }
+        }))),
+    }
 }

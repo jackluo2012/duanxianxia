@@ -30,6 +30,84 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
 
+  # API网关服务 (Phase 1 Week 1)
+  gateway-service:
+    build: ./services/gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      - GATEWAY_BIND_ADDRESS=0.0.0.0:8080
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - RUST_LOG=info
+    depends_on:
+      - auth-service
+      - query-service
+      - storage-service
+      - auction-storage
+      - realtime-service
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 认证服务
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "8082:8082"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/duanxianxia_users
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - RUST_LOG=info
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 查询服务
+  query-service:
+    build: ./services/query-service
+    ports:
+      - "8089:8089"
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - RUST_LOG=info
+    depends_on:
+      - clickhouse
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 存储服务
+  storage-service:
+    build: ./services/storage-service
+    ports:
+      - "8083:8083"
+    environment:
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - REDIS_URL=redis://redis:6379
+      - RUST_LOG=info
+    depends_on:
+      - clickhouse
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 实时服务
+  realtime-service:
+    build: ./services/realtime-service
+    ports:
+      - "8090:8090"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RUST_LOG=info
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
   # 竞价分析模块服务 (Phase 2 Week 1)
   auction-service:
     build: ./services/auction-service
@@ -39,6 +117,8 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    networks:
+      - app-network
 
   auction-storage:
     build: ./services/auction-storage
@@ -53,6 +133,8 @@ services:
       - clickhouse
       - redis
     restart: unless-stopped
+    networks:
+      - app-network
 
   auction-realtime:
     build: ./services/auction-realtime
@@ -65,6 +147,12 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   clickhouse_data:

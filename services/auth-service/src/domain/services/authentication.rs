@@ -4,7 +4,8 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use sqlx::PgPool;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::domain::entities::models::{AuthResponse, LoginRequest, RegisterRequest, UserInfo};
+use crate::domain::entities::models::{AuthResponse, Claims, LoginRequest, RegisterRequest, UserInfo};
+use crate::domain::services::rbac::RbacService;
 
 const JWT_SECRET: &str = "your-secret-key-change-in-production";
 const TOKEN_EXPIRATION: u64 = 86400; // 24 hours
@@ -12,11 +13,13 @@ const TOKEN_EXPIRATION: u64 = 86400; // 24 hours
 /// 认证服务
 pub struct AuthenticationService {
     pool: PgPool,
+    rbac_service: RbacService,
 }
 
 impl AuthenticationService {
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        let rbac_service = RbacService::new(pool.clone());
+        Self { pool, rbac_service }
     }
 
     /// 用户注册
@@ -45,18 +48,27 @@ impl AuthenticationService {
         .fetch_one(&self.pool)
         .await?;
 
-        // 生成 token
+        // 分配默认角色
+        self.rbac_service.assign_default_role(user_id).await?;
+
+        // 获取用户权限和角色
+        let roles = self.rbac_service.get_user_roles(user_id).await?;
+        let permissions = self.rbac_service.get_user_permission_names(user_id).await?;
+
+        // 生成包含权限的 token
         let expiration = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
             + TOKEN_EXPIRATION;
 
-        let claims = serde_json::json!({
-            "sub": req.username,
-            "user_id": user_id,
-            "exp": expiration
-        });
+        let claims = Claims {
+            sub: user_id.to_string(),
+            username: req.username.clone(),
+            exp: expiration as usize,
+            roles: roles.into_iter().map(|r| r.name).collect(),
+            permissions,
+        };
 
         let token = encode(
             &Header::default(),
@@ -92,18 +104,24 @@ impl AuthenticationService {
             return Err(anyhow::anyhow!("用户名或密码错误"));
         }
 
-        // 生成 token
+        // 获取用户权限和角色
+        let roles = self.rbac_service.get_user_roles(user.0).await?;
+        let permissions = self.rbac_service.get_user_permission_names(user.0).await?;
+
+        // 生成包含权限的 token
         let expiration = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs()
             + TOKEN_EXPIRATION;
 
-        let claims = serde_json::json!({
-            "sub": user.1,
-            "user_id": user.0,
-            "exp": expiration
-        });
+        let claims = Claims {
+            sub: user.0.to_string(),
+            username: user.1.clone(),
+            exp: expiration as usize,
+            roles: roles.into_iter().map(|r| r.name).collect(),
+            permissions,
+        };
 
         let token = encode(
             &Header::default(),

@@ -84,3 +84,15 @@ clickhouse_data/
 dump.rdb
 appendonly.aof
 backup
+# OMC工具生成的文件
+.omc/
+.sisyphus/
+
+# 项目状态文件
+PROJECT-COMPLETED.txt
+
+# 测试脚本和报告（保留db/migrations）
+test-e2e.sh
+test_db_connection.sh
+test_db_tables.sh
+test_db_report.md
