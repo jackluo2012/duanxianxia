@@ -1,10 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
+    # 共享库
     "shared/common",
     "shared/trading-calendar",
+    "shared/tracing",           # OpenTelemetry 链路追踪
+    "shared/service-discovery", # Consul 服务发现
+    "shared/config",            # 配置中心客户端
+    "shared/messaging",         # 消息队列客户端
+    # 领域层
     "crates/domain",
-    # TODO: 添加其他微服务
+    # 微服务
     "services/data-collector",
     "services/storage-service",
     "services/realtime-service",

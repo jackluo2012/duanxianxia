@@ -1,0 +1,40 @@
+[package]
+name = "duanxianxia-messaging"
+version = "0.1.0"
+edition = "2021"
+description = "消息队列客户端 - 支持Kafka/RabbitMQ的事件驱动架构"
+authors = ["短线侠团队"]
+
+[dependencies]
+# Kafka客户端
+rdkafka = { version = "0.36", features = ["cmake-build", "ssl"] }
+
+# RabbitMQ客户端
+lapin = "2.3"
+
+# 异步运行时
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = "0.3"
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# 错误处理
+anyhow = { workspace = true }
+thiserror = "1.0"
+
+# 工具库
+uuid = { version = "1.6", features = ["v4"] }
+once_cell = "1.19"
+dashmap = "5.5"
+
+# 日志
+tracing = { workspace = true }
+
+# 重试机制
+backoff = { version = "0.4", features = ["tokio"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

@@ -1,0 +1,39 @@
+[package]
+name = "duanxianxia-tracing"
+version = "0.1.0"
+edition = "2021"
+description = "OpenTelemetry链路追踪共享库 - 为所有微服务提供分布式追踪能力"
+authors = ["短线侠团队"]
+
+[dependencies]
+# OpenTelemetry 核心库
+opentelemetry = { version = "0.21", features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = ["trace", "metrics", "grpc-tonic"] }
+opentelemetry-semantic-conventions = "0.13"
+
+# 与tracing集成
+tracing = { workspace = true }
+tracing-opentelemetry = "0.22"
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+
+# Actix Web集成
+actix-web = { workspace = true }
+actix-http = { workspace = true }
+
+# 异步运行时
+tokio = { workspace = true }
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# 错误处理
+anyhow = { workspace = true }
+
+# 工具库
+uuid = { version = "1.6", features = ["v4"] }
+once_cell = "1.19"
+
+[dev-dependencies]
+tokio-test = "0.4"
